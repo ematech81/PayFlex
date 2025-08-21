@@ -22,6 +22,7 @@ import {
   Feather,
 } from '@expo/vector-icons';
 import PromoCarousel from 'component/promoCarousel';
+import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 const CARD_PADDING = 13;
@@ -72,42 +73,16 @@ const services = [
   },
 ];
 
-const transactions = [
-  { id: 't1', title: 'Wallet Top-up', amount: '+₦5,000', date: 'Aug 8' },
-  { id: 't2', title: 'DSTV Payment', amount: '-₦4,500', date: 'Aug 7' },
-  { id: 't3', title: 'Airtime Purchase', amount: '-₦2,000', date: 'Aug 6' },
-  { id: 't4', title: 'Hotel Booking', amount: '-₦28,000', date: 'Jul 30' },
-];
-
 const quickActions = [
-  { label: 'Airtime', icon: 'call', bg: '#2563eb' },
-  { label: 'Data', icon: 'wifi', bg: '#f97316' },
+  { label: 'Airtime', icon: 'call', bg: '#2563eb', screen: 'Airtime' },
+  { label: 'Data', icon: 'wifi', bg: '#f97316', screen: 'Data' },
   { label: 'Electricity', icon: 'flash', bg: '#16a34a' },
   { label: 'More', icon: 'ellipsis-horizontal', bg: '#64748b' },
 ];
 
-const promoData = [
-  {
-    // image: require('../assets/refer.png'),
-    title: 'Refer & Earn',
-    subtitle: 'Invite friends and win ₦500 each!',
-    screen: 'ReferFriendScreen',
-  },
-  {
-    // image: require('../assets/dstv.png'),
-    title: '5% Cashback on DSTV',
-    subtitle: 'Valid for first subscription',
-    screen: 'DSTVScreen',
-  },
-  {
-    // image: require('../assets/electricity.png'),
-    title: 'Pay Bills Easily',
-    subtitle: 'Quick electricity & water bill payments',
-    screen: 'BillPaymentScreen',
-  },
-];
-
 export default function HomeScreen() {
+  const navigation = useNavigation();
+
   return (
     <>
       <StatusBar
@@ -155,11 +130,14 @@ export default function HomeScreen() {
                           <Entypo name="eye" size={24} color="#ccc" />
                         </TouchableOpacity>
                       </View>
-                      <TouchableOpacity
-                        style={{ width: 100, alignItems: 'flex-end' }}
-                      >
-                        <Text style={styles.walletLabel}>History</Text>
-                      </TouchableOpacity>
+                      <View style={styles.walletActions}>
+                        <TouchableOpacity
+                          style={[styles.actionBtn, styles.depositBtn]}
+                        >
+                          <Ionicons name="add-circle" size={18} color="#fff" />
+                          <Text style={styles.actionText}>History</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     {/* balance */}
                     <View style={{ width: '100%' }}>
@@ -211,7 +189,11 @@ export default function HomeScreen() {
                 }}
               >
                 {quickActions.map((action, index) => (
-                  <TouchableOpacity key={index} style={styles.quickActionItem}>
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.quickActionItem}
+                    onPress={() => navigation.navigate(action.screen)}
+                  >
                     {' '}
                     <View
                       style={[
@@ -278,7 +260,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </LinearGradient>
             </View>
-            <PromoCarousel data={promoData} />
+            {/* <PromoCarousel data={promoData} /> */}
           </ScrollView>
         </SafeAreaView>
       </LinearGradient>
@@ -590,302 +572,3 @@ const styles = StyleSheet.create({
   },
   quickActionText: { fontSize: 12, color: '#1e293b' },
 });
-
-// import React from 'react';
-// import {
-//   View,
-//   Text,
-//   StyleSheet,
-//   ScrollView,
-//   TouchableOpacity,
-//   Image,
-//   TextInput,
-// } from 'react-native';
-// import { LinearGradient } from 'expo-linear-gradient';
-// import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
-
-// export default function HomeScreen() {
-//   return (
-//     <View style={styles.container}>
-//       <ScrollView showsVerticalScrollIndicator={false}>
-//         {/* Top Bar */}
-//         <View style={styles.topBar}>
-//           <Text style={styles.logo}>PayFlex</Text>
-//           <Ionicons name="person-circle-outline" size={34} color="#2563eb" />
-//         </View>
-
-//         {/* Balance */}
-//         <Text style={styles.balanceText}>₦12,450.00</Text>
-
-//         {/* Greeting */}
-//         <Text style={styles.greeting}>Hello, Emmanuel 👋</Text>
-
-//         {/* Search Bar */}
-//         {/* <View style={styles.searchBar}>
-//           <Ionicons name="search" size={20} color="#64748b" />
-//           <TextInput
-//             placeholder="Search services..."
-//             style={styles.searchInput}
-//           />
-//         </View> */}
-
-//         {/* Quick Actions */}
-//         <ScrollView
-//           horizontal
-//           showsHorizontalScrollIndicator={false}
-//           style={styles.quickActions}
-//         >
-//           {quickActions.map((action, index) => (
-//             <TouchableOpacity key={index} style={styles.quickActionItem}>
-//               <View
-//                 style={[styles.quickActionIcon, { backgroundColor: action.bg }]}
-//               >
-//                 <Ionicons name={action.icon} size={22} color="#fff" />
-//               </View>
-//               <Text style={styles.quickActionText}>{action.label}</Text>
-//             </TouchableOpacity>
-//           ))}
-//         </ScrollView>
-
-//         {/* Hero Banner */}
-//         <LinearGradient
-//           colors={['#2563eb', '#1e40af']}
-//           style={styles.heroBanner}
-//         >
-//           <View style={styles.heroContent}>
-//             <Text style={styles.heroText}>Pay DSTV & Get 5% Cashback!</Text>
-//             <TouchableOpacity style={styles.ctaButton}>
-//               <Text style={styles.ctaText}>Subscribe Now</Text>
-//             </TouchableOpacity>
-//           </View>
-//           <Image
-//             source={{ uri: 'https://i.ibb.co/6sPXf5B/family-tv.png' }}
-//             style={styles.heroImage}
-//           />
-//         </LinearGradient>
-
-//         {/* Services Grid */}
-//         <Text style={styles.sectionTitle}>Services</Text>
-//         <View style={styles.servicesGrid}>
-//           {services.map((service, index) => (
-//             <TouchableOpacity key={index} style={styles.serviceCard}>
-//               <View
-//                 style={[styles.serviceIcon, { backgroundColor: service.bg }]}
-//               >
-//                 <Ionicons name={service.icon} size={22} color="#fff" />
-//               </View>
-//               <Text style={styles.serviceLabel}>{service.label}</Text>
-//             </TouchableOpacity>
-//           ))}
-//         </View>
-
-//         {/* Recent Transactions */}
-//         <Text style={styles.sectionTitle}>Recent Activities</Text>
-//         {transactions.map((tx, index) => (
-//           <View key={index} style={styles.transactionCard}>
-//             <Text style={styles.transactionTitle}>{tx.title}</Text>
-//             <Text style={styles.transactionAmount}>{tx.amount}</Text>
-//             <Text
-//               style={[
-//                 styles.transactionStatus,
-//                 tx.status === 'Successful'
-//                   ? { color: 'green' }
-//                   : { color: 'orange' },
-//               ]}
-//             >
-//               {tx.status}
-//             </Text>
-//           </View>
-//         ))}
-
-//         {/* Trust Badge */}
-//         <View style={styles.trustBadge}>
-//           <Ionicons name="lock-closed" size={16} color="#2563eb" />
-//           <Text style={styles.trustText}>Secure Payments</Text>
-//         </View>
-//       </ScrollView>
-
-//       {/* Bottom Navigation */}
-//       <View style={styles.bottomNav}>
-//         {bottomNav.map((item, index) => (
-//           <TouchableOpacity key={index} style={styles.navItem}>
-//             <Ionicons
-//               name={item.icon}
-//               size={22}
-//               color={item.active ? '#2563eb' : '#94a3b8'}
-//             />
-//             <Text
-//               style={[
-//                 styles.navText,
-//                 item.active ? { color: '#2563eb' } : { color: '#94a3b8' },
-//               ]}
-//             >
-//               {item.label}
-//             </Text>
-//           </TouchableOpacity>
-//         ))}
-//       </View>
-//     </View>
-//   );
-// }
-
-// const quickActions = [
-//   { label: 'Airtime', icon: 'call', bg: '#2563eb' },
-//   { label: 'Data', icon: 'wifi', bg: '#f97316' },
-//   { label: 'Electricity', icon: 'flash', bg: '#16a34a' },
-//   { label: 'More', icon: 'ellipsis-horizontal', bg: '#64748b' },
-// ];
-
-// const services = [
-//   { label: 'TV Subscriptions', icon: 'tv', bg: '#2563eb' },
-//   { label: 'Flight Tickets', icon: 'airplane', bg: '#f97316' },
-//   { label: 'Hotel Booking', icon: 'bed', bg: '#16a34a' },
-//   { label: 'WAEC Cards', icon: 'school', bg: '#9333ea' },
-//   { label: 'Bill Payments', icon: 'document-text', bg: '#eab308' },
-//   { label: 'See All', icon: 'grid', bg: '#64748b' },
-// ];
-
-// const transactions = [
-//   { title: 'DSTV Subscription', amount: '₦8,000', status: 'Successful' },
-//   { title: 'MTN Airtime', amount: '₦1,000', status: 'Successful' },
-//   { title: 'IKEDC Bill', amount: '₦5,430', status: 'Pending' },
-// ];
-
-// const bottomNav = [
-//   { label: 'Home', icon: 'home', active: true },
-//   { label: 'Wallet', icon: 'wallet', active: false },
-//   { label: 'History', icon: 'time', active: false },
-//   { label: 'Settings', icon: 'settings', active: false },
-// ];
-
-// const styles = StyleSheet.create({
-//   container: { flex: 1, backgroundColor: '#f8fafc' },
-//   topBar: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     padding: 16,
-//     alignItems: 'center',
-//   },
-//   logo: { fontSize: 20, fontWeight: 'bold', color: '#2563eb' },
-//   balanceText: {
-//     fontSize: 18,
-//     fontWeight: 'bold',
-//     color: '#1e293b',
-//     textAlign: 'center',
-//   },
-//   greeting: {
-//     fontSize: 16,
-//     color: '#64748b',
-//     textAlign: 'center',
-//     marginBottom: 10,
-//   },
-//   searchBar: {
-//     flexDirection: 'row',
-//     backgroundColor: '#fff',
-//     marginHorizontal: 16,
-//     borderRadius: 8,
-//     padding: 10,
-//     alignItems: 'center',
-//     marginBottom: 16,
-//     elevation: 1,
-//   },
-//   searchInput: { marginLeft: 8, flex: 1, fontSize: 14 },
-//   quickActions: { paddingHorizontal: 16, marginBottom: 16 },
-//   quickActionItem: { alignItems: 'center', marginRight: 16 },
-//   quickActionIcon: {
-//     width: 50,
-//     height: 50,
-//     borderRadius: 25,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     marginBottom: 4,
-//   },
-//   quickActionText: { fontSize: 12, color: '#1e293b' },
-//   heroBanner: {
-//     flexDirection: 'row',
-//     borderRadius: 12,
-//     marginHorizontal: 16,
-//     padding: 16,
-//     alignItems: 'center',
-//     marginBottom: 20,
-//   },
-//   heroContent: { flex: 1 },
-//   heroText: {
-//     color: '#fff',
-//     fontSize: 16,
-//     fontWeight: 'bold',
-//     marginBottom: 8,
-//   },
-//   ctaButton: {
-//     backgroundColor: '#f97316',
-//     paddingHorizontal: 14,
-//     paddingVertical: 8,
-//     borderRadius: 20,
-//   },
-//   ctaText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-//   heroImage: { width: 80, height: 80, resizeMode: 'contain' },
-//   sectionTitle: {
-//     fontSize: 16,
-//     fontWeight: 'bold',
-//     color: '#1e293b',
-//     marginHorizontal: 16,
-//     marginBottom: 8,
-//   },
-//   servicesGrid: {
-//     flexDirection: 'row',
-//     flexWrap: 'wrap',
-//     justifyContent: 'space-between',
-//     marginHorizontal: 16,
-//     marginBottom: 20,
-//   },
-//   serviceCard: {
-//     width: '30%',
-//     backgroundColor: '#fff',
-//     borderRadius: 10,
-//     paddingVertical: 20,
-//     alignItems: 'center',
-//     marginBottom: 12,
-//     elevation: 2,
-//   },
-//   serviceIcon: {
-//     width: 40,
-//     height: 40,
-//     borderRadius: 8,
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     marginBottom: 6,
-//   },
-//   serviceLabel: { fontSize: 12, color: '#1e293b', textAlign: 'center' },
-//   transactionCard: {
-//     backgroundColor: '#fff',
-//     marginHorizontal: 16,
-//     borderRadius: 8,
-//     padding: 12,
-//     marginBottom: 10,
-//     elevation: 1,
-//   },
-//   transactionTitle: { fontSize: 14, color: '#1e293b' },
-//   transactionAmount: { fontSize: 14, fontWeight: 'bold', color: '#1e293b' },
-//   transactionStatus: { fontSize: 12, fontWeight: 'bold' },
-//   trustBadge: {
-//     flexDirection: 'row',
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     marginBottom: 80,
-//   },
-//   trustText: { color: '#2563eb', marginLeft: 6, fontSize: 12 },
-//   bottomNav: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-around',
-//     alignItems: 'center',
-//     height: 60,
-//     backgroundColor: '#fff',
-//     position: 'absolute',
-//     bottom: 0,
-//     left: 0,
-//     right: 0,
-//     elevation: 10,
-//   },
-//   navItem: { alignItems: 'center' },
-//   navText: { fontSize: 12, marginTop: 2 },
-// });

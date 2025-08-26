@@ -48,6 +48,7 @@ const services = [
     id: 'tv',
     label: 'TV Subs',
     icon: <MaterialCommunityIcons name="television" size={ICON_SIZE} />,
+    screen: 'TVSubscription',
   },
   {
     id: 'flights',
@@ -76,7 +77,12 @@ const services = [
 const quickActions = [
   { label: 'Airtime', icon: 'call', bg: '#2563eb', screen: 'Airtime' },
   { label: 'Data', icon: 'wifi', bg: '#f97316', screen: 'Data' },
-  { label: 'Electricity', icon: 'flash', bg: '#16a34a' },
+  {
+    label: 'Electricity',
+    icon: 'flash',
+    bg: '#16a34a',
+    screen: 'ElectricityPurchase',
+  },
   { label: 'More', icon: 'ellipsis-horizontal', bg: '#64748b' },
 ];
 
@@ -166,11 +172,11 @@ export default function HomeScreen() {
                   </View>
 
                   {/* <View style={styles.walletFooter}>
-                    <Text style={styles.cardSmall}>
-                      Linked card • • • • 1234
-                    </Text>
-                    <Text style={styles.cardSmall}>Last top-up: Aug 8</Text>
-                  </View> */}
+                  <Text style={styles.cardSmall}>
+                    Linked card • • • • 1234
+                  </Text>
+                  <Text style={styles.cardSmall}>Last top-up: Aug 8</Text>
+                </View> */}
                 </View>
               </BlurView>
             </View>
@@ -194,18 +200,17 @@ export default function HomeScreen() {
                     style={styles.quickActionItem}
                     onPress={() => navigation.navigate(action.screen)}
                   >
-                    {' '}
                     <View
                       style={[
                         styles.quickActionIcon,
                         { backgroundColor: action.bg },
                       ]}
                     >
-                      <Ionicons name={action.icon} size={19} color="#fff" />{' '}
+                      <Ionicons name={action.icon} size={19} color="#fff" />
                     </View>
-                    <Text style={styles.quickActionText}>{action.label}</Text>{' '}
+                    <Text style={styles.quickActionText}>{action.label}</Text>
                   </TouchableOpacity>
-                ))}{' '}
+                ))}
               </ScrollView>
             </View>
 
@@ -213,14 +218,18 @@ export default function HomeScreen() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Services</Text>
               {/* <TouchableOpacity>
-                <Text style={styles.viewAll}>View all</Text>
-              </TouchableOpacity> */}
+              <Text style={styles.viewAll}>View all</Text>
+            </TouchableOpacity> */}
             </View>
 
             <View style={styles.section}>
               <View style={styles.grid}>
                 {services.map((s) => (
-                  <TouchableOpacity key={s.id} style={styles.serviceCard}>
+                  <TouchableOpacity
+                    key={s.id}
+                    style={styles.serviceCard}
+                    onPress={() => navigation.navigate(s.screen)}
+                  >
                     <LinearGradient
                       colors={['#ffffff', '#f6f8ff']}
                       style={styles.serviceIconWrap}

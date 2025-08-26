@@ -1,9 +1,10 @@
 import 'react-native-gesture-handler';
-import React from 'react';
+import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { PaperProvider, ActivityIndicator } from 'react-native-paper';
 
 // Screens
 import HomeScreen from './src/screen/HomeScreen';
@@ -11,10 +12,13 @@ import OrdersScreen from './src/screen/OrdersScreen';
 import WalletsScreen from './src/screen/WalletsScreen';
 import ProfileScreen from './src/screen/ProfileScreen';
 import LoginScreen from './src/screen/LoginScreen';
-import SignUpScreen from 'screen/SignUpScreen';
-import VerifyCodeScreen from 'screen/VerfyCodeScreen';
-import DataPurchaseScreen from 'screen/DataPurchaseScreen';
-import AirtimeScreen from 'screen/AirtimeScreen';
+import SignUpScreen from './src/screen/SignUpScreen';
+import VerifyCodeScreen from './src/screen/VerifyCodeScreen';
+import DataPurchaseScreen from './src/screen/DataPurchaseScreen';
+import TVSubscriptionScreen from './src/screen/TVSubscriptionScreen';
+import ElectricityPurchaseScreen from './src/screen/ElectricityPurchaseScreen';
+import AirtimeScreen from './src/screen/AirtimeScreen';
+import { WalletProvider } from './src/context/WalletContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -62,20 +66,46 @@ function BottomTabs() {
 
 // Main App Component
 export default function App() {
-  return (
-    <NavigationContainer>
-      {/* Tabs after login */}
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {/* Tabs after login */}
-        <Stack.Screen name="MainTabs" component={BottomTabs} />
+  const [isLoading, setIsLoading] = useState(true);
 
-        {/* stack screens */}
-        {/* <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="SignUp" component={SignUpScreen} />
-        <Stack.Screen name="VerfyCode" component={VerifyCodeScreen} /> */}
-        <Stack.Screen name="Data" component={DataPurchaseScreen} />
-        <Stack.Screen name="Airtime" component={AirtimeScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+  if (isLoading) {
+    return (
+      <ActivityIndicator
+        size="large"
+        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        color="#4A00E0"
+      />
+    );
+  }
+
+  return (
+    <WalletProvider>
+      <PaperProvider>
+        <NavigationContainer onReady={() => setIsLoading(false)}>
+          <Stack.Navigator
+            initialRouteName="Login"
+            screenOptions={{ headerShown: false }}
+          >
+            {/* Auth Screens */}
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="SignUp" component={SignUpScreen} />
+            <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
+            {/* Main Tabs after login */}
+            <Stack.Screen name="MainTabs" component={BottomTabs} />
+            {/* Other Screens */}
+            <Stack.Screen name="Data" component={DataPurchaseScreen} />
+            <Stack.Screen name="Airtime" component={AirtimeScreen} />
+            <Stack.Screen
+              name="TVSubscription"
+              component={TVSubscriptionScreen}
+            />
+            <Stack.Screen
+              name="ElectricityPurchase"
+              component={ElectricityPurchaseScreen}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </PaperProvider>
+    </WalletProvider>
   );
 }

@@ -1,10 +1,13 @@
 import 'react-native-gesture-handler';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { PaperProvider, ActivityIndicator } from 'react-native-paper';
+import { Keyboard, Dimensions, StyleSheet, Platform } from 'react-native';
+import { DefaultTheme, DarkTheme } from '@react-navigation/native';
 
 // Screens
 import HomeScreen from './src/screen/HomeScreen';
@@ -18,19 +21,73 @@ import DataPurchaseScreen from './src/screen/DataPurchaseScreen';
 import TVSubscriptionScreen from './src/screen/TVSubscriptionScreen';
 import ElectricityPurchaseScreen from './src/screen/ElectricityPurchaseScreen';
 import AirtimeScreen from './src/screen/AirtimeScreen';
+import CustomerTabScreen from './src/screen/CustomerTabScreen';
+import CustomerRegistrationScreen from './src/screen/CustomerRegistrationScreen';
+import InvoiceTabScreen from './src/screen/InvoiceTabScreen';
+import InvoiceCreationScreen from './src/screen/InvoiceCreationScreen';
 import { WalletProvider } from './src/context/WalletContext';
+import { useThem } from 'constants/useTheme';
+import { colors } from 'constants/colors';
 
+// Navigators
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const TopTab = createMaterialTopTabNavigator();
+
+// Invoice Top Tabs (Invoice and Customer)
+function InvoiceTabs() {
+  const isDarkMode = useThem();
+  const themeColors = isDarkMode ? colors.dark : colors.light;
+  return (
+    <TopTab.Navigator
+      initialRouteName="InvoiceList"
+      screenOptions={{
+        tabBarStyle: {
+          backgroundColor: themeColors.card,
+          borderBottomWidth: 1,
+          borderBottomColor: isDarkMode ? '#444' : '#e0e0e0',
+        },
+        tabBarActiveTintColor: themeColors.primary,
+        tabBarInactiveTintColor: themeColors.subheading,
+        tabBarIndicatorStyle: {
+          backgroundColor: themeColors.primary,
+        },
+      }}
+    >
+      <TopTab.Screen
+        name="InvoiceList"
+        component={InvoiceTabScreen}
+        options={{ title: 'Invoices' }}
+      />
+      <TopTab.Screen name="Customers" component={CustomerTabScreen} />
+    </TopTab.Navigator>
+  );
+}
 
 // Bottom Tabs Component
 function BottomTabs() {
+  const { height } = Dimensions.get('window');
+  const tabBarHeight = height > 800 ? 70 : 60; // Responsive tab bar height
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const keyboardDidShow = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      keyboardDidShow.remove();
+      keyboardDidHide.remove();
+    };
+  }, []);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Orders') {
@@ -39,19 +96,22 @@ function BottomTabs() {
             iconName = focused ? 'wallet' : 'wallet-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'Invoices') {
+            iconName = focused ? 'document-text' : 'document-text-outline';
           }
-
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#4A00E0',
-        tabBarInactiveTintColor: '#9AA0B4',
+        tabBarActiveTintColor: colors.light.primary,
+        tabBarInactiveTintColor: colors.light.subheading,
         tabBarStyle: {
-          height: 60,
+          height: tabBarHeight,
           paddingBottom: 5,
           paddingTop: 5,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colors.light.card,
           borderTopWidth: 1,
-          borderTopColor: '#E0E0E0',
+          borderTopColor: '#e0e0e0',
+          display:
+            keyboardVisible && Platform.OS === 'android' ? 'none' : 'flex',
         },
         headerShown: false,
       })}
@@ -60,6 +120,7 @@ function BottomTabs() {
       <Tab.Screen name="Orders" component={OrdersScreen} />
       <Tab.Screen name="Wallet" component={WalletsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Invoices" component={InvoiceTabs} />
     </Tab.Navigator>
   );
 }
@@ -67,32 +128,29 @@ function BottomTabs() {
 // Main App Component
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
+  const isDarkMode = useTheme();
 
   if (isLoading) {
     return (
-      <ActivityIndicator
-        size="large"
-        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-        color="#4A00E0"
-      />
+      <PaperProvider theme={isDarkMode ? DarkTheme : DefaultTheme}>
+        <ActivityIndicator
+          size="large"
+          style={styles.loading}
+          color={colors.light.primary}
+        />
+      </PaperProvider>
     );
   }
 
   return (
     <WalletProvider>
-      <PaperProvider>
-        <NavigationContainer onReady={() => setIsLoading(false)}>
-          <Stack.Navigator
-            initialRouteName="Login"
-            screenOptions={{ headerShown: false }}
-          >
-            {/* Auth Screens */}
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="SignUp" component={SignUpScreen} />
-            <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
-            {/* Main Tabs after login */}
+      <PaperProvider theme={isDarkMode ? DarkTheme : DefaultTheme}>
+        <NavigationContainer
+          onReady={() => setIsLoading(false)}
+          theme={isDarkMode ? DarkTheme : DefaultTheme}
+        >
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="MainTabs" component={BottomTabs} />
-            {/* Other Screens */}
             <Stack.Screen name="Data" component={DataPurchaseScreen} />
             <Stack.Screen name="Airtime" component={AirtimeScreen} />
             <Stack.Screen
@@ -103,9 +161,29 @@ export default function App() {
               name="ElectricityPurchase"
               component={ElectricityPurchaseScreen}
             />
+            <Stack.Screen
+              name="CustomerRegistration"
+              component={CustomerRegistrationScreen}
+            />
+            <Stack.Screen
+              name="InvoiceCreation"
+              component={InvoiceCreationScreen}
+            />
+            <Stack.Screen
+              name="InvoiceDetails"
+              component={InvoiceDetailsScreen}
+            />
           </Stack.Navigator>
         </NavigationContainer>
       </PaperProvider>
     </WalletProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

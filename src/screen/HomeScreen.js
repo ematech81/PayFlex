@@ -138,10 +138,9 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.walletActions}>
                         <TouchableOpacity
-                          style={[styles.actionBtn, styles.depositBtn]}
+                          style={[styles.actionBtn, styles.historyStyle]}
                         >
-                          <Ionicons name="add-circle" size={18} color="#fff" />
-                          <Text style={styles.actionText}>History</Text>
+                          <Text style={styles.HistoryText}>History</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -389,6 +388,9 @@ const styles = StyleSheet.create({
   },
   depositBtn: {
     backgroundColor: '#4A00E0',
+    historyStyle: {
+      // backgroundColor: 'rgba(74,0,224,0.08)',
+    },
   },
   withdrawBtn: {
     backgroundColor: '#fff',
@@ -398,6 +400,13 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: '#fff',
+    marginLeft: 8,
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+
+  HistoryText: {
+    color: '#4a00e0',
     marginLeft: 8,
     fontWeight: 'bold',
     fontSize: 12,

@@ -7,18 +7,20 @@ import {
   TouchableOpacity,
   useColorScheme,
   Dimensions,
+  StyleSheet,
 } from 'react-native';
+import BackBtn from 'utility/BackBtn';
 
 const { width } = Dimensions.get('window');
 
-const TVSubscriptionScreen = () => {
+const TVSubscriptionScreen = ({ navigation }) => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
-  const backgroundColor = isDark ? '#121212' : '#FFFFFF';
+  const backgroundColor = isDark ? '#121212' : '#f6f6f8';
   const textColor = isDark ? '#FFFFFF' : '#000000';
   const primaryColor = '#512DA8'; // Deep purple for primary colors
-  const cardColor = '#D1C4E9'; // Light purple for cards
+  const cardColor = '#ffffff'; // Light purple for cards
 
   const [selectedProvider, setSelectedProvider] = useState('DStv');
   const [smartCardNumber, setSmartCardNumber] = useState('');
@@ -142,16 +144,17 @@ const TVSubscriptionScreen = () => {
       style={{
         flex: 1,
         backgroundColor,
-        paddingHorizontal: 20,
-        paddingVertical: 20,
+        padding: 16,
       }}
     >
+      <BackBtn style={{ marginTop: 10 }} onPress={() => navigation.goBack()} />
       <Text
         style={{
           color: textColor,
           fontSize: 24,
           fontWeight: 'bold',
           marginBottom: 20,
+          marginTop: 30,
         }}
       >
         TV Subscription
@@ -166,19 +169,19 @@ const TVSubscriptionScreen = () => {
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => setSelectedProvider(item)}
-            style={{
-              paddingHorizontal: 20,
-              paddingVertical: 10,
-              marginRight: 10,
-              backgroundColor:
-                selectedProvider === item ? primaryColor : cardColor,
-              borderRadius: 20,
-            }}
+            style={[
+              styles.providerContainer,
+              {
+                backgroundColor:
+                  selectedProvider === item ? primaryColor : cardColor,
+              },
+            ]}
           >
             <Text
               style={{
                 color: selectedProvider === item ? '#FFFFFF' : primaryColor,
                 fontWeight: 'bold',
+                fontSize: 16,
               }}
             >
               {item}
@@ -239,7 +242,7 @@ const TVSubscriptionScreen = () => {
             <Text
               style={{ color: primaryColor, fontSize: 16, fontWeight: 'bold' }}
             >
-              ₦{item.variation_amount}
+              ₦,{item.variation_amount}
             </Text>
           </View>
         )}
@@ -249,3 +252,18 @@ const TVSubscriptionScreen = () => {
 };
 
 export default TVSubscriptionScreen;
+
+// const { width } = Dimensions.get('window');
+
+const styles = StyleSheet.create({
+  providerContainer: {
+    paddingHorizontal: 2,
+
+    borderRadius: 5,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    margin: 5,
+    width: width * 0.3,
+    height: width * 0.12,
+  },
+});

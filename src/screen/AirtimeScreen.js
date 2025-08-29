@@ -8,9 +8,16 @@ import {
   Switch,
   ScrollView,
   Image,
+  Dimensions,
+  SaveAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Dropdown } from 'react-native-element-dropdown';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// const { width } = Dimensions.get('window');
+const CARD_PADDING = 13;
+const ICON_SIZE = 19;
 
 export default function AirtimeScreen({ navigation }) {
   const [selectedTab, setSelectedTab] = useState('Local');
@@ -19,7 +26,7 @@ export default function AirtimeScreen({ navigation }) {
   const [saveBeneficiary, setSaveBeneficiary] = useState(false);
   const [provider, setProvider] = useState(null);
 
-  const amounts = ['50', '100', '200', '500', '1000', '2000'];
+  const amounts = ['50', '100', '200', '500', '1,000', '2,000'];
 
   // Dummy provider list with logos
   const providers = [
@@ -33,18 +40,22 @@ export default function AirtimeScreen({ navigation }) {
     {
       label: '9mobile',
       value: '9mobile',
-      logo: require('../asset/9mobile.jpg'),
+      logo: require('../asset/etisalat.jpg'),
     },
   ];
 
   return (
+    // <SaveAreaView style={{ flex: 1, backgroundColor: '#f6f6f8' }}>
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ paddingBottom: 30 }}
     >
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ width: 120 }}
+        >
           <Ionicons name="arrow-back" size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Airtime</Text>
@@ -94,7 +105,7 @@ export default function AirtimeScreen({ navigation }) {
           labelField="label"
           valueField="value"
           value={provider}
-          placeholder="Select Provider"
+          // placeholder="Select Provider"
           onChange={(item) => setProvider(item.value)}
           renderLeftIcon={() =>
             provider ? (
@@ -125,7 +136,7 @@ export default function AirtimeScreen({ navigation }) {
 
       {/* Top-up */}
       <Text style={styles.sectionTitle}>Topup</Text>
-      <View style={styles.amountContainer}>
+      <ScrollView contentContainerStyle={styles.amountContainer}>
         {amounts.map((amt) => (
           <TouchableOpacity
             key={amt}
@@ -142,7 +153,7 @@ export default function AirtimeScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* Custom Input */}
       <View style={styles.customInputRow}>
@@ -171,25 +182,43 @@ export default function AirtimeScreen({ navigation }) {
       </View>
 
       {/* Carousel Placeholder */}
-      <View style={styles.carouselBox}>
-        <Text style={{ color: 'white', textAlign: 'center' }}>
-          placeholder for carousel of service display
-        </Text>
+      {/* Promotions Banner */}
+      <View style={[styles.promoSection, {}]}>
+        <LinearGradient
+          colors={['#FFD98E', '#FFB800']}
+          start={[0, 0]}
+          end={[1, 1]}
+          style={styles.promoCard}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.promoTitle}>🎉 Refer And Win</Text>
+            <Text style={styles.promoSubtitle}>
+              Invite your Friends and earn up to ₦10,000
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.promoBtn}>
+            <Text style={styles.promoBtnText}>Refer</Text>
+          </TouchableOpacity>
+        </LinearGradient>
       </View>
     </ScrollView>
+    // </SaveAreaView>
   );
 }
+const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#e6f0f0',
+    backgroundColor: '#f6f6f8',
     padding: 16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 20,
+    marginBottom: 30,
   },
   headerTitle: {
     fontSize: 18,
@@ -202,7 +231,7 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     marginVertical: 20,
-    backgroundColor: '#4A00E0',
+    backgroundColor: '#ffffff',
     borderRadius: 10,
     overflow: 'hidden',
   },
@@ -212,7 +241,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeTab: {
-    backgroundColor: '#9b8af5',
+    backgroundColor: '#4A00E0',
   },
   tabText: {
     color: 'black',
@@ -220,6 +249,7 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     fontWeight: 'bold',
+    color: '#ffffff',
   },
   sectionTitle: {
     fontWeight: 'bold',
@@ -240,8 +270,9 @@ const styles = StyleSheet.create({
   logo: {
     width: 24,
     height: 24,
-    marginRight: 6,
+    marginRight: 1,
     resizeMode: 'contain',
+    borderRadius: 25,
   },
   input: {
     flex: 1,
@@ -253,22 +284,32 @@ const styles = StyleSheet.create({
   amountContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    // gap: 10,
     marginBottom: 20,
+    width: '100%',
+    // backgroundColor: 'red',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   amountBtn: {
-    backgroundColor: '#d1c4f7',
+    backgroundColor: '#ffffff',
+    // backgroundColor: 'rgba(74,0,224,0.08)',
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 12,
     margin: 5,
+    width: '30%',
+    height: height * 0.1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   activeAmount: {
-    backgroundColor: '#5e2ced',
+    backgroundColor: '#4A00E0',
   },
   amountText: {
-    fontWeight: 'bold',
-    color: 'black',
+    fontWeight: '600',
+    color: '#4a00e0',
+    fontSize: 15,
   },
   activeAmountText: {
     color: 'white',
@@ -303,11 +344,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   carouselBox: {
     backgroundColor: '#5e2ced',
     padding: 20,
     borderRadius: 12,
+  },
+  promoCard: {
+    borderRadius: 16,
+    padding: 10,
+    // paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    // marginTop: 12,
+  },
+  promoTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2b2b2b',
+  },
+  promoSubtitle: {
+    fontSize: 13,
+    color: '#2b2b2b',
+    marginTop: 4,
+  },
+  promoBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+  },
+  promoBtnText: {
+    fontWeight: '700',
+    color: '#FF9A00',
   },
 });

@@ -1,59 +1,197 @@
-// context/WalletContext.js
-import React, { createContext, useContext, useState } from 'react';
-import { Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useReducer,
+  useCallback,
+} from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 const WalletContext = createContext();
 
+const initialInvoiceState = {
+  invoices: [], // { id, customer, title, dueDate, currency, products, discount, tax, total, notes, paymentDetails, status }
+  customers: [], // { id, name, phone, email, extraDetails }
+  currentInvoice: null, // For creation/editing
+};
+
+const invoiceReducer = (state, action) => {
+  switch (action.type) {
+    case 'ADD_INVOICE':
+      return {
+        ...state,
+        invoices: [...state.invoices, { ...action.payload, id: uuidv4() }],
+        currentInvoice: null,
+      };
+    case 'UPDATE_INVOICE':
+      return {
+        ...state,
+        invoices: state.invoices.map((inv) =>
+          inv.id === action.payload.id ? action.payload : inv
+        ),
+        currentInvoice: null,
+      };
+    case 'DELETE_INVOICE':
+      return {
+        ...state,
+        invoices: state.invoices.filter((inv) => inv.id !== action.payload),
+      };
+    case 'SET_CURRENT_INVOICE':
+      return { ...state, currentInvoice: action.payload };
+    case 'ADD_CUSTOMER':
+      return {
+        ...state,
+        customers: [...state.customers, { ...action.payload, id: uuidv4() }],
+      };
+    case 'UPDATE_CUSTOMER':
+      return {
+        ...state,
+        customers: state.customers.map((cust) =>
+          cust.id === action.payload.id ? action.payload : cust
+        ),
+      };
+    case 'DELETE_CUSTOMER':
+      return {
+        ...state,
+        customers: state.customers.filter((cust) => cust.id !== action.payload),
+      };
+    case 'SET_PAID':
+      return {
+        ...state,
+        invoices: state.invoices.map((inv) =>
+          inv.id === action.payload ? { ...inv, status: 'Paid' } : inv
+        ),
+      };
+    default:
+      return state;
+  }
+};
+
 export const WalletProvider = ({ children }) => {
-  const [walletBalance, setWalletBalance] = useState(200); // example initial balance
-  const navigation = useNavigation();
+  const [walletBalance, setWalletBalance] = useState(200); // Example initial balance
+  const [invoiceState, invoiceDispatch] = useReducer(
+    invoiceReducer,
+    initialInvoiceState
+  );
 
-  /**
-   * Validate wallet balance for any purchase
-   * If insufficient, redirect to Deposit screen
-   */
-  const validateTransaction = (purchaseAmount) => {
-    if (!walletBalance || walletBalance <= 0) {
-      Alert.alert(
-        'Insufficient Balance',
-        'Your wallet balance is low, please deposit to continue.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Deposit Now',
-            onPress: () => navigation.navigate('DepositScreen'),
-          },
-        ]
-      );
-      return false;
+  const calculateInvoice = useCallback((products, discount, tax) => {
+    const subtotal = products.reduce(
+      (sum, item) => sum + item.quantity * item.price,
+      0
+    );
+    let discountAmount = 0;
+    if (discount.value > 0) {
+      discountAmount =
+        discount.type === 'Fixed'
+          ? discount.value
+          : (subtotal * discount.value) / 100;
     }
-
-    if (walletBalance < purchaseAmount) {
-      Alert.alert(
-        'Low Balance',
-        'You don’t have enough funds to complete this transaction.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Deposit Now',
-            onPress: () => navigation.navigate('DepositScreen'),
-          },
-        ]
-      );
-      return false;
+    let taxAmount = 0;
+    if (tax.value > 0) {
+      taxAmount =
+        tax.type === 'Fixed' ? tax.value : (subtotal * tax.value) / 100;
     }
+    const total = subtotal - discountAmount + taxAmount;
+    return { subtotal, discountAmount, taxAmount, total };
+  }, []);
 
-    return true;
+  const addInvoice = useCallback(
+    (invoice) => {
+      const {
+        products,
+        discount = { type: 'Fixed', value: 0 },
+        tax = { type: 'Fixed', value: 0 },
+      } = invoice;
+      const { subtotal, discountAmount, taxAmount, total } = calculateInvoice(
+        products,
+        discount,
+        tax
+      );
+      invoiceDispatch({
+        type: 'ADD_INVOICE',
+        payload: {
+          ...invoice,
+          subtotal,
+          discountAmount,
+          taxAmount,
+          total,
+          status: invoice.status || 'Draft',
+        },
+      });
+    },
+    [calculateInvoice]
+  );
+
+  const updateInvoice = useCallback(
+    (invoice) => {
+      const {
+        products,
+        discount = { type: 'Fixed', value: 0 },
+        tax = { type: 'Fixed', value: 0 },
+      } = invoice;
+      const { subtotal, discountAmount, taxAmount, total } = calculateInvoice(
+        products,
+        discount,
+        tax
+      );
+      invoiceDispatch({
+        type: 'UPDATE_INVOICE',
+        payload: { ...invoice, subtotal, discountAmount, taxAmount, total },
+      });
+    },
+    [calculateInvoice]
+  );
+
+  const deleteInvoice = useCallback((id) => {
+    invoiceDispatch({ type: 'DELETE_INVOICE', payload: id });
+  }, []);
+
+  const setCurrentInvoice = useCallback((invoice) => {
+    invoiceDispatch({ type: 'SET_CURRENT_INVOICE', payload: invoice });
+  }, []);
+
+  const setInvoicePaid = useCallback((id) => {
+    invoiceDispatch({ type: 'SET_PAID', payload: id });
+  }, []);
+
+  const addCustomer = useCallback((customer) => {
+    invoiceDispatch({ type: 'ADD_CUSTOMER', payload: customer });
+  }, []);
+
+  const updateCustomer = useCallback((customer) => {
+    invoiceDispatch({ type: 'UPDATE_CUSTOMER', payload: customer });
+  }, []);
+
+  const deleteCustomer = useCallback((id) => {
+    invoiceDispatch({ type: 'DELETE_CUSTOMER', payload: id });
+  }, []);
+
+  const value = {
+    walletBalance,
+    setWalletBalance,
+    invoices: invoiceState.invoices || [],
+    customers: invoiceState.customers || [],
+    currentInvoice: invoiceState.currentInvoice,
+    addInvoice,
+    updateInvoice,
+    deleteInvoice,
+    setCurrentInvoice,
+    setInvoicePaid,
+    addCustomer,
+    updateCustomer,
+    deleteCustomer,
+    calculateInvoice,
   };
 
   return (
-    <WalletContext.Provider
-      value={{ walletBalance, setWalletBalance, validateTransaction }}
-    >
-      {children}
-    </WalletContext.Provider>
+    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
   );
 };
 
-export const useWallet = () => useContext(WalletContext);
+export const useWallet = () => {
+  const context = useContext(WalletContext);
+  if (!context) {
+    throw new Error('useWallet must be used within a WalletProvider');
+  }
+  return context;
+};

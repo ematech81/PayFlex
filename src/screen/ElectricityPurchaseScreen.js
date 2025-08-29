@@ -9,17 +9,18 @@ import {
   useColorScheme,
   Dimensions,
 } from 'react-native';
+import BackBtn from 'utility/BackBtn';
 
 const { width } = Dimensions.get('window');
 
-const ElectricityPurchaseScreen = () => {
+const ElectricityPurchaseScreen = ({ navigation }) => {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
-  const backgroundColor = isDark ? '#121212' : '#FFFFFF';
-  const textColor = isDark ? '#FFFFFF' : '#000000';
-  const primaryColor = '#512DA8'; // Deep purple for primary colors
-  const cardColor = '#D1C4E9'; // Light purple for cards
+  const backgroundColor = isDark ? '#121212' : '#F6f6f8';
+  const textColor = isDark ? '#333' : '#000000';
+  const primaryColor = '#4a00e0'; // Deep purple for primary colors
+  const cardColor = '#ffffff'; // Light purple for cards
 
   const [selectedCompany, setSelectedCompany] = useState('Ikeja Electric');
   const [modalVisible, setModalVisible] = useState(false);
@@ -50,16 +51,22 @@ const ElectricityPurchaseScreen = () => {
         paddingVertical: 20,
       }}
     >
-      <Text
-        style={{
-          color: textColor,
-          fontSize: 24,
-          fontWeight: 'bold',
-          marginBottom: 20,
-        }}
-      >
-        Electricity Purchase
-      </Text>
+      <View>
+        <BackBtn
+          onPress={() => navigation.goBack()}
+          style={{ alignSelf: 'start', marginTop: 20, marginBottom: 10 }}
+        />
+        <Text
+          style={{
+            color: textColor,
+            fontSize: 18,
+            fontWeight: 'bold',
+            marginBottom: 20,
+          }}
+        >
+          Electricity Purchase
+        </Text>
+      </View>
 
       {/* Company selection card */}
       <TouchableOpacity
@@ -77,7 +84,7 @@ const ElectricityPurchaseScreen = () => {
         <Text style={{ color: primaryColor, fontSize: 16, fontWeight: 'bold' }}>
           {selectedCompany}
         </Text>
-        <Text style={{ color: primaryColor, fontSize: 20 }}>▼</Text>{' '}
+        <Text style={{ color: primaryColor, fontSize: 20 }}>▼</Text>
         {/* Arrow icon placeholder */}
       </TouchableOpacity>
 

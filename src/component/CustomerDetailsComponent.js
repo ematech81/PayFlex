@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 
-const CustomerDetailsComponent = ({ customer = {}, onSubmit, onCancel }) => {
+const CustomerDetailsComponent = ({ customer = [], onSubmit, onCancel }) => {
   const { addCustomer, updateCustomer } = useContext(useWallet);
   const [name, setName] = useState(customer.name || '');
   const [phone, setPhone] = useState(customer.phone || '');

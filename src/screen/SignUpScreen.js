@@ -29,11 +29,14 @@ export default function SignUpScreen({ navigation }) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, email, phone, password }),
-      });
+      const response = await fetch(
+        'http://192.168.43.99:5000/api/auth/register',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ firstName, lastName, email, phone, password }),
+        }
+      );
 
       const data = await response.json();
 

@@ -11,12 +11,12 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useWallet } from '../context/WalletContext';
 import { MaterialIcons } from '@expo/vector-icons';
+import ActionModal from 'constants/ActionModal';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-import ActionModal from 'constants/ActionModal';
 
 const InvoiceTabScreen = () => {
-  const { invoices, deleteInvoice, setInvoicePaid } = useWallet();
+  const { invoices = [], deleteInvoice, setInvoicePaid } = useWallet();
   const navigation = useNavigation();
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
@@ -63,30 +63,33 @@ const InvoiceTabScreen = () => {
   };
 
   const openMenu = (invoice) => {
-    setSelectedInvoice(invoice);
-    setIsMenuVisible(true);
+    if (invoice) {
+      setSelectedInvoice(invoice);
+      setIsMenuVisible(true);
+    }
   };
 
   const getMenuActions = (invoice) => {
+    if (!invoice) return [];
     const actions = [];
-    if (invoice?.status !== 'Paid') {
+    if (invoice.status !== 'Paid') {
       actions.push({
         label: 'Edit',
         onPress: () => handleEdit(invoice),
         style: { color: themeColors.heading },
       });
     }
-    if (invoice?.status !== 'Pending') {
+    if (invoice.status !== 'Pending') {
       actions.push({
         label: 'Delete',
-        onPress: () => handleDelete(invoice?.id),
+        onPress: () => handleDelete(invoice.id),
         style: { color: themeColors.destructive },
       });
     }
-    if (invoice?.status === 'Pending') {
+    if (invoice.status === 'Pending') {
       actions.push({
         label: 'Mark as Paid',
-        onPress: () => handleMarkAsPaid(invoice?.id),
+        onPress: () => handleMarkAsPaid(invoice.id),
         style: { color: themeColors.heading },
       });
     }
@@ -98,9 +101,9 @@ const InvoiceTabScreen = () => {
       case 'Draft':
         return { color: themeColors.destructive };
       case 'Pending':
-        return { color: '#f1c40f' }; // Yellow, kept as is for visibility
+        return { color: '#f1c40f' };
       case 'Paid':
-        return { color: '#2ecc71' }; // Green, kept as is for visibility
+        return { color: '#2ecc71' };
       default:
         return { color: themeColors.heading };
     }
@@ -129,7 +132,8 @@ const InvoiceTabScreen = () => {
           Status: {item.status}
         </Text>
         <Text style={[styles.invoiceDetail, { color: themeColors.subheading }]}>
-          Total: ₦{item.total.toFixed(2)}
+          Total: {item.currency || '₦'}
+          {item.total.toFixed(2)}
         </Text>
       </View>
       <TouchableOpacity onPress={() => openMenu(item)}>

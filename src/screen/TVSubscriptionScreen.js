@@ -242,7 +242,7 @@ const TVSubscriptionScreen = ({ navigation }) => {
             <Text
               style={{ color: primaryColor, fontSize: 16, fontWeight: 'bold' }}
             >
-              ₦,{item.variation_amount}
+              ₦{item.variation_amount}
             </Text>
           </View>
         )}

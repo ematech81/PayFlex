@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
@@ -8,6 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { PaperProvider, ActivityIndicator } from 'react-native-paper';
 import { Keyboard, Dimensions, StyleSheet, Platform } from 'react-native';
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { useThem } from 'constants/useTheme';
+import { colors } from 'constants/colors';
 
 // Screens
 import HomeScreen from './src/screen/HomeScreen';
@@ -25,9 +28,9 @@ import CustomerTabScreen from './src/screen/CustomerTabScreen';
 import CustomerRegistrationScreen from './src/screen/CustomerRegistrationScreen';
 import InvoiceTabScreen from './src/screen/InvoiceTabScreen';
 import InvoiceCreationScreen from './src/screen/InvoiceCreationScreen';
+
 import { WalletProvider } from './src/context/WalletContext';
-import { useThem } from 'constants/useTheme';
-import { colors } from 'constants/colors';
+import InvoiceDetailsScreen from 'screen/InvoiceDetailScreen';
 
 // Navigators
 const Tab = createBottomTabNavigator();
@@ -67,7 +70,7 @@ function InvoiceTabs() {
 // Bottom Tabs Component
 function BottomTabs() {
   const { height } = Dimensions.get('window');
-  const tabBarHeight = height > 800 ? 70 : 60; // Responsive tab bar height
+  const tabBarHeight = height > 800 ? 70 : 60;
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
@@ -128,19 +131,19 @@ function BottomTabs() {
 // Main App Component
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
-  const isDarkMode = useTheme();
+  const isDarkMode = useThem();
 
-  if (isLoading) {
-    return (
-      <PaperProvider theme={isDarkMode ? DarkTheme : DefaultTheme}>
-        <ActivityIndicator
-          size="large"
-          style={styles.loading}
-          color={colors.light.primary}
-        />
-      </PaperProvider>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <PaperProvider theme={isDarkMode ? DarkTheme : DefaultTheme}>
+  //       <ActivityIndicator
+  //         size="large"
+  //         style={styles.loading}
+  //         color={colors.light.primary}
+  //       />
+  //     </PaperProvider>
+  //   );
+  // }
 
   return (
     <WalletProvider>
@@ -150,6 +153,9 @@ export default function App() {
           theme={isDarkMode ? DarkTheme : DefaultTheme}
         >
           <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="SiguUp" component={SignUpScreen} />
+            <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
             <Stack.Screen name="MainTabs" component={BottomTabs} />
             <Stack.Screen name="Data" component={DataPurchaseScreen} />
             <Stack.Screen name="Airtime" component={AirtimeScreen} />

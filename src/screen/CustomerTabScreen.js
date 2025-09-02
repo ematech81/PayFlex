@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useWallet } from '../context/WalletContext';
+import { useWallet } from 'context/WalletContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import ActionModal from 'constants/ActionModal';
 import { useThem } from 'constants/useTheme';
@@ -47,22 +47,27 @@ const CustomerTabScreen = () => {
   };
 
   const openMenu = (customer) => {
-    setSelectedCustomer(customer);
-    setIsMenuVisible(true);
+    if (customer) {
+      setSelectedCustomer(customer);
+      setIsMenuVisible(true);
+    }
   };
 
-  const getMenuActions = (customer) => [
-    {
-      label: 'Edit',
-      onPress: () => handleEdit(customer),
-      style: { color: themeColors.heading },
-    },
-    {
-      label: 'Delete',
-      onPress: () => handleDelete(customer?.id),
-      style: { color: themeColors.destructive },
-    },
-  ];
+  const getMenuActions = (customer) => {
+    if (!customer) return [];
+    return [
+      {
+        label: 'Edit',
+        onPress: () => handleEdit(customer),
+        style: { color: themeColors.heading },
+      },
+      {
+        label: 'Delete',
+        onPress: () => handleDelete(customer.id),
+        style: { color: themeColors.destructive },
+      },
+    ];
+  };
 
   const renderCustomer = ({ item }) => (
     <TouchableOpacity
@@ -100,29 +105,34 @@ const CustomerTabScreen = () => {
     <View
       style={[styles.container, { backgroundColor: themeColors.background }]}
     >
-      {customers.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={[styles.emptyText, { color: themeColors.heading }]}>
-            No customers found
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.createButton,
-              { backgroundColor: themeColors.button },
-            ]}
-            onPress={handleCreateNew}
-          >
-            <Text style={styles.createButtonText}>Create New Customer</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={customers}
-          renderItem={renderCustomer}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-        />
-      )}
+      <FlatList
+        data={customers}
+        renderItem={renderCustomer}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: themeColors.heading }]}>
+              No customers found
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.createButton,
+                { backgroundColor: themeColors.button },
+              ]}
+              onPress={handleCreateNew}
+            >
+              <Text style={styles.createButtonText}>Create New Customer</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      />
+      <TouchableOpacity
+        style={[styles.addButton, { backgroundColor: themeColors.button }]}
+        onPress={handleCreateNew}
+      >
+        <MaterialIcons name="add" size={24} color="#fff" />
+      </TouchableOpacity>
       <ActionModal
         isVisible={isMenuVisible}
         onClose={() => setIsMenuVisible(false)}
@@ -133,14 +143,13 @@ const CustomerTabScreen = () => {
   );
 };
 
-const { width } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   listContent: {
     padding: 16,
+    paddingBottom: 80, // Space for the add button
   },
   customerItem: {
     flexDirection: 'row',
@@ -184,6 +193,21 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  addButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
 });
 

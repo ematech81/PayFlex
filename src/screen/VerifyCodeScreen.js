@@ -40,7 +40,7 @@ export default function VerifyCodeScreen({ navigation, route }) {
 
     try {
       const response = await fetch(
-        'http://localhost:5000/api/auth/phone/verify-otp',
+        'http://192.168.43.99:5000/api/auth/phone/verify-otp',
         {
           method: 'POST',
           headers: {

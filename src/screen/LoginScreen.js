@@ -30,9 +30,12 @@ export default function LoginScreen({ navigation }) {
           const token = await AsyncStorage.getItem('token');
           if (token) {
             console.log('Checking token validity:', token);
-            const response = await fetch('http://localhost:5000/api/auth/me', {
-              headers: { Authorization: `Bearer ${token}` },
-            });
+            const response = await fetch(
+              'http://192.168.43.99:5000/api/auth/me',
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
             if (response.ok) {
               console.log('Token valid, navigating to MainTabs -> Home');
               navigation.dispatch(

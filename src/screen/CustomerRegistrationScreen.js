@@ -16,15 +16,12 @@ import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 
 const CustomerRegistrationScreen = ({ route }) => {
-  const { customer, onNewCustomerAdded } = route.params || {};
+  const { customer } = route.params || {};
   const walletContext = useWallet();
   const { addCustomer, updateCustomer } = walletContext || {};
   const navigation = useNavigation();
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
-
-  // Debug: Log walletContext to verify
-  console.log('WalletContext in CustomerRegistrationScreen:', walletContext);
 
   const [name, setName] = useState(customer?.name || '');
   const [email, setEmail] = useState(customer?.email || '');
@@ -53,17 +50,13 @@ const CustomerRegistrationScreen = ({ route }) => {
 
     if (customer?.id) {
       updateCustomer(customerData);
-      navigation.goBack();
     } else {
       addCustomer(customerData);
-      if (onNewCustomerAdded) {
-        onNewCustomerAdded(customerData);
-        navigation.goBack(); // Navigate back to InvoiceCreationScreen
-      } else {
-        navigation.goBack(); // Navigate back to CustomerTabScreen or other caller
-      }
     }
+    navigation.goBack();
   };
+
+  const isSaveButtonActive = name.trim().length > 0;
 
   return (
     <KeyboardAvoidingView
@@ -86,7 +79,7 @@ const CustomerRegistrationScreen = ({ route }) => {
             style={[
               styles.input,
               {
-                borderColor: themeColors.subheading,
+                borderColor: themeColors.border,
                 color: themeColors.heading,
               },
             ]}
@@ -102,7 +95,7 @@ const CustomerRegistrationScreen = ({ route }) => {
             style={[
               styles.input,
               {
-                borderColor: themeColors.subheading,
+                borderColor: themeColors.border,
                 color: themeColors.heading,
               },
             ]}
@@ -119,7 +112,7 @@ const CustomerRegistrationScreen = ({ route }) => {
             style={[
               styles.input,
               {
-                borderColor: themeColors.subheading,
+                borderColor: themeColors.border,
                 color: themeColors.heading,
               },
             ]}
@@ -132,17 +125,28 @@ const CustomerRegistrationScreen = ({ route }) => {
         </View>
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: themeColors.button }]}
-            onPress={handleSave}
+            style={[
+              styles.saveButton,
+              {
+                backgroundColor: themeColors.button,
+                opacity: isSaveButtonActive ? 1 : 0.5,
+              },
+            ]}
+            onPress={isSaveButtonActive ? handleSave : undefined}
+            disabled={!isSaveButtonActive}
           >
             <Text style={styles.buttonText}>Save</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[
               styles.cancelButton,
-              { backgroundColor: themeColors.destructive },
+              {
+                backgroundColor: themeColors.destructive,
+                opacity: isSaveButtonActive ? 1 : 0.5,
+              },
             ]}
             onPress={() => navigation.goBack()}
+            // disabled={!isSaveButtonActive}
           >
             <Text style={styles.buttonText}>Cancel</Text>
           </TouchableOpacity>
@@ -164,6 +168,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 16,
+    marginTop: 30,
   },
   section: {
     padding: 16,
@@ -200,7 +205,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   cancelButton: {
-    flex: 1,
+    flex: 0.7,
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',

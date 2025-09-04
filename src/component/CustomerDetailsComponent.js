@@ -1,179 +1,104 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import CustomerSelectionModal from 'component/CustomerSelectionModal';
+import { useNavigation } from '@react-navigation/native';
 import { useWallet } from 'context/WalletContext';
-import React, { useState, useContext } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { useThem } from 'constants/useTheme';
+import { colors } from 'constants/colors';
+import { MaterialIcons } from '@expo/vector-icons';
 
-const CustomerDetailsComponent = ({ customer = [], onSubmit, onCancel }) => {
-  const { addCustomer, updateCustomer } = useContext(useWallet);
-  const [name, setName] = useState(customer.name || '');
-  const [phone, setPhone] = useState(customer.phone || '');
-  const [email, setEmail] = useState(customer.email || '');
-  const [showExtra, setShowExtra] = useState(false);
-  const [billingAddress, setBillingAddress] = useState(
-    customer.extraDetails?.billingAddress || ''
+const CustomerDetailsComponent = () => {
+  const walletContext = useWallet();
+  const navigation = useNavigation();
+  const isDarkMode = useThem();
+  const themeColors = isDarkMode ? colors.dark : colors.light;
+  const [selectedCustomer, setSelectedCustomer] = useState(
+    walletContext?.selectedCustomer || null
   );
-  const [location, setLocation] = useState(
-    customer.extraDetails?.location || ''
-  );
-  const [error, setError] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
 
-  const handleSubmit = () => {
-    if (!name.trim()) {
-      setError('Customer name is required');
-      return;
-    }
-    const customerData = {
-      id: customer.id || undefined,
-      name: name.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-      extraDetails: showExtra
-        ? { billingAddress: billingAddress.trim(), location: location.trim() }
-        : {},
-    };
-    if (customer.id) {
-      updateCustomer(customerData);
-    } else {
-      addCustomer(customerData);
-    }
-    onSubmit();
+  const handleEditCustomer = (customer) => {
+    navigation.navigate('CustomerRegistration', { customer });
   };
 
   return (
-    <View style={styles.container}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Text style={styles.label}>Customer Name *</Text>
-      <TextInput
-        style={styles.input}
-        value={name}
-        onChangeText={setName}
-        placeholder="Enter customer name"
-      />
-      <Text style={styles.label}>Phone Number (Optional)</Text>
-      <TextInput
-        style={styles.input}
-        value={phone}
-        onChangeText={setPhone}
-        placeholder="Enter phone number"
-        keyboardType="phone-pad"
-      />
-      <Text style={styles.label}>Email Address (Optional)</Text>
-      <TextInput
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        placeholder="Enter email address"
-        keyboardType="email-address"
-      />
+    <View style={[styles.section, { backgroundColor: themeColors.card }]}>
+      <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+        Customer Details
+      </Text>
       <TouchableOpacity
-        style={styles.toggleButton}
-        onPress={() => setShowExtra(!showExtra)}
+        style={[styles.customerInput, { borderColor: themeColors.border }]}
+        onPress={() => setModalVisible(true)}
       >
-        <Text style={styles.toggleButtonText}>
-          {showExtra ? 'Hide Extra Details' : 'Add More Details'}
+        <Text
+          style={[
+            styles.customerText,
+            {
+              color: selectedCustomer
+                ? themeColors.heading
+                : themeColors.subtext,
+            },
+          ]}
+        >
+          {selectedCustomer ? selectedCustomer.name : 'Select Customer'}
         </Text>
       </TouchableOpacity>
-      {showExtra && (
-        <View style={styles.extraDetails}>
-          <Text style={styles.label}>Billing Address</Text>
-          <TextInput
-            style={styles.input}
-            value={billingAddress}
-            onChangeText={setBillingAddress}
-            placeholder="Enter billing address"
-            multiline
-          />
-          <Text style={styles.label}>Location</Text>
-          <TextInput
-            style={styles.input}
-            value={location}
-            onChangeText={setLocation}
-            placeholder="Enter location"
-          />
-        </View>
-      )}
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-          <Text style={styles.buttonText}>Save</Text>
+      {selectedCustomer && (
+        <TouchableOpacity
+          style={[styles.editButton, { backgroundColor: themeColors.button }]}
+          onPress={() => handleEditCustomer(selectedCustomer)}
+        >
+          <Text style={styles.editButtonText}>Edit Customer</Text>
         </TouchableOpacity>
-        {onCancel && (
-          <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-            <Text style={styles.buttonText}>Cancel</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      )}
+      <CustomerSelectionModal
+        isVisible={modalVisible}
+        onSelect={(customer) => {
+          setSelectedCustomer(customer);
+          setModalVisible(false);
+        }}
+        onClose={() => setModalVisible(false)}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  section: {
     padding: 16,
-    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    marginTop: 30,
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    // marginTop: 20,
   },
-  input: {
+  customerInput: {
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
+  },
+  customerText: {
     fontSize: 16,
   },
-  toggleButton: {
-    backgroundColor: '#e0e0e0',
+  editButton: {
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 16,
   },
-  toggleButtonText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
-  extraDetails: {
-    marginBottom: 16,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  submitButton: {
-    backgroundColor: '#007AFF',
-    padding: 12,
-    borderRadius: 8,
-    flex: 1,
-    marginRight: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#ff3b30',
-    padding: 12,
-    borderRadius: 8,
-    flex: 1,
-    marginLeft: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
+  editButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  error: {
-    color: '#ff3b30',
-    fontSize: 14,
-    marginBottom: 16,
   },
 });
 

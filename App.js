@@ -28,6 +28,7 @@ import CustomerTabScreen from './src/screen/CustomerTabScreen';
 import CustomerRegistrationScreen from './src/screen/CustomerRegistrationScreen';
 import InvoiceTabScreen from './src/screen/InvoiceTabScreen';
 import InvoiceCreationScreen from './src/screen/InvoiceCreationScreen';
+import InvoiceProcessingScreen from './src/screen/InvoiceProcessingScreen';
 
 import { WalletProvider } from './src/context/WalletContext';
 import InvoiceDetailsScreen from 'screen/InvoiceDetailScreen';
@@ -153,9 +154,9 @@ export default function App() {
           theme={isDarkMode ? DarkTheme : DefaultTheme}
         >
           <Stack.Navigator screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="SiguUp" component={SignUpScreen} />
-            <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
+            {/* <Stack.Screen name="Login" component={LoginScreen} /> */}
+            {/* <Stack.Screen name="SiguUp" component={SignUpScreen} /> */}
+            {/* <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} /> */}
             <Stack.Screen name="MainTabs" component={BottomTabs} />
             <Stack.Screen name="Data" component={DataPurchaseScreen} />
             <Stack.Screen name="Airtime" component={AirtimeScreen} />
@@ -178,6 +179,10 @@ export default function App() {
             <Stack.Screen
               name="InvoiceDetails"
               component={InvoiceDetailsScreen}
+            />
+            <Stack.Screen
+              name="InvoiceProcesing"
+              component={InvoiceProcessingScreen}
             />
           </Stack.Navigator>
         </NavigationContainer>

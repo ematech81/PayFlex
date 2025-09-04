@@ -8,6 +8,7 @@ export const colors = {
     subtext: '#999',
     destructive: '#ff3b30',
     button: '#007AFF',
+    border: '#ccc',
   },
   dark: {
     primary: '#6b5bff',

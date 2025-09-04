@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   FlatList,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import Modal from 'react-native-modal';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -14,21 +13,19 @@ import { useWallet } from 'context/WalletContext';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 
-const CustomerSelectionModal = ({
-  isVisible,
-  onSelect,
-  onClose,
-  onNewCustomerAdded,
-}) => {
+const CustomerSelectionModal = ({ isVisible, onSelect, onClose }) => {
   const walletContext = useWallet();
   const customers = walletContext?.customers || [];
   const navigation = useNavigation();
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
 
+  // Debug: Log walletContext to verify
+  // console.log('WalletContext in CustomerSelectionModal:', walletContext);
+
   const handleAddCustomer = () => {
     onClose();
-    navigation.navigate('CustomerRegistration', { onNewCustomerAdded });
+    navigation.navigate('CustomerRegistration');
   };
 
   const renderCustomer = ({ item }) => (
@@ -80,12 +77,12 @@ const CustomerSelectionModal = ({
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <Text style={[styles.emptyText, { color: themeColors.heading }]}>
-              No customers found
+              You have not created any customer. Please add a new customer.
             </Text>
           }
         />
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: themeColors.button }]}
+          style={[styles.addButton, { backgroundColor: themeColors.primary }]}
           onPress={handleAddCustomer}
         >
           <Text style={styles.addButtonText}>Add New Customer</Text>

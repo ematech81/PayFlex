@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  Text,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useWallet } from 'context/WalletContext';
@@ -38,10 +39,10 @@ const InvoiceCreationScreen = ({ route }) => {
   const [tax, setTax] = useState(invoice?.tax || { type: 'Fixed', value: 0 });
 
   const handleCreateInvoice = () => {
-    if (!selectedCustomer) {
-      Alert.alert('Error', 'Please select a customer');
-      return;
-    }
+    // if (!selectedCustomer) {
+    //   Alert.alert('Error', 'Please select a customer');
+    //   return;
+    // }
     if (!title) {
       Alert.alert('Error', 'Please enter an invoice title');
       return;

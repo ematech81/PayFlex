@@ -47,11 +47,11 @@ const InvoiceDetailsComponent = ({
       <TextInput
         style={[
           styles.input,
-          { borderColor: themeColors.border, color: themeColors.border },
+          { borderColor: themeColors.border, color: themeColors.subheading },
         ]}
         value={title}
         onChangeText={setTitle}
-        placeholder="Enter invoice title"
+        placeholder="e.g  customer name "
         placeholderTextColor={themeColors.subtext}
       />
       <Text style={[styles.label, { color: themeColors.heading }]}>
@@ -73,7 +73,7 @@ const InvoiceDetailsComponent = ({
           onChange={handleDateChange}
         />
       )}
-      <Text style={[styles.label, { color: themeColors.border }]}>
+      <Text style={[styles.label, { color: themeColors.subheading }]}>
         Currency
       </Text>
       <View
@@ -82,7 +82,7 @@ const InvoiceDetailsComponent = ({
         <Picker
           selectedValue={currency}
           onValueChange={(itemValue) => setCurrency(itemValue)}
-          style={{ color: themeColors.border }}
+          style={{ color: themeColors.subheading }}
         >
           <Picker.Item label="NGN (₦)" value="NGN" />
           <Picker.Item label="USD ($)" value="USD" />

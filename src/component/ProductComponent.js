@@ -148,23 +148,25 @@ const ProductComponent = ({ products, setProducts, currency }) => {
           </Text>
         }
       />
-      <View
-        style={{
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: 20,
-          flexDirection: 'row',
-        }}
-      >
-        <Text style={[styles.subTotal, { color: themeColors.subheading }]}>
-          Sub-Total:
-        </Text>
-        {products.length > 0 && (
+
+      {products.length > 0 && (
+        <View
+          style={{
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 20,
+            flexDirection: 'row',
+          }}
+        >
+          <Text style={[styles.subTotal, { color: themeColors.subheading }]}>
+            Sub-Total:
+          </Text>
           <Text style={[styles.subTotal, { color: themeColors.primary }]}>
             {formatCurrency(subTotal, currency)}
           </Text>
-        )}
-      </View>
+        </View>
+      )}
+
       {!isCollapsed && (
         <View style={styles.formContainer}>
           <Text style={[styles.label, { color: themeColors.heading }]}>
@@ -247,19 +249,14 @@ const ProductComponent = ({ products, setProducts, currency }) => {
                   opacity: isAddButtonActive ? 1 : 0.5,
                 },
               ]}
-              onPress={
-                isAddButtonActive
-                  ? () => {
-                      setProductName('');
-                      setQuantity('');
-                      setPrice('');
-                      setSelectedProduct(null);
-                      setIsEditMode(false);
-                      setIsCollapsed(true);
-                    }
-                  : undefined
-              }
-              disabled={!isAddButtonActive}
+              onPress={() => {
+                setProductName('');
+                setQuantity('');
+                setPrice('');
+                setSelectedProduct(null);
+                setIsEditMode(false);
+                setIsCollapsed(true);
+              }}
             >
               <Text style={styles.buttonText}>Cancel</Text>
             </TouchableOpacity>
@@ -268,7 +265,7 @@ const ProductComponent = ({ products, setProducts, currency }) => {
       )}
       {isCollapsed && (
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: themeColors.button }]}
+          style={[styles.addButton]}
           onPress={() => setIsCollapsed(false)}
         >
           <Text style={styles.addButtonText}>
@@ -386,9 +383,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   addButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#4a00e0',
+    fontSize: 17,
+    fontWeight: 'bold',
   },
   cancelButton: {
     flex: 0.7,

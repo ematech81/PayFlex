@@ -102,6 +102,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     padding: 16,
+    alignSelf: 'end',
   },
   header: {
     flexDirection: 'row',

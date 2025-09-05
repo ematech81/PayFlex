@@ -10,6 +10,8 @@ import { Picker } from '@react-native-picker/picker';
 import Collapsible from 'react-native-collapsible';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
+import Separator from './Separator';
+import AntDesign from '@expo/vector-icons/AntDesign';
 
 const AccountInfoComponent = ({
   products,
@@ -79,19 +81,145 @@ const AccountInfoComponent = ({
     <View style={[styles.section, { backgroundColor: themeColors.card }]}>
       <TouchableOpacity
         onPress={() => setIsAccountCollapsed(!isAccountCollapsed)}
+        style={styles.accountWrapper}
       >
         <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
           Account Info
         </Text>
+        <View style={{ marginBottom: 12 }}>
+          <AntDesign name="downcircleo" size={24} color="black" />
+        </View>
       </TouchableOpacity>
       <Collapsible collapsed={isAccountCollapsed}>
+        {/* discount info */}
+        <Text
+          style={[
+            styles.subHeading,
+            { color: themeColors.primary, fontSize: 16 },
+          ]}
+        >
+          Discount
+        </Text>
+        <View
+          style={[styles.pickerWrapper, { borderColor: themeColors.border }]}
+        >
+          <Picker
+            selectedValue={discountType}
+            onValueChange={(value) => setDiscountType(value)}
+            style={[styles.pickerSmall, { color: themeColors.heading }]}
+          >
+            <Picker.Item label="Fixed" value="Fixed" />
+            <Picker.Item label="Percentage" value="Percentage" />
+          </Picker>
+        </View>
+        <View
+          style={[styles.rowContainer, { borderColor: themeColors.subheading }]}
+        >
+          <TextInput
+            style={[
+              styles.inputSmall,
+              {
+                borderColor: themeColors.border,
+                color: themeColors.heading,
+              },
+            ]}
+            value={discountValue}
+            onChangeText={setDiscountValue}
+            keyboardType="numeric"
+            placeholder="₦0"
+            placeholderTextColor={themeColors.subtext}
+          />
+          <TextInput
+            style={[
+              styles.inputSmall,
+              {
+                borderColor: themeColors.border,
+                color: themeColors.heading,
+              },
+            ]}
+            value={formatCurrency(subTotal - discountAmount, currency)}
+            editable={false}
+            placeholder="0.00"
+            placeholderTextColor={themeColors.subtext}
+          />
+        </View>
+
+        <Separator />
+
+        {/* tax info */}
+        <Text
+          style={[
+            styles.subHeading,
+            { color: themeColors.primary, fontSize: 16 },
+          ]}
+        >
+          Tax
+        </Text>
+
+        <View
+          style={[styles.pickerWrapper, { borderColor: themeColors.border }]}
+        >
+          <Picker
+            selectedValue={taxType}
+            onValueChange={(value) => setTaxType(value)}
+            style={[styles.pickerSmall, { color: themeColors.heading }]}
+          >
+            <Picker.Item label="Fixed" value="Fixed" />
+            <Picker.Item label="Percentage" value="Percentage" />
+          </Picker>
+        </View>
+
+        <View
+          style={[styles.rowContainer, { borderColor: themeColors.subheading }]}
+        >
+          <TextInput
+            style={[
+              styles.inputSmall,
+              {
+                borderColor: themeColors.subheading,
+                color: themeColors.heading,
+              },
+            ]}
+            value={taxValue}
+            onChangeText={setTaxValue}
+            keyboardType="numeric"
+            placeholder="₦0"
+            placeholderTextColor={themeColors.subtext}
+          />
+          <TextInput
+            style={[
+              styles.inputSmall,
+              {
+                borderColor: themeColors.subheading,
+                color: themeColors.heading,
+              },
+            ]}
+            value={formatCurrency(subTotal + taxAmount, currency)}
+            editable={false}
+            placeholder="0.00"
+            placeholderTextColor={themeColors.subtext}
+          />
+        </View>
+
+        <Separator />
+
+        {/* bank details info */}
+        <Text
+          style={[
+            styles.subHeading,
+            { color: themeColors.primary, fontSize: 16 },
+          ]}
+        >
+          Bank Info
+        </Text>
+
         <Text style={[styles.label, { color: themeColors.heading }]}>
           User Account Number
         </Text>
         <TextInput
           style={[
             styles.input,
-            { borderColor: themeColors.subheading, color: themeColors.heading },
+            { borderColor: themeColors.border, color: themeColors.heading },
           ]}
           value={accountNumber}
           onChangeText={setAccountNumber}
@@ -122,107 +250,15 @@ const AccountInfoComponent = ({
         <TextInput
           style={[
             styles.input,
-            { borderColor: themeColors.subheading, color: themeColors.heading },
+            { borderColor: themeColors.border, color: themeColors.heading },
           ]}
           value={accountName}
           onChangeText={setAccountName}
           placeholder="Enter account name"
           placeholderTextColor={themeColors.subtext}
         />
-        <Text
-          style={[
-            styles.subHeading,
-            { color: themeColors.heading, fontSize: 14 },
-          ]}
-        >
-          Discount
-        </Text>
-        <View
-          style={[styles.rowContainer, { borderColor: themeColors.subheading }]}
-        >
-          <Picker
-            selectedValue={discountType}
-            onValueChange={(value) => setDiscountType(value)}
-            style={[styles.pickerSmall, { color: themeColors.heading }]}
-          >
-            <Picker.Item label="Fixed" value="Fixed" />
-            <Picker.Item label="Percentage" value="Percentage" />
-          </Picker>
-          <TextInput
-            style={[
-              styles.inputSmall,
-              {
-                borderColor: themeColors.subheading,
-                color: themeColors.heading,
-              },
-            ]}
-            value={discountValue}
-            onChangeText={setDiscountValue}
-            keyboardType="numeric"
-            placeholder="₦0"
-            placeholderTextColor={themeColors.subtext}
-          />
-          <TextInput
-            style={[
-              styles.inputSmall,
-              {
-                borderColor: themeColors.subheading,
-                color: themeColors.heading,
-              },
-            ]}
-            value={formatCurrency(subTotal - discountAmount, currency)}
-            editable={false}
-            placeholder="0.00"
-            placeholderTextColor={themeColors.subtext}
-          />
-        </View>
-        <Text
-          style={[
-            styles.subHeading,
-            { color: themeColors.heading, fontSize: 14 },
-          ]}
-        >
-          Tax
-        </Text>
-        <View
-          style={[styles.rowContainer, { borderColor: themeColors.subheading }]}
-        >
-          <Picker
-            selectedValue={taxType}
-            onValueChange={(value) => setTaxType(value)}
-            style={[styles.pickerSmall, { color: themeColors.heading }]}
-          >
-            <Picker.Item label="Fixed" value="Fixed" />
-            <Picker.Item label="Percentage" value="Percentage" />
-          </Picker>
-          <TextInput
-            style={[
-              styles.inputSmall,
-              {
-                borderColor: themeColors.subheading,
-                color: themeColors.heading,
-              },
-            ]}
-            value={taxValue}
-            onChangeText={setTaxValue}
-            keyboardType="numeric"
-            placeholder="₦0"
-            placeholderTextColor={themeColors.subtext}
-          />
-          <TextInput
-            style={[
-              styles.inputSmall,
-              {
-                borderColor: themeColors.subheading,
-                color: themeColors.heading,
-              },
-            ]}
-            value={formatCurrency(subTotal + taxAmount, currency)}
-            editable={false}
-            placeholder="0.00"
-            placeholderTextColor={themeColors.subtext}
-          />
-        </View>
+
+        {/* hide button */}
         <TouchableOpacity
           style={[styles.hideButton, { backgroundColor: themeColors.button }]}
           onPress={() => setIsAccountCollapsed(true)}
@@ -230,6 +266,9 @@ const AccountInfoComponent = ({
           <Text style={styles.buttonText}>Hide Account</Text>
         </TouchableOpacity>
       </Collapsible>
+
+      <Separator />
+      {/* subtotal */}
       <Text style={[styles.labelPair, { color: themeColors.heading }]}>
         Sub-Total
         <Text style={[styles.valuePair, { color: themeColors.subheading }]}>
@@ -259,13 +298,15 @@ const AccountInfoComponent = ({
           {formatCurrency(total, currency)}
         </Text>
       </Text>
-      <Text style={[styles.label, { color: themeColors.heading }]}>
+
+      <Separator />
+      <Text style={[styles.label, { color: themeColors.primary }]}>
         Additional Info
       </Text>
       <TextInput
         style={[
           styles.textArea,
-          { borderColor: themeColors.subheading, color: themeColors.heading },
+          { borderColor: themeColors.border, color: themeColors.heading },
         ]}
         value={additionalInfo}
         onChangeText={setAdditionalInfo}
@@ -290,8 +331,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: 'bold',
     marginBottom: 12,
   },
   label: {
@@ -320,10 +361,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 8,
     marginBottom: 16,
-    padding: 8,
   },
   pickerSmall: {
     flex: 1,
@@ -335,8 +373,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     padding: 8,
-    marginLeft: 8,
     fontSize: 16,
+    marginRight: 6,
   },
   hideButton: {
     padding: 12,
@@ -369,6 +407,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     height: 100,
     textAlignVertical: 'top',
+  },
+  pickerWrapper: {
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 16,
+    width: '100%',
+    height: 70,
+  },
+  accountWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex start',
+    gap: 15,
   },
 });
 

@@ -83,7 +83,12 @@ const quickActions = [
     bg: '#16a34a',
     screen: 'ElectricityPurchase',
   },
-  { label: 'More', icon: 'ellipsis-horizontal', bg: '#64748b' },
+  {
+    label: 'Invoice',
+    icon: 'document-text',
+    bg: '#64748b',
+    screen: 'Invoices',
+  },
 ];
 
 export default function HomeScreen() {

@@ -161,7 +161,7 @@ const ProductComponent = ({ products, setProducts, currency }) => {
           <Text style={[styles.subTotal, { color: themeColors.subheading }]}>
             Sub-Total:
           </Text>
-          <Text style={[styles.subTotal, { color: themeColors.primary }]}>
+          <Text style={[styles.subTotal, { color: themeColors.heading }]}>
             {formatCurrency(subTotal, currency)}
           </Text>
         </View>
@@ -275,45 +275,7 @@ const ProductComponent = ({ products, setProducts, currency }) => {
       )}
       <View
         style={[styles.debtContainer, { backgroundColor: themeColors.card }]}
-      >
-        <Text style={[styles.debtTitle, { color: themeColors.heading }]}>
-          Debt Management
-        </Text>
-        <View style={styles.toggleContainer}>
-          <Text style={[styles.label, { color: themeColors.subheading }]}>
-            Outstanding Debt?
-          </Text>
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              {
-                backgroundColor: isOwing
-                  ? themeColors.button
-                  : themeColors.primary,
-              },
-            ]}
-            onPress={() => setIsOwing(!isOwing)}
-          >
-            <Text style={styles.toggleText}>{isOwing ? 'Yes' : 'No'}</Text>
-          </TouchableOpacity>
-        </View>
-        {isOwing && (
-          <TextInput
-            style={[
-              styles.input,
-              {
-                borderColor: themeColors.border,
-                color: themeColors.heading,
-              },
-            ]}
-            value={outstandingDebt}
-            onChangeText={setOutstandingDebt}
-            keyboardType="numeric"
-            placeholder="Enter amount"
-            placeholderTextColor={themeColors.subtext}
-          />
-        )}
-      </View>
+      ></View>
     </View>
   );
 };
@@ -416,8 +378,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   subTotal: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: 'bold',
     marginTop: 8,
     marginBottom: 8,
   },

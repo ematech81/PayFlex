@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  FlatList,
+  Switch,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import Collapsible from 'react-native-collapsible';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-import Separator from './Separator';
+import Separator from 'component/Separator';
 import AntDesign from '@expo/vector-icons/AntDesign';
+import { Picker } from '@react-native-picker/picker';
 
 const AccountInfoComponent = ({
   products,
@@ -21,32 +23,67 @@ const AccountInfoComponent = ({
   setTax,
   calculateInvoice,
   currency,
+  debt: initialDebt = 0,
+  setDebt,
+  bank,
+  setBank,
+  accountNumber,
+  setAccountNumber,
+  accountName,
+  setAccountName,
+  additionalInfo,
+  setAdditionalInfo,
 }) => {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
   const [isAccountCollapsed, setIsAccountCollapsed] = useState(true);
-  const [accountNumber, setAccountNumber] = useState('');
-  const [bank, setBank] = useState('');
-  const [accountName, setAccountName] = useState('');
-  const [additionalInfo, setAdditionalInfo] = useState('');
   const [discountType, setDiscountType] = useState(discount.type || 'Fixed');
   const [discountValue, setDiscountValue] = useState(
     discount.value.toString() || '0'
   );
   const [taxType, setTaxType] = useState(tax.type || 'Fixed');
   const [taxValue, setTaxValue] = useState(tax.value.toString() || '0');
+  const [searchBankText, setSearchBankText] = useState(bank || ''); // Sync with parent bank
+  const [isCustomerOwing, setIsCustomerOwing] = useState(false);
+  const [debt, setLocalDebt] = useState(initialDebt.toString() || '0');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Bank list
+  const banks = [
+    'Access Bank',
+    'First Bank',
+    'Guaranty Trust Bank',
+    'Zenith Bank',
+    'United Bank for Africa',
+    'Ecobank',
+    'Fidelity Bank',
+    'Stanbic IBTC',
+    'Union Bank',
+    'Others',
+  ];
+
+  // Filter banks based on search text
+  const filteredBanks = banks.filter((bankName) =>
+    bankName.toLowerCase().includes(searchBankText.toLowerCase())
+  );
 
   const subTotal = products.reduce(
     (sum, product) => sum + product.quantity * product.price,
     0
   );
-  const { discountAmount, taxAmount, total } = calculateInvoice(
+
+  const {
+    discountAmount,
+    taxAmount,
+    total: baseTotal,
+  } = calculateInvoice(
     products,
     { type: discountType, value: parseFloat(discountValue) || 0 },
     { type: taxType, value: parseFloat(taxValue) || 0 }
   );
+  const debtAmount = isCustomerOwing ? parseFloat(debt) || 0 : 0;
+  const total = baseTotal + debtAmount;
 
-  // Reusable currency formatting function
   const formatCurrency = (amount, currencyCode) => {
     const formatter = new Intl.NumberFormat('en-NG', {
       style: 'decimal',
@@ -62,20 +99,26 @@ const AccountInfoComponent = ({
   useEffect(() => {
     setDiscount({ type: discountType, value: parseFloat(discountValue) || 0 });
     setTax({ type: taxType, value: parseFloat(taxValue) || 0 });
-  }, [discountType, discountValue, taxType, taxValue, setDiscount, setTax]);
+    if (setDebt) setDebt(parseFloat(debt) || 0);
+    // Sync searchBankText with bank prop on mount or change
+    if (bank !== searchBankText) setSearchBankText(bank || '');
+  }, [
+    discountType,
+    discountValue,
+    taxType,
+    taxValue,
+    setDiscount,
+    setTax,
+    debt,
+    setDebt,
+    bank, // Add bank to dependency array
+  ]);
 
-  const banks = [
-    'Access Bank',
-    'First Bank',
-    'Guaranty Trust Bank',
-    'Zenith Bank',
-    'United Bank for Africa',
-    'Ecobank',
-    'Fidelity Bank',
-    'Stanbic IBTC',
-    'Union Bank',
-    'Others',
-  ];
+  const handleBankSelect = (selectedBank) => {
+    setBank(selectedBank); // Update parent state
+    setSearchBankText(selectedBank); // Update local search text
+    setShowSuggestions(false); // Hide dropdown
+  };
 
   return (
     <View style={[styles.section, { backgroundColor: themeColors.card }]}>
@@ -86,12 +129,13 @@ const AccountInfoComponent = ({
         <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
           Account Info
         </Text>
-        <View style={{ marginBottom: 12 }}>
-          <AntDesign name="downcircleo" size={24} color="black" />
-        </View>
+        <AntDesign
+          name={isAccountCollapsed ? 'downcircleo' : 'upcircleo'}
+          size={24}
+          color={themeColors.heading}
+        />
       </TouchableOpacity>
       <Collapsible collapsed={isAccountCollapsed}>
-        {/* discount info */}
         <Text
           style={[
             styles.subHeading,
@@ -118,10 +162,7 @@ const AccountInfoComponent = ({
           <TextInput
             style={[
               styles.inputSmall,
-              {
-                borderColor: themeColors.border,
-                color: themeColors.heading,
-              },
+              { borderColor: themeColors.border, color: themeColors.heading },
             ]}
             value={discountValue}
             onChangeText={setDiscountValue}
@@ -132,10 +173,7 @@ const AccountInfoComponent = ({
           <TextInput
             style={[
               styles.inputSmall,
-              {
-                borderColor: themeColors.border,
-                color: themeColors.heading,
-              },
+              { borderColor: themeColors.border, color: themeColors.heading },
             ]}
             value={formatCurrency(subTotal - discountAmount, currency)}
             editable={false}
@@ -146,7 +184,6 @@ const AccountInfoComponent = ({
 
         <Separator />
 
-        {/* tax info */}
         <Text
           style={[
             styles.subHeading,
@@ -155,7 +192,6 @@ const AccountInfoComponent = ({
         >
           Tax
         </Text>
-
         <View
           style={[styles.pickerWrapper, { borderColor: themeColors.border }]}
         >
@@ -168,17 +204,13 @@ const AccountInfoComponent = ({
             <Picker.Item label="Percentage" value="Percentage" />
           </Picker>
         </View>
-
         <View
           style={[styles.rowContainer, { borderColor: themeColors.subheading }]}
         >
           <TextInput
             style={[
               styles.inputSmall,
-              {
-                borderColor: themeColors.subheading,
-                color: themeColors.heading,
-              },
+              { borderColor: themeColors.border, color: themeColors.heading },
             ]}
             value={taxValue}
             onChangeText={setTaxValue}
@@ -189,10 +221,7 @@ const AccountInfoComponent = ({
           <TextInput
             style={[
               styles.inputSmall,
-              {
-                borderColor: themeColors.subheading,
-                color: themeColors.heading,
-              },
+              { borderColor: themeColors.border, color: themeColors.heading },
             ]}
             value={formatCurrency(subTotal + taxAmount, currency)}
             editable={false}
@@ -203,7 +232,6 @@ const AccountInfoComponent = ({
 
         <Separator />
 
-        {/* bank details info */}
         <Text
           style={[
             styles.subHeading,
@@ -212,9 +240,52 @@ const AccountInfoComponent = ({
         >
           Bank Info
         </Text>
-
         <Text style={[styles.label, { color: themeColors.heading }]}>
-          User Account Number
+          Bank Name
+        </Text>
+        <View
+          style={[
+            styles.pickerContainer,
+            { borderColor: themeColors.subheading, position: 'relative' },
+          ]}
+        >
+          <TextInput
+            style={[
+              styles.input,
+              { borderColor: themeColors.border, color: themeColors.heading },
+            ]}
+            value={searchBankText}
+            onChangeText={setSearchBankText}
+            placeholder="Search or enter bank"
+            placeholderTextColor={themeColors.subtext}
+            onFocus={() => setShowSuggestions(true)}
+          />
+          {searchBankText && showSuggestions && (
+            <FlatList
+              data={filteredBanks}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.bankSuggestion}
+                  onPress={() => handleBankSelect(item)}
+                >
+                  <Text
+                    style={{
+                      color: themeColors.primary,
+                      padding: 8,
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              style={styles.suggestionList}
+            />
+          )}
+        </View>
+        <Text style={[styles.label, { color: themeColors.heading }]}>
+          Account Number
         </Text>
         <TextInput
           style={[
@@ -227,23 +298,6 @@ const AccountInfoComponent = ({
           placeholder="Enter account number"
           placeholderTextColor={themeColors.subtext}
         />
-        <Text style={[styles.label, { color: themeColors.heading }]}>Bank</Text>
-        <View
-          style={[
-            styles.pickerContainer,
-            { borderColor: themeColors.subheading },
-          ]}
-        >
-          <Picker
-            selectedValue={bank}
-            onValueChange={(itemValue) => setBank(itemValue)}
-            style={{ color: themeColors.heading }}
-          >
-            {banks.map((bankName) => (
-              <Picker.Item key={bankName} label={bankName} value={bankName} />
-            ))}
-          </Picker>
-        </View>
         <Text style={[styles.label, { color: themeColors.heading }]}>
           Account Name
         </Text>
@@ -258,7 +312,42 @@ const AccountInfoComponent = ({
           placeholderTextColor={themeColors.subtext}
         />
 
-        {/* hide button */}
+        <View style={styles.rowContainer}>
+          <Text style={[styles.label, { color: themeColors.heading, flex: 1 }]}>
+            Is the customer owing?
+          </Text>
+          <Switch
+            trackColor={{
+              false: themeColors.subheading,
+              true: themeColors.primary,
+            }}
+            thumbColor={isCustomerOwing ? themeColors.card : themeColors.border}
+            ios_backgroundColor={themeColors.subheading}
+            onValueChange={setIsCustomerOwing}
+            value={isCustomerOwing}
+          />
+        </View>
+        {isCustomerOwing && (
+          <View style={styles.rowContainer}>
+            <Text
+              style={[styles.label, { color: themeColors.heading, flex: 1 }]}
+            >
+              Debt Amount
+            </Text>
+            <TextInput
+              style={[
+                styles.inputSmall,
+                { borderColor: themeColors.border, color: themeColors.heading },
+              ]}
+              value={debt}
+              onChangeText={setLocalDebt}
+              keyboardType="numeric"
+              placeholder="₦0.00"
+              placeholderTextColor={themeColors.subtext}
+            />
+          </View>
+        )}
+
         <TouchableOpacity
           style={[styles.hideButton, { backgroundColor: themeColors.button }]}
           onPress={() => setIsAccountCollapsed(true)}
@@ -267,37 +356,62 @@ const AccountInfoComponent = ({
         </TouchableOpacity>
       </Collapsible>
 
-      <Separator />
-      {/* subtotal */}
-      <Text style={[styles.labelPair, { color: themeColors.heading }]}>
-        Sub-Total
-        <Text style={[styles.valuePair, { color: themeColors.subheading }]}>
-          {formatCurrency(subTotal, currency)}
-        </Text>
-      </Text>
-      <Text style={[styles.labelPair, { color: themeColors.heading }]}>
-        Discount
-        <Text style={[styles.valuePair, { color: themeColors.subheading }]}>
-          {formatCurrency(discountAmount, currency)}
-        </Text>
-      </Text>
-      <Text style={[styles.labelPair, { color: themeColors.heading }]}>
-        Tax
-        <Text style={[styles.valuePair, { color: themeColors.subheading }]}>
-          {formatCurrency(taxAmount, currency)}
-        </Text>
-      </Text>
-      <Text style={[styles.labelPair, { color: themeColors.heading }]}>
-        Total
-        <Text
-          style={[
-            styles.valuePair,
-            { color: themeColors.heading, fontWeight: '600' },
-          ]}
-        >
-          {formatCurrency(total, currency)}
-        </Text>
-      </Text>
+      {(products.length > 0 || debtAmount > 0) && (
+        <>
+          <Separator />
+          <View style={styles.rowContainer}>
+            <Text style={[styles.labelPair, { color: themeColors.heading }]}>
+              Sub-Total
+            </Text>
+            <Text style={[styles.valuePair, { color: themeColors.primary }]}>
+              {formatCurrency(subTotal, currency)}
+            </Text>
+          </View>
+          <View style={styles.rowContainer}>
+            <Text style={[styles.labelPair, { color: themeColors.heading }]}>
+              Discount
+            </Text>
+            <Text style={[styles.valuePair, { color: themeColors.primary }]}>
+              {formatCurrency(discountAmount, currency)}
+            </Text>
+          </View>
+          <View style={styles.rowContainer}>
+            <Text style={[styles.labelPair, { color: themeColors.heading }]}>
+              Tax
+            </Text>
+            <Text style={[styles.valuePair, { color: themeColors.primary }]}>
+              {formatCurrency(taxAmount, currency)}
+            </Text>
+          </View>
+          {isCustomerOwing && debtAmount > 0 && (
+            <View style={styles.rowContainer}>
+              <Text style={[styles.labelPair, { color: themeColors.heading }]}>
+                Outstanding Debt
+              </Text>
+              <Text style={[styles.valuePair, { color: themeColors.primary }]}>
+                {formatCurrency(debtAmount, currency)}
+              </Text>
+            </View>
+          )}
+          <View style={styles.rowContainer}>
+            <Text style={[styles.labelPair, { color: themeColors.heading }]}>
+              Total
+            </Text>
+            <Text
+              style={[
+                styles.valuePair,
+                {
+                  color: themeColors.primary,
+                  fontWeight: 'bold',
+                  fontSize: 18,
+                },
+              ]}
+            >
+              {formatCurrency(total, currency)}
+            </Text>
+          </View>
+        </>
+      )}
 
       <Separator />
       <Text style={[styles.label, { color: themeColors.primary }]}>
@@ -351,6 +465,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     marginBottom: 16,
+    position: 'relative',
   },
   subHeading: {
     fontSize: 14,
@@ -418,8 +533,24 @@ const styles = StyleSheet.create({
   accountWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex start',
-    gap: 15,
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  bankSuggestion: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  suggestionList: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    maxHeight: 200,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    zIndex: 10,
   },
 });
 

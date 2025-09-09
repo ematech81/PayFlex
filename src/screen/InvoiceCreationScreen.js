@@ -19,7 +19,11 @@ import ProductComponent from 'component/ProductComponent';
 import AccountInfoComponent from 'component/AccountInfoComponent';
 
 const InvoiceCreationScreen = ({ route }) => {
-  const { invoice } = route.params || {};
+  console.log('Route Object:', route); // Debug log for route
+  const navRoute = route || {}; // Default to empty object if route is undefined
+  const params = navRoute.params || {}; // Safely access params
+  const invoice = params.invoice || {}; // Explicitly handle invoice as undefined
+  console.log('Invoice Object:', invoice); // Debug log for invoice
   const { addInvoice, updateInvoice, calculateInvoice } = useWallet();
   const navigation = useNavigation();
   const isDarkMode = useThem();
@@ -37,12 +41,21 @@ const InvoiceCreationScreen = ({ route }) => {
     invoice?.discount || { type: 'Fixed', value: 0 }
   );
   const [tax, setTax] = useState(invoice?.tax || { type: 'Fixed', value: 0 });
+  const [bank, setBank] = useState(invoice?.bank || ''); // New state for bank
+  const [accountNumber, setAccountNumber] = useState(
+    invoice?.accountNumber || ''
+  ); // New state
+  const [accountName, setAccountName] = useState(invoice?.accountName || ''); // New state
+  const [additionalInfo, setAdditionalInfo] = useState(
+    invoice?.aditionalInfo || ''
+  ); // New state
 
   const handleCreateInvoice = () => {
-    // if (!selectedCustomer) {
-    //   Alert.alert('Error', 'Please select a customer');
-    //   return;
-    // }
+    console.log('Selected Customer:', selectedCustomer); // Debug log
+    if (!selectedCustomer || !selectedCustomer.name) {
+      Alert.alert('Error', 'Please select a customer with a valid name');
+      return;
+    }
     if (!title) {
       Alert.alert('Error', 'Please enter an invoice title');
       return;
@@ -65,10 +78,15 @@ const InvoiceCreationScreen = ({ route }) => {
       products,
       discount,
       tax,
+      bank,
+      accountNumber,
+      accountName,
       subtotal,
       discountAmount,
       taxAmount,
       total,
+      additionalInfo,
+      setAdditionalInfo,
       status: 'Processing',
       id:
         invoice?.id ||
@@ -84,7 +102,13 @@ const InvoiceCreationScreen = ({ route }) => {
   const renderItem = ({ item }) => {
     switch (item.type) {
       case 'customer':
-        return <CustomerDetailsComponent />;
+        return (
+          <CustomerDetailsComponent
+            selectedCustomer={selectedCustomer}
+            setSelectedCustomer={setSelectedCustomer}
+            onEditCustomer={handleEditCustomer}
+          />
+        );
       case 'invoice':
         return (
           <InvoiceDetailsComponent
@@ -114,6 +138,14 @@ const InvoiceCreationScreen = ({ route }) => {
             setTax={setTax}
             currency={currency}
             calculateInvoice={calculateInvoice}
+            bank={bank}
+            setBank={setBank}
+            accountNumber={accountNumber}
+            setAccountNumber={setAccountNumber}
+            accountName={accountName}
+            setAccountName={setAccountName}
+            additionalInfo={additionalInfo}
+            setAdditionalInfo={setAdditionalInfo}
           />
         );
       default:
@@ -125,7 +157,7 @@ const InvoiceCreationScreen = ({ route }) => {
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 100}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 10}
     >
       <FlatList
         data={[

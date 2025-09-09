@@ -24,7 +24,23 @@ const InvoiceTabScreen = () => {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   const handleCreateNew = () => {
-    navigation.navigate('InvoiceCreation');
+    console.log('Creating new invoice', invoices);
+    const defaultInvoice = {
+      customer: null,
+      title: '',
+      dueDate: null,
+      currency: 'NGN',
+      products: [],
+      discount: { type: 'Fixed', value: 0 },
+      tax: { type: 'Fixed', value: 0 },
+      subtotal: 0,
+      discountAmount: 0,
+      taxAmount: 0,
+      total: 0,
+      status: 'Draft',
+      id: `INV-${String(invoices.length + 1).padStart(2, '0')}`,
+    };
+    navigation.navigate('InvoiceCreation', { invoice: defaultInvoice });
   };
 
   const handleEdit = (invoice) => {

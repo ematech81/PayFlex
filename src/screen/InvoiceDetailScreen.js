@@ -12,9 +12,10 @@ import {
 } from 'react-native';
 import ActionModal from 'constants/ActionModal';
 import { useNavigation } from '@react-navigation/native';
-import { useWallet, useWalletNavigation } from '../context/WalletContext';
+import { useWallet } from 'context/WalletContext';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
+import { useWalletNavigation } from 'constants/useWalletNavigation';
 
 const InvoiceDetailsScreen = ({ route }) => {
   const { invoice } = route.params || {};

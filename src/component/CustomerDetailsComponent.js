@@ -1,104 +1,123 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import CustomerSelectionModal from 'component/CustomerSelectionModal';
-import { useNavigation } from '@react-navigation/native';
-import { useWallet } from 'context/WalletContext';
+import CustomerSelectionModal from 'component/CustomerSelectionModal'; // Adjust path as needed
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-import { MaterialIcons } from '@expo/vector-icons';
 
-const CustomerDetailsComponent = () => {
-  const walletContext = useWallet();
-  const navigation = useNavigation();
+const CustomerDetailsComponent = ({
+  selectedCustomer,
+  setSelectedCustomer,
+  onEditCustomer,
+}) => {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
-  const [selectedCustomer, setSelectedCustomer] = useState(
-    walletContext?.selectedCustomer || null
-  );
-  const [modalVisible, setModalVisible] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const handleEditCustomer = (customer) => {
-    navigation.navigate('CustomerRegistration', { customer });
+  const handleSelectCustomer = (customer) => {
+    console.log('Selected Customer in Component:', customer); // Debug log
+    setSelectedCustomer(customer); // Update parent state
+    setIsModalVisible(false); // Close modal
+  };
+
+  const handleOpenModal = () => {
+    setIsModalVisible(true);
   };
 
   return (
-    <View style={[styles.section, { backgroundColor: themeColors.card }]}>
-      <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-        Customer Details
+    <View style={styles.container}>
+      <Text style={[styles.label, { color: themeColors.heading }]}>
+        Customer
       </Text>
-      <TouchableOpacity
-        style={[styles.customerInput, { borderColor: themeColors.border }]}
-        onPress={() => setModalVisible(true)}
-      >
-        <Text
-          style={[
-            styles.customerText,
-            {
-              color: selectedCustomer
-                ? themeColors.heading
-                : themeColors.subtext,
-            },
-          ]}
-        >
-          {selectedCustomer ? selectedCustomer.name : 'Select Customer'}
-        </Text>
-      </TouchableOpacity>
-      {selectedCustomer && (
+      {selectedCustomer ? (
+        <View style={styles.customerInfo}>
+          <Text style={[styles.customerName, { color: themeColors.heading }]}>
+            {selectedCustomer.name}
+          </Text>
+          {selectedCustomer.email && (
+            <Text
+              style={[styles.customerDetail, { color: themeColors.subheading }]}
+            >
+              {selectedCustomer.email}
+            </Text>
+          )}
+          {selectedCustomer.phone && (
+            <Text
+              style={[styles.customerDetail, { color: themeColors.subheading }]}
+            >
+              {selectedCustomer.phone}
+            </Text>
+          )}
+          <TouchableOpacity
+            style={[styles.editButton, { backgroundColor: themeColors.button }]}
+            onPress={() => onEditCustomer(selectedCustomer)}
+          >
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
         <TouchableOpacity
-          style={[styles.editButton, { backgroundColor: themeColors.button }]}
-          onPress={() => handleEditCustomer(selectedCustomer)}
+          style={[styles.selectButton, { backgroundColor: themeColors.button }]}
+          onPress={handleOpenModal}
         >
-          <Text style={styles.editButtonText}>Edit Customer</Text>
+          <Text style={styles.selectButtonText}>Select Customer</Text>
         </TouchableOpacity>
       )}
       <CustomerSelectionModal
-        isVisible={modalVisible}
-        onSelect={(customer) => {
-          setSelectedCustomer(customer);
-          setModalVisible(false);
-        }}
-        onClose={() => setModalVisible(false)}
+        isVisible={isModalVisible}
+        onSelect={handleSelectCustomer}
+        onClose={() => setIsModalVisible(false)}
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  section: {
+  container: {
     padding: 16,
-    borderRadius: 8,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    marginTop: 30,
+    backgroundColor: '#fff', // Adjust based on theme if needed
   },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    // marginTop: 20,
-  },
-  customerInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  customerText: {
+  label: {
     fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
   },
-  editButton: {
+  customerInfo: {
     padding: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  customerName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  customerDetail: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  selectButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: 'center',
   },
-  editButtonText: {
+  selectButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  editButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

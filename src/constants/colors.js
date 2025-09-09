@@ -9,6 +9,7 @@ export const colors = {
     destructive: '#ff3b30',
     button: '#007AFF',
     border: '#ccc',
+    processing: '#f9fc77ff',
   },
   dark: {
     primary: '#6b5bff',

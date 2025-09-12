@@ -1,14 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, TouchableOpacity, Text, View, Alert } from 'react-native';
-import { TextInput, Button } from 'react-native-paper';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useThem } from 'constants/useTheme';
+import { colors } from 'constants/colors';
+import AppImage from 'component/allImage';
 
-export default function VerifyCodeScreen({ navigation, route }) {
-  const { email, phone, userId, onVerifySuccess } = route.params || {};
-  const [code, setCode] = useState('');
+const BASE_URL = 'http://localhost:5000/api/auth'; // Updated to match SignUpScreen endpoint
+const { width } = Dimensions.get('window');
+const cardWidth = width * 0.9;
+const boxSize = cardWidth / 8; // Size for each OTP box
+
+const VerifyCodeScreen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { userId, email, phone, onVerifySuccess } = route.params;
+  const isDarkMode = useThem();
+  const themeColors = isDarkMode ? colors.dark : colors.light;
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const inputRefs = useRef([]);
 
   useEffect(() => {
     let timer;
@@ -27,6 +49,7 @@ export default function VerifyCodeScreen({ navigation, route }) {
   }, [resendCooldown]);
 
   const handleVerify = async () => {
+    const code = otp.join('');
     if (!code.trim()) {
       setError('Please enter the verification code.');
       return;
@@ -39,16 +62,13 @@ export default function VerifyCodeScreen({ navigation, route }) {
     setIsLoading(true);
 
     try {
-      const response = await fetch(
-        'http://192.168.43.99:5000/api/auth/phone/verify-otp',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId, otp: code }),
-        }
-      );
+      const response = await fetch(`${BASE_URL}/phone/verify-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, otp: code }),
+      });
 
       const data = await response.json();
 
@@ -80,16 +100,13 @@ export default function VerifyCodeScreen({ navigation, route }) {
     setIsResending(true);
 
     try {
-      const response = await fetch(
-        'http://localhost:5000/api/auth/phone/resend-otp',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId }),
-        }
-      );
+      const response = await fetch(`${BASE_URL}/phone/resend-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
 
       const data = await response.json();
 
@@ -116,93 +133,174 @@ export default function VerifyCodeScreen({ navigation, route }) {
     }
   };
 
+  const handleOtpChange = (text, index) => {
+    if (/[^0-9]/.test(text)) return; // Allow only digits
+    const newOtp = [...otp];
+    newOtp[index] = text;
+    setOtp(newOtp);
+
+    // Move focus to next input
+    if (text && index < 5) {
+      inputRefs.current[index + 1].focus();
+    }
+    // Move focus to previous input on delete
+    if (!text && index > 0) {
+      inputRefs.current[index - 1].focus();
+    }
+  };
+
+  const handleKeyPress = ({ nativeEvent: { key } }, index) => {
+    if (key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1].focus();
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Phone Verification</Text>
-      <Text style={styles.subtitle}>
-        We sent a verification code to {phone} and {email}. Enter the code to
-        verify your phone number.
-      </Text>
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <TextInput
-        label="Enter Verification Code"
-        mode="outlined"
-        keyboardType="number-pad"
-        value={code}
-        onChangeText={(text) => setCode(text.replace(/[^0-9]/g, ''))}
-        maxLength={6}
-        style={styles.input}
-        disabled={isLoading}
-      />
-
-      <Button
-        mode="contained"
-        onPress={handleVerify}
-        style={styles.button}
-        disabled={isLoading}
-        loading={isLoading}
+    <View style={[styles.container, { backgroundColor: themeColors.primary }]}>
+      <AppImage style={{ width: 200, height: 200 }} />
+      <View
+        style={[styles.cardContainer, { backgroundColor: themeColors.primary }]}
       >
-        Verify Phone
-      </Button>
-
-      <Button
-        mode="outlined"
-        onPress={handleResendOTP}
-        style={styles.resendButton}
-        disabled={isResending || isLoading || resendCooldown > 0}
-        loading={isResending}
-      >
-        {resendCooldown > 0 ? `Resend OTP (${resendCooldown}s)` : 'Resend OTP'}
-      </Button>
-
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={styles.link}>Back to Sign Up</Text>
-      </TouchableOpacity>
+        <View style={[styles.card, { backgroundColor: themeColors.card }]}>
+          <Text style={[styles.title, { color: themeColors.heading }]}>
+            OTP Verification
+          </Text>
+          <Text style={[styles.subtitle, { color: themeColors.subheading }]}>
+            Enter the 6-digit code sent to your phone
+          </Text>
+          {error ? (
+            <Text style={[styles.error, { color: themeColors.destructive }]}>
+              {error}
+            </Text>
+          ) : null}
+          <View style={styles.otpContainer}>
+            {otp.map((digit, index) => (
+              <TextInput
+                key={index}
+                style={[
+                  styles.otpInput,
+                  {
+                    backgroundColor: themeColors.background,
+                    color: themeColors.heading,
+                    borderColor: digit
+                      ? themeColors.button
+                      : themeColors.border,
+                  },
+                ]}
+                value={digit}
+                onChangeText={(text) => handleOtpChange(text, index)}
+                onKeyPress={(e) => handleKeyPress(e, index)}
+                keyboardType="numeric"
+                maxLength={1}
+                ref={(ref) => (inputRefs.current[index] = ref)}
+                textAlign="center"
+              />
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: themeColors.button }]}
+            onPress={handleVerify}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={themeColors.card} />
+            ) : (
+              <Text style={[styles.buttonText, { color: themeColors.card }]}>
+                Verify OTP
+              </Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.resendButton,
+              { backgroundColor: themeColors.button },
+            ]}
+            onPress={handleResendOTP}
+            disabled={isResending || resendCooldown > 0}
+          >
+            {isResending ? (
+              <ActivityIndicator color={themeColors.card} />
+            ) : (
+              <Text style={[styles.buttonText, { color: themeColors.card }]}>
+                {resendCooldown > 0
+                  ? `Resend OTP (${resendCooldown}s)`
+                  : 'Resend OTP'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
+    padding: 16,
     flex: 1,
-    padding: 20,
-    backgroundColor: '#fff',
+  },
+  cardContainer: {
     justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  card: {
+    width: cardWidth,
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
+    marginBottom: 20,
   },
   subtitle: {
-    fontSize: 14,
-    color: 'gray',
+    fontSize: 16,
     marginBottom: 20,
     textAlign: 'center',
   },
-  input: {
+  error: {
+    fontSize: 14,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
     marginBottom: 15,
   },
+  otpInput: {
+    width: boxSize,
+    height: boxSize,
+    borderRadius: 8,
+    borderWidth: 1,
+    fontSize: 20,
+    textAlign: 'center',
+  },
   button: {
-    marginVertical: 10,
-    padding: 5,
+    width: '100%',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+    marginBottom: 15,
   },
   resendButton: {
-    marginVertical: 10,
-    padding: 5,
-    borderColor: '#6200ee',
+    width: '100%',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
   },
-  link: {
-    textAlign: 'center',
-    color: 'blue',
-    marginTop: 15,
-  },
-  error: {
-    color: 'red',
-    marginBottom: 10,
-    textAlign: 'center',
+  buttonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
+
+export default VerifyCodeScreen;

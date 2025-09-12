@@ -173,8 +173,14 @@ export default function App() {
     <WalletProvider>
       <PaperProvider theme={isDarkMode ? DarkTheme : DefaultTheme}>
         <SafeAreaProvider>
-          <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
+          <NavigationContainer
+            theme={isDarkMode ? DarkTheme : DefaultTheme}
+            initialRouteName="Login"
+          >
             <Stack.Navigator screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="SignUp" component={SignUpScreen} />
+              <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
               <Stack.Screen name="MainTabs" component={BottomTabs} />
               <Stack.Screen name="Data" component={DataPurchaseScreen} />
               <Stack.Screen name="Airtime" component={AirtimeScreen} />

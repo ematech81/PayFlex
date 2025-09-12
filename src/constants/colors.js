@@ -10,6 +10,7 @@ export const colors = {
     button: '#007AFF',
     border: '#ccc',
     processing: '#f9fc77ff',
+    neutral: 'rgba(74,0,224,0.08)',
   },
   dark: {
     primary: '#6b5bff',

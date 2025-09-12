@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Switch,
   Alert,
+  StatusBar,
 } from 'react-native';
 import {
   useNavigation,
@@ -20,7 +21,7 @@ import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import AppImage from 'component/allImage';
 
-const BASE_URL = 'http://localhost:5000/api/auth';
+const BASE_URL = 'http://192.168.100.137:5000/api/auth';
 const { width } = Dimensions.get('window');
 const cardWidth = width * 0.9;
 const boxSize = cardWidth / 8;
@@ -33,12 +34,25 @@ const LoginScreen = () => {
   const themeColors = isDarkMode ? colors.dark : colors.light;
   const [formData, setFormData] = useState({
     phone: initialPhone,
-    pin: ['', '', '', '', '', ''], // Ensure pin is always an array
+    pin: ['', '', '', '', '', ''],
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [requirePinOnOpen, setRequirePinOnOpen] = useState(true);
   const inputRefs = useRef([]);
+
+  // Temporary useEffect to clear AsyncStorage for testing
+  useEffect(() => {
+    const clearAsyncStorage = async () => {
+      try {
+        await AsyncStorage.clear();
+        console.log('AsyncStorage cleared for testing');
+      } catch (error) {
+        console.error('Error clearing AsyncStorage:', error);
+      }
+    };
+    clearAsyncStorage();
+  }, []); // Comment out this useEffect after testing
 
   useEffect(() => {
     const checkAutoLogin = async () => {
@@ -68,6 +82,7 @@ const LoginScreen = () => {
               console.log('Token invalid or expired, clearing AsyncStorage');
               await AsyncStorage.removeItem('token');
               await AsyncStorage.removeItem('user');
+              setFormData((prev) => ({ ...prev, phone: '' })); // Clear phone field
             }
           } else {
             console.log('No token found, staying on Login');
@@ -83,7 +98,7 @@ const LoginScreen = () => {
                 setFormData((prev) => ({
                   ...prev,
                   phone: user.phone,
-                  pin: prev.pin || ['', '', '', '', '', ''], // Ensure pin is preserved
+                  pin: prev.pin || ['', '', '', '', '', ''],
                 }));
               }
             }
@@ -194,8 +209,27 @@ const LoginScreen = () => {
     }
   };
 
+  const handleSignUpNavigation = () => {
+    try {
+      console.log('Attempting to navigate to SignUp');
+      navigation.navigate('SignUp');
+      console.log('Navigation to SignUp triggered');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert(
+        'Navigation Error',
+        'Failed to navigate to Sign Up screen. Please try again.'
+      );
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.primary }]}>
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
       <AppImage style={{ width: 200, height: 200 }} />
       <View
         style={[styles.cardContainer, { backgroundColor: themeColors.primary }]}
@@ -203,6 +237,11 @@ const LoginScreen = () => {
         <View style={[styles.card, { backgroundColor: themeColors.card }]}>
           <Text style={[styles.title, { color: themeColors.heading }]}>
             Login
+          </Text>
+          <Text
+            style={{ marginVertical: 15, fontSize: 16, textAlign: 'center' }}
+          >
+            Please Enter Your Pin
           </Text>
           {error ? (
             <Text style={[styles.error, { color: themeColors.destructive }]}>
@@ -279,7 +318,10 @@ const LoginScreen = () => {
               </Text>
             )}
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={handleSignUpNavigation}
+          >
             <Text style={[styles.linkText, { color: themeColors.button }]}>
               New user? Sign Up
             </Text>
@@ -362,6 +404,9 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  linkButton: {
+    padding: 10,
   },
   linkText: {
     fontSize: 14,

@@ -8,16 +8,17 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import AppImage from 'component/allImage';
 
-const BASE_URL = 'http://localhost:5000/api/auth'; // Updated to match SignUpScreen endpoint
+const BASE_URL = 'http://192.168.100.137:5000/api/auth'; // Updated to match SignUpScreen endpoint
 const { width } = Dimensions.get('window');
 const cardWidth = width * 0.9;
-const boxSize = cardWidth / 8; // Size for each OTP box
+const boxSize = cardWidth / 9; // Size for each OTP box
 
 const VerifyCodeScreen = () => {
   const navigation = useNavigation();
@@ -157,6 +158,12 @@ const VerifyCodeScreen = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.primary }]}>
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="transparent"
+      />
+
       <AppImage style={{ width: 200, height: 200 }} />
       <View
         style={[styles.cardContainer, { backgroundColor: themeColors.primary }]}

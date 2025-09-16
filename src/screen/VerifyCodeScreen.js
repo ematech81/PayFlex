@@ -284,11 +284,11 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   otpInput: {
-    width: boxSize,
-    height: boxSize,
+    width: 45,
+    height: 45,
     borderRadius: 8,
     borderWidth: 1,
-    fontSize: 20,
+    fontSize: 16,
     textAlign: 'center',
   },
   button: {

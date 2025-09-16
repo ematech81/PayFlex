@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -21,7 +22,7 @@ import AppImage from 'component/allImage';
 const { width } = Dimensions.get('window');
 const cardWidth = width * 0.9;
 const boxSize = cardWidth / 8;
-const BASE_URL = 'http://192.168.43.99:5000/api/auth';
+const BASE_URL = 'http://192.168.100.137:5000/api/auth';
 
 const SignUpScreen = () => {
   const navigation = useNavigation();
@@ -195,11 +196,17 @@ const SignUpScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
     >
+      <StatusBar
+        barStyle="light-content"
+        translucent
+        backgroundColor="#4a00e0"
+      />
+
+      <AppImage style={{ width: 200, height: 200 }} />
       <ScrollView
         style={[styles.container, { backgroundColor: themeColors.primary }]}
         contentContainerStyle={styles.contentContainer}
       >
-        <AppImage style={{ width: 200, height: 200 }} />
         <View
           style={[
             styles.cardContainer,
@@ -339,12 +346,12 @@ const SignUpScreen = () => {
             style={[styles.modalCard, { backgroundColor: themeColors.card }]}
           >
             <Text style={[styles.modalTitle, { color: themeColors.heading }]}>
-              Create Transaction PIN
+              Create Login PIN
             </Text>
             <Text
               style={[styles.modalSubtitle, { color: themeColors.subheading }]}
             >
-              Enter a 6-digit PIN for transaction authorization
+              Create a 6-digit PIN for login authorization
             </Text>
             {error ? (
               <Text style={[styles.error, { color: themeColors.destructive }]}>
@@ -376,6 +383,11 @@ const SignUpScreen = () => {
                 />
               ))}
             </View>
+            <Text
+              style={[styles.modalSubtitle, { color: themeColors.subheading }]}
+            >
+              Confirm PIN
+            </Text>
             <View style={styles.pinContainer}>
               {confirmPin.map((digit, index) => (
                 <TextInput
@@ -426,8 +438,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 100, // Extra padding to ensure content is scrollable above keyboard
+    // paddingBottom: 100, // Extra padding to ensure content is scrollable above keyboard
   },
   cardContainer: {
     justifyContent: 'center',
@@ -435,15 +446,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   card: {
-    width: cardWidth,
-    borderRadius: 10,
+    width: '100%',
+
     padding: 20,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
   },
   title: {
     fontSize: 24,
@@ -469,11 +475,11 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   pinInput: {
-    width: boxSize,
-    height: boxSize,
+    width: 45,
+    height: 45,
     borderRadius: 8,
     borderWidth: 1,
-    fontSize: 20,
+    fontSize: 16,
     textAlign: 'center',
   },
   button: {

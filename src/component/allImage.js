@@ -1,14 +1,17 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View, Image, Dimensions } from 'react-native';
 import React from 'react';
-import { Image } from 'react-native';
 
-const AppImage = ({ style }) => {
+const { width } = Dimensions.get('window');
+
+const logoSize = width < 400 ? 250 : 500; // Smaller logo for smaller screens
+
+const AppImage = ({ style, containerStyle }) => {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       <Image
-        source={require('../asset/mainAppIconNoBG.png')}
-        style={style}
-        resizeMode="cover"
+        source={require('../asset/appIcon.png')}
+        style={[styles.image, { width: logoSize, height: logoSize }, style]}
+        resizeMode="contain"
       />
     </View>
   );
@@ -20,6 +23,17 @@ const styles = StyleSheet.create({
   container: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
+    width: '100%', // Ensures the container spans the parent width
+    backgroundColor: '#4a00e0', // Ensures no background colo
+    // maxHeight: 200,
+  },
+  image: {
+    // Default size is handled via the size prop
+    // Add a subtle shadow for visual enhancement (optional)
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5, // For Android shadow
   },
 });

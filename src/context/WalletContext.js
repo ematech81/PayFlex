@@ -4,8 +4,10 @@ import React, {
   useState,
   useReducer,
   useCallback,
+  useEffect,
 } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WalletContext = createContext();
 
@@ -73,6 +75,49 @@ export const WalletProvider = ({ children }) => {
     invoiceReducer,
     initialInvoiceState
   );
+  const [wallet, setWallet] = useState({
+    token: null,
+    user: null,
+  });
+
+  // Load stored data on app startup
+  useEffect(() => {
+    const loadStoredData = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const user = await AsyncStorage.getItem('user');
+        if (token && user) {
+          setWallet({
+            token,
+            user: JSON.parse(user),
+          });
+        }
+      } catch (error) {
+        console.error('Error loading stored data:', error);
+      }
+    };
+    loadStoredData();
+  }, []);
+
+  const login = async (token, user) => {
+    try {
+      await AsyncStorage.setItem('token', token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+      setWallet({ token, user });
+    } catch (error) {
+      console.error('Error storing login data:', error);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('user');
+      setWallet({ token: null, user: null });
+    } catch (error) {
+      console.error('Error clearing stored data:', error);
+    }
+  };
 
   const calculateInvoice = useCallback((products, discount, tax) => {
     const subtotal = products.reduce(
@@ -181,6 +226,9 @@ export const WalletProvider = ({ children }) => {
     updateCustomer,
     deleteCustomer,
     calculateInvoice,
+    wallet,
+    login,
+    logout,
   };
 
   return (

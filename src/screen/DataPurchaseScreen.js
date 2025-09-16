@@ -31,7 +31,7 @@ const providers = [
   },
 ];
 
-const BASE_URL = 'http://192.168.43.99:5000/api/payments';
+const BASE_URL = 'http://192.168.100.137:5000/api/';
 
 export default function DataPurchaseScreen({ navigation }) {
   const [selectedTab, setSelectedTab] = useState('local');
@@ -81,13 +81,13 @@ export default function DataPurchaseScreen({ navigation }) {
     }
   };
 
-  // useEffect(() => {
-  //   (async () => {
-  //     const data = await fetchDataPlans(selectedProvider);
-  //     console.log('data retured', data);
-  //     setPlans(data);
-  //   })();
-  // }, [selectedProvider, selectedTab]);
+  useEffect(() => {
+    (async () => {
+      const data = await fetchDataPlans(selectedProvider);
+      console.log('data retured', data);
+      setPlans(data);
+    })();
+  }, [selectedProvider, selectedTab]);
 
   const handlePurchase = async () => {
     try {

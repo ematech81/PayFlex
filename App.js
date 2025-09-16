@@ -40,6 +40,7 @@ import InvoiceTabScreen from './src/screen/InvoiceTabScreen';
 import InvoiceCreationScreen from './src/screen/InvoiceCreationScreen';
 import InvoiceProcessingScreen from './src/screen/InvoiceProcessingScreen';
 import InvoiceDetailsScreen from 'screen/InvoiceDetailScreen';
+import TransactionDetailsScreen from 'screen/TransactionDetailsScreen';
 
 // 👇 Keep splash screen visible until resources load
 // SplashScreen.preventAutoHideAsync();
@@ -207,6 +208,10 @@ export default function App() {
               <Stack.Screen
                 name="InvoiceProcessing"
                 component={InvoiceProcessingScreen}
+              />
+              <Stack.Screen
+                name="TranactionDetails"
+                component={TransactionDetailsScreen}
               />
             </Stack.Navigator>
           </NavigationContainer>

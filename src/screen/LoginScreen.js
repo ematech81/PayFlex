@@ -10,6 +10,7 @@ import {
   Switch,
   Alert,
   StatusBar,
+  SafeAreaView,
 } from 'react-native';
 import {
   useNavigation,
@@ -20,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import AppImage from 'component/allImage';
+import { useWallet } from 'context/WalletContext';
 
 const BASE_URL = 'http://192.168.100.137:5000/api/auth';
 const { width } = Dimensions.get('window');
@@ -39,20 +41,22 @@ const LoginScreen = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [requirePinOnOpen, setRequirePinOnOpen] = useState(true);
+  const { wallet, login } = useWallet();
+
   const inputRefs = useRef([]);
 
   // Temporary useEffect to clear AsyncStorage for testing
-  useEffect(() => {
-    const clearAsyncStorage = async () => {
-      try {
-        await AsyncStorage.clear();
-        console.log('AsyncStorage cleared for testing');
-      } catch (error) {
-        console.error('Error clearing AsyncStorage:', error);
-      }
-    };
-    clearAsyncStorage();
-  }, []); // Comment out this useEffect after testing
+  // useEffect(() => {
+  //   const clearAsyncStorage = async () => {
+  //     try {
+  //       await AsyncStorage.clear();
+  //       console.log('AsyncStorage cleared for testing');
+  //     } catch (error) {
+  //       console.error('Error clearing AsyncStorage:', error);
+  //     }
+  //   };
+  //   clearAsyncStorage();
+  // }, []); // Comment out this useEffect after testing
 
   useEffect(() => {
     const checkAutoLogin = async () => {
@@ -150,8 +154,8 @@ const LoginScreen = () => {
       console.log('Login response:', data);
 
       if (response.ok) {
-        await AsyncStorage.setItem('token', data.token);
-        await AsyncStorage.setItem('user', JSON.stringify(data.user));
+        // Update WalletContext with token and user
+        await login(data.token, data.user);
         console.log('Login successful, navigating to MainTabs -> Home');
         navigation.dispatch(
           CommonActions.reset({
@@ -185,6 +189,70 @@ const LoginScreen = () => {
       setIsLoading(false);
     }
   };
+
+  // const handleLogin = async () => {
+  //   const pin = formData.pin.join('');
+  //   if (
+  //     !formData.phone ||
+  //     !pin.trim() ||
+  //     pin.length !== 6 ||
+  //     !/^\d{6}$/.test(pin)
+  //   ) {
+  //     setError('Phone number and PIN must be exactly 6 digits.');
+  //     return;
+  //   }
+  //   setError('');
+  //   setIsLoading(true);
+
+  //   try {
+  //     console.log('Sending login payload:', { phone: formData.phone, pin });
+  //     const response = await fetch(`${BASE_URL}/login`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ phone: formData.phone, pin }),
+  //     });
+
+  //     const data = await response.json();
+  //     console.log('Login response:', data);
+
+  //     if (response.ok) {
+  //       await AsyncStorage.setItem('token', data.token);
+  //       await AsyncStorage.setItem('user', JSON.stringify(data.user));
+  //       console.log('Login successful, navigating to MainTabs -> Home');
+  //       navigation.dispatch(
+  //         CommonActions.reset({
+  //           index: 0,
+  //           routes: [
+  //             { name: 'MainTabs', state: { routes: [{ name: 'Home' }] } },
+  //           ],
+  //         })
+  //       );
+  //     } else if (data.code === 'PHONE_NOT_VERIFIED') {
+  //       setError(data.message);
+  //       Alert.alert('Phone Not Verified', data.message, [
+  //         {
+  //           text: 'Verify Now',
+  //           onPress: () =>
+  //             navigation.navigate('VerifyCode', {
+  //               userId: data.userId,
+  //               phone: data.phone,
+  //               email: data.user?.email || '',
+  //             }),
+  //         },
+  //         { text: 'Cancel' },
+  //       ]);
+  //     } else {
+  //       setError(data.message || 'Login failed. Please try again.');
+  //     }
+  //   } catch (error) {
+  //     setError('An error occurred. Please try again later.');
+  //     console.error('Login error:', error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   const handlePinChange = (text, index) => {
     if (/[^0-9]/.test(text)) return;
@@ -224,25 +292,36 @@ const LoginScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.primary }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: themeColors.card }]}
+    >
       <StatusBar
         barStyle="light-content"
         translucent
-        backgroundColor="transparent"
+        backgroundColor="#4a00e0"
       />
-      <AppImage style={{ width: 200, height: 200 }} />
+
+      <View
+        style={[styles.contentHeader, { backgroundColor: themeColors.primary }]}
+      >
+        <View
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        >
+          <AppImage />
+          <Text style={[styles.welcomeText, { color: themeColors.card }]}>
+            Welcome Back Emmanuel
+          </Text>
+
+          <Text style={[styles.text, { color: themeColors.border }]}>
+            Please Enter Your 6 digits PIN to Login
+          </Text>
+        </View>
+      </View>
+
       <View
         style={[styles.cardContainer, { backgroundColor: themeColors.primary }]}
       >
         <View style={[styles.card, { backgroundColor: themeColors.card }]}>
-          <Text style={[styles.title, { color: themeColors.heading }]}>
-            Login
-          </Text>
-          <Text
-            style={{ marginVertical: 15, fontSize: 16, textAlign: 'center' }}
-          >
-            Please Enter Your Pin
-          </Text>
           {error ? (
             <Text style={[styles.error, { color: themeColors.destructive }]}>
               {error}
@@ -328,30 +407,42 @@ const LoginScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
     flex: 1,
+  },
+  contentHeader: {
+    padding: 20,
+    width: '100%',
+    minHeight: '50%',
+    alignItems: 'center',
+    justifyCntent: 'center',
   },
   cardContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 20,
   },
+  welcomeText: {
+    fontSize: 18,
+    marginVertical: 5,
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  text: {
+    fontSize: 14,
+    marginBottom: 5,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
   card: {
-    width: cardWidth,
-    borderRadius: 10,
+    width: '100%',
     padding: 20,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
   },
   title: {
     fontSize: 24,
@@ -377,11 +468,11 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   pinInput: {
-    width: boxSize,
-    height: boxSize,
+    width: 43,
+    height: 43,
     borderRadius: 8,
     borderWidth: 1,
-    fontSize: 20,
+    fontSize: 16,
     textAlign: 'center',
   },
   switchContainer: {

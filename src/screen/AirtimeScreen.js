@@ -20,8 +20,10 @@ import { useThem } from 'constants/useTheme';
 import ActionModal from 'constants/ActionModal';
 import { formatCurrency } from 'constants/formatCurrency';
 import { useWallet } from 'context/WalletContext';
+import EvilIcons from '@expo/vector-icons/EvilIcons';
 
-const BASE_URL = 'http://192.168.100.137:5000/api';
+const BASE_URL = 'http://192.168.100.137:5000/api/payments';
+const BASE_URL_Tnx = 'http://192.168.100.137:5000/api/auth';
 const { width, height } = Dimensions.get('window');
 const CARD_PADDING = 13;
 const ICON_SIZE = 19;
@@ -29,7 +31,7 @@ const ICON_SIZE = 19;
 export default function AirtimeScreen({ navigation }) {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
-  const { wallet } = useWallet();
+  const { wallet, updateTransactionPinStatus } = useWallet();
 
   const [selectedTab, setSelectedTab] = useState('Local');
   const [phone, setPhone] = useState('');
@@ -40,7 +42,8 @@ export default function AirtimeScreen({ navigation }) {
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [modalActions, setModalActions] = useState([]);
   const [pin, setPin] = useState('');
-  const [selectedAmount, setSelectedAmount] = useState(''); // Store selected amount for modal
+  const [selectedAmount, setSelectedAmount] = useState('');
+  const [pinError, setPinError] = useState(''); // Track PIN errors
 
   const amounts = ['50', '100', '200', '500', '1000', '2000'];
 
@@ -157,7 +160,9 @@ export default function AirtimeScreen({ navigation }) {
               Wallet Balance:
             </Text>
             <Text style={[styles.modalValue, { color: themeColors.heading }]}>
-              ₦0.00
+              {wallet?.user?.walletBalance
+                ? formatCurrency(wallet.user.walletBalance, 'NGN')
+                : '₦0.00'}
             </Text>
           </View>
         ),
@@ -178,6 +183,54 @@ export default function AirtimeScreen({ navigation }) {
           </View>
         ),
         onPress: () => {
+          if (!wallet.transactionPinSet) {
+            setModalActions([
+              {
+                label:
+                  'Transaction PIN not set. Please create a PIN to proceed.',
+                onPress: () => {},
+                style: { color: themeColors.destructive },
+              },
+              {
+                label: (
+                  <View
+                    style={[
+                      styles.payButton,
+                      { backgroundColor: themeColors.primary },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        {
+                          color: themeColors.card,
+                          fontWeight: 'bold',
+                          fontSize: 16,
+                        },
+                      ]}
+                    >
+                      Create Transaction PIN
+                    </Text>
+                  </View>
+                ),
+                onPress: () => {
+                  setModalVisible(false);
+                  navigation.navigate('SetTransactionPin', {
+                    onSuccess: () => {
+                      updateTransactionPinStatus();
+                      setModalVisible(true);
+                    },
+                  });
+                },
+              },
+              {
+                label: 'Cancel',
+                onPress: () => setModalVisible(false),
+                style: { color: themeColors.destructive },
+              },
+            ]);
+            setModalVisible(true);
+            return;
+          }
           setModalVisible(false);
           setPinModalVisible(true);
         },
@@ -192,32 +245,43 @@ export default function AirtimeScreen({ navigation }) {
   };
 
   const handlePinSubmit = async () => {
-    // Placeholder PIN validation (replace with backend call to /verify-transaction-pin)
-    if (pin !== '1234') {
-      setModalActions([
-        {
-          label: 'Incorrect PIN. Please try again.',
-          onPress: () => {},
-          style: { color: themeColors.destructive },
-        },
-        { label: 'OK', onPress: () => setPinModalVisible(true) },
-      ]);
-      setPinModalVisible(false);
-      setModalVisible(true);
+
+    console.log('Starting transaction PIN verification', {
+      pin,
+      baseUrl: BASE_URL,
+      token: wallet.token,
+    });
+    setPinError('');
+    setIsLoading(true);
+    if (!pin || !/^\d{4}$/.test(pin)) {
+      setPinError('Please enter a valid 4-digit PIN');
       return;
     }
-
-    setPinModalVisible(false);
+    setPinError('');
     setIsLoading(true);
-    setModalVisible(true); // Reopen confirmation modal
 
     try {
+      // Verify transaction PIN
+      const pinResponse = await axios.post(
+        `${BASE_URL}/verify-transaction-pin`,
+        { pin },
+        { headers: { Authorization: `Bearer ${wallet.token}` } }
+      );
+
+      if (!pinResponse.data.success) {
+        setPinError(pinResponse.data.message || 'Invalid Transaction PIN');
+        setIsLoading(false);
+        return;
+      }
+
+      // Proceed with airtime purchase
       const response = await axios.post(
-        `${BASE_URL}/payments/buy-airtime`,
+        `${BASE_URL}/buy-airtime`,
         {
           phoneNumber: phone,
           amount: Number(selectedAmount),
           network: provider,
+          pin,
         },
         {
           headers: {
@@ -225,6 +289,9 @@ export default function AirtimeScreen({ navigation }) {
           },
         }
       );
+
+      setPinModalVisible(false);
+      setModalVisible(true);
 
       if (response.data.success) {
         setModalActions([
@@ -239,7 +306,7 @@ export default function AirtimeScreen({ navigation }) {
                 reference: response.data.data.reference,
               }),
           },
-          { label: 'OK', onPress: () => navigation.navigate('Home') },
+          { label: 'OK', onPress: () => setModalVisible(false) },
         ]);
       } else {
         setModalActions([
@@ -248,10 +315,13 @@ export default function AirtimeScreen({ navigation }) {
             onPress: () => {},
             style: { color: themeColors.destructive },
           },
-          { label: 'OK', onPress: () => {} },
+          { label: 'OK', onPress: () => setModalVisible(false) },
         ]);
       }
+      setPin(''); // Clear PIN only after successful purchase
     } catch (error) {
+      setPinModalVisible(false);
+      setModalVisible(true);
       setModalActions([
         {
           label: `Error: ${error.response?.data?.message || 'Network error'}`,
@@ -260,10 +330,17 @@ export default function AirtimeScreen({ navigation }) {
         },
         { label: 'OK', onPress: () => setModalVisible(false) },
       ]);
+      setPin(''); // Clear PIN on network error
     } finally {
       setIsLoading(false);
-      setPin('');
     }
+  };
+
+  const handleForgotPin = () => {
+    setPin('');
+    setPinError('');
+    setPinModalVisible(false);
+    navigation.navigate('ResetPin', { pinType: 'transaction' });
   };
 
   return (
@@ -320,7 +397,7 @@ export default function AirtimeScreen({ navigation }) {
               },
             ]}
             onPress={() => setSelectedTab('International')}
-            disabled // Disable until international flow is implemented
+            disabled
           >
             <Text
               style={[
@@ -486,10 +563,25 @@ export default function AirtimeScreen({ navigation }) {
         isVisible={pinModalVisible}
         onClose={() => {
           setPin('');
+          setPinError('');
           setPinModalVisible(false);
-          setModalVisible(true); // Reopen confirmation modal
+          setModalVisible(true);
         }}
         actions={[
+          {
+            label: (
+              <View style={styles.closeBtn}>
+                <EvilIcons name="close-o" size={20} color="#4a00c0" />
+              </View>
+            ),
+            onPress: () => {
+              setPin('');
+              setPinError('');
+              setPinModalVisible(false);
+              setModalVisible(true);
+            },
+            style: { color: themeColors.destructive },
+          },
           {
             label: (
               <View style={styles.pinModalWrapper}>
@@ -522,6 +614,16 @@ export default function AirtimeScreen({ navigation }) {
                   onChangeText={setPin}
                   accessibilityLabel="Transaction PIN input"
                 />
+                {pinError ? (
+                  <Text
+                    style={[
+                      styles.errorText,
+                      { color: themeColors.destructive, marginTop: 10 },
+                    ]}
+                  >
+                    {pinError}
+                  </Text>
+                ) : null}
               </View>
             ),
             onPress: () => {},
@@ -531,36 +633,92 @@ export default function AirtimeScreen({ navigation }) {
               <View
                 style={[
                   styles.payButton,
-                  { backgroundColor: themeColors.primary },
+                  {
+                    backgroundColor: isLoading
+                      ? themeColors.subtext
+                      : themeColors.primary,
+                  },
                 ]}
               >
-                <Text
-                  style={[
-                    {
-                      color: themeColors.card,
-                      fontWeight: 'bold',
-                      fontSize: 16,
-                    },
-                  ]}
-                >
-                  Submit
-                </Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={themeColors.card} />
+                ) : (
+                  <Text
+                    style={[
+                      {
+                        color: themeColors.card,
+                        fontWeight: 'bold',
+                        fontSize: 16,
+                      },
+                    ]}
+                  >
+                    Submit
+                  </Text>
+                )}
               </View>
             ),
             onPress: handlePinSubmit,
           },
-          {
-            label: 'Cancel',
-            onPress: () => {
-              setPin('');
-              setPinModalVisible(false);
-              setModalVisible(false); // Reopen confirmation modal
-            },
-            style: { color: themeColors.destructive },
-          },
+
+          ...(wallet.transactionPinSet
+            ? [
+                {
+                  label: (
+                    <View style={[styles.actionButton]}>
+                      <Text
+                        style={[
+                          {
+                            color: themeColors.button,
+                            fontSize: 14,
+                            fontWeight: 'bold',
+                          },
+                        ]}
+                      >
+                        Forgot PIN?
+                      </Text>
+                    </View>
+                  ),
+                  onPress: handleForgotPin,
+                },
+              ]
+            : [
+                {
+                  label: (
+                    <View
+                      style={[
+                        styles.actionButton,
+                        { backgroundColor: themeColors.primary },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          {
+                            color: themeColors.card,
+                            fontSize: 14,
+                            fontWeight: '600',
+                          },
+                        ]}
+                      >
+                        Create Transaction PIN
+                      </Text>
+                    </View>
+                  ),
+                  onPress: () => {
+                    setPin('');
+                    setPinError('');
+                    setPinModalVisible(false);
+                    navigation.navigate('SetTransactionPin', {
+                      onSuccess: () => {
+                        updateTransactionPinStatus();
+                        setModalVisible(true);
+                      },
+                    });
+                  },
+                },
+              ]),
         ]}
         isDarkMode={isDarkMode}
-        style={styles.pinModal} // Smaller modal for PIN
+        style={styles.pinModal}
       />
     </SafeAreaView>
   );
@@ -735,28 +893,40 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     borderRadius: 10,
   },
-  pinInput: {
-    width: 200,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 8,
-    marginLeft: 10,
-    textAlign: 'center',
-    fontSize: 16,
-  },
   payButton: {
+    paddingHorizontal: 20,
     paddingVertical: 10,
-    paddingHorizontal: 22,
     borderRadius: 10,
     alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    alignSelf: 'center',
-    marginVertical: 10,
   },
   pinModalWrapper: {
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
+  },
+  pinInput: {
+    width: 120,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 8,
+    textAlign: 'center',
+    fontSize: 16,
+  },
+
+  actionButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  closeBtn: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: '100%',
+    paddingBottom: 20,
+    paddingHorizontal: 16,
   },
 });

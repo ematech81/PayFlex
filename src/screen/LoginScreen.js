@@ -128,12 +128,19 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     const pin = formData.pin.join('');
+    console.log('Starting login process', {
+      phone: formData.phone,
+      pin,
+      pinLength: pin.length,
+      isNumeric: /^\d{6}$/.test(pin),
+    });
     if (
       !formData.phone ||
       !pin.trim() ||
       pin.length !== 6 ||
       !/^\d{6}$/.test(pin)
     ) {
+      console.log('Validation failed: Phone or PIN invalid');
       setError('Phone number and PIN must be exactly 6 digits.');
       return;
     }
@@ -141,6 +148,30 @@ const LoginScreen = () => {
     setIsLoading(true);
 
     try {
+      // Verify login PIN
+      console.log('Verifying login PIN:', { phone: formData.phone, pin });
+      const pinResponse = await fetch(`${BASE_URL}/verify-login-pin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone: formData.phone, pin }),
+      });
+
+      const pinData = await pinResponse.json();
+      console.log('Verify login PIN response:', {
+        status: pinResponse.status,
+        data: pinData,
+      });
+
+      if (!pinResponse.ok || !pinData.success) {
+        console.log('PIN verification failed:', pinData.message);
+        setError(pinData.message || 'Invalid Login PIN');
+        setIsLoading(false);
+        return;
+      }
+
+      // Proceed with login
       console.log('Sending login payload:', { phone: formData.phone, pin });
       const response = await fetch(`${BASE_URL}/login`, {
         method: 'POST',
@@ -151,12 +182,13 @@ const LoginScreen = () => {
       });
 
       const data = await response.json();
-      console.log('Login response:', data);
+      console.log('Login response:', { status: response.status, data });
 
       if (response.ok) {
         // Update WalletContext with token and user
+        console.log('Login successful, updating WalletContext');
         await login(data.token, data.user);
-        console.log('Login successful, navigating to MainTabs -> Home');
+        console.log('Navigating to MainTabs -> Home');
         navigation.dispatch(
           CommonActions.reset({
             index: 0,
@@ -166,6 +198,7 @@ const LoginScreen = () => {
           })
         );
       } else if (data.code === 'PHONE_NOT_VERIFIED') {
+        console.log('Phone not verified:', data.message);
         setError(data.message);
         Alert.alert('Phone Not Verified', data.message, [
           {
@@ -180,79 +213,17 @@ const LoginScreen = () => {
           { text: 'Cancel' },
         ]);
       } else {
+        console.log('Login failed:', data.message);
         setError(data.message || 'Login failed. Please try again.');
       }
     } catch (error) {
+      console.error('Login error:', error.message);
       setError('An error occurred. Please try again later.');
-      console.error('Login error:', error);
     } finally {
       setIsLoading(false);
+      console.log('Login process completed');
     }
   };
-
-  // const handleLogin = async () => {
-  //   const pin = formData.pin.join('');
-  //   if (
-  //     !formData.phone ||
-  //     !pin.trim() ||
-  //     pin.length !== 6 ||
-  //     !/^\d{6}$/.test(pin)
-  //   ) {
-  //     setError('Phone number and PIN must be exactly 6 digits.');
-  //     return;
-  //   }
-  //   setError('');
-  //   setIsLoading(true);
-
-  //   try {
-  //     console.log('Sending login payload:', { phone: formData.phone, pin });
-  //     const response = await fetch(`${BASE_URL}/login`, {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify({ phone: formData.phone, pin }),
-  //     });
-
-  //     const data = await response.json();
-  //     console.log('Login response:', data);
-
-  //     if (response.ok) {
-  //       await AsyncStorage.setItem('token', data.token);
-  //       await AsyncStorage.setItem('user', JSON.stringify(data.user));
-  //       console.log('Login successful, navigating to MainTabs -> Home');
-  //       navigation.dispatch(
-  //         CommonActions.reset({
-  //           index: 0,
-  //           routes: [
-  //             { name: 'MainTabs', state: { routes: [{ name: 'Home' }] } },
-  //           ],
-  //         })
-  //       );
-  //     } else if (data.code === 'PHONE_NOT_VERIFIED') {
-  //       setError(data.message);
-  //       Alert.alert('Phone Not Verified', data.message, [
-  //         {
-  //           text: 'Verify Now',
-  //           onPress: () =>
-  //             navigation.navigate('VerifyCode', {
-  //               userId: data.userId,
-  //               phone: data.phone,
-  //               email: data.user?.email || '',
-  //             }),
-  //         },
-  //         { text: 'Cancel' },
-  //       ]);
-  //     } else {
-  //       setError(data.message || 'Login failed. Please try again.');
-  //     }
-  //   } catch (error) {
-  //     setError('An error occurred. Please try again later.');
-  //     console.error('Login error:', error);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
 
   const handlePinChange = (text, index) => {
     if (/[^0-9]/.test(text)) return;
@@ -311,9 +282,8 @@ const LoginScreen = () => {
           <Text style={[styles.welcomeText, { color: themeColors.card }]}>
             Welcome Back Emmanuel
           </Text>
-
           <Text style={[styles.text, { color: themeColors.border }]}>
-            Please Enter Your 6 digits PIN to Login
+            All In One App, Pay Securely With One Click
           </Text>
         </View>
       </View>
@@ -322,6 +292,11 @@ const LoginScreen = () => {
         style={[styles.cardContainer, { backgroundColor: themeColors.primary }]}
       >
         <View style={[styles.card, { backgroundColor: themeColors.card }]}>
+          <Text
+            style={[styles.textInstruction, { color: themeColors.heading }]}
+          >
+            Please Enter Your 6 digits PIN to Login
+          </Text>
           {error ? (
             <Text style={[styles.error, { color: themeColors.destructive }]}>
               {error}
@@ -342,7 +317,7 @@ const LoginScreen = () => {
               setFormData((prev) => ({ ...prev, phone: text }))
             }
             keyboardType="phone-pad"
-            editable={!formData.phone}
+            // editable={!formData.phone}
           />
           <View style={styles.pinContainer}>
             {(formData.pin || ['', '', '', '', '', '']).map((digit, index) => (
@@ -418,7 +393,7 @@ const styles = StyleSheet.create({
   contentHeader: {
     padding: 20,
     width: '100%',
-    minHeight: '50%',
+    minHeight: '45%',
     alignItems: 'center',
     justifyCntent: 'center',
   },
@@ -428,7 +403,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   welcomeText: {
-    fontSize: 18,
+    fontSize: 20,
     marginVertical: 5,
     textAlign: 'center',
     fontWeight: 'bold',
@@ -437,7 +412,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 5,
     textAlign: 'center',
+    fontWeight: '700',
+    fontStyle: 'italic',
+  },
+  textInstruction: {
+    fontSize: 15,
+    marginBottom: 5,
+    textAlign: 'center',
     fontWeight: '600',
+    marginBottom: 15,
   },
   card: {
     width: '100%',
@@ -502,6 +485,7 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     textDecorationLine: 'underline',
+    marginBottom: 10,
   },
 });
 

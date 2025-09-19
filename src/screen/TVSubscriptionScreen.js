@@ -19,7 +19,7 @@ const TVSubscriptionScreen = ({ navigation }) => {
 
   const backgroundColor = isDark ? '#121212' : '#f6f6f8';
   const textColor = isDark ? '#FFFFFF' : '#000000';
-  const primaryColor = '#512DA8'; // Deep purple for primary colors
+  const primaryColor = '#4a00e0'; // Deep purple for primary colors
   const cardColor = '#ffffff'; // Light purple for cards
 
   const [selectedProvider, setSelectedProvider] = useState('DStv');

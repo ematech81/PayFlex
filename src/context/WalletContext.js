@@ -8,8 +8,10 @@ import React, {
 } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
 const WalletContext = createContext();
+const BASE_URL = 'http://192.168.100.137:5000/api/auth';
 
 const initialInvoiceState = {
   invoices: [], // { id, customer, title, dueDate, currency, products, discount, tax, total, notes, paymentDetails, status }
@@ -78,6 +80,7 @@ export const WalletProvider = ({ children }) => {
   const [wallet, setWallet] = useState({
     token: null,
     user: null,
+    transactionPinSet: false,
   });
 
   // Load stored data on app startup
@@ -87,9 +90,16 @@ export const WalletProvider = ({ children }) => {
         const token = await AsyncStorage.getItem('token');
         const user = await AsyncStorage.getItem('user');
         if (token && user) {
+          const parsedUser = JSON.parse(user);
+          // Check if transaction PIN is set
+          const response = await axios.get(`${BASE_URL}/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const transactionPinSet = !!response.data.transactionPinSet;
           setWallet({
             token,
-            user: JSON.parse(user),
+            user: parsedUser,
+            transactionPinSet,
           });
         }
       } catch (error) {
@@ -103,7 +113,12 @@ export const WalletProvider = ({ children }) => {
     try {
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
-      setWallet({ token, user });
+      // Check if transaction PIN is set
+      const response = await axios.get(`${BASE_URL}/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const transactionPinSet = !!response.data.transactionPinSet;
+      setWallet({ token, user, transactionPinSet });
     } catch (error) {
       console.error('Error storing login data:', error);
     }
@@ -113,9 +128,23 @@ export const WalletProvider = ({ children }) => {
     try {
       await AsyncStorage.removeItem('token');
       await AsyncStorage.removeItem('user');
-      setWallet({ token: null, user: null });
+      setWallet({ token: null, user: null, transactionPinSet: false });
     } catch (error) {
       console.error('Error clearing stored data:', error);
+    }
+  };
+
+  const updateTransactionPinStatus = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/me`, {
+        headers: { Authorization: `Bearer ${wallet.token}` },
+      });
+      setWallet((prev) => ({
+        ...prev,
+        transactionPinSet: !!response.data.transactionPinSet,
+      }));
+    } catch (error) {
+      console.error('Error checking transaction PIN status:', error);
     }
   };
 
@@ -229,6 +258,7 @@ export const WalletProvider = ({ children }) => {
     wallet,
     login,
     logout,
+    updateTransactionPinStatus,
   };
 
   return (

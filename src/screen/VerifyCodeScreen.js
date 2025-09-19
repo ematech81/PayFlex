@@ -218,17 +218,14 @@ const VerifyCodeScreen = () => {
             )}
           </TouchableOpacity>
           <TouchableOpacity
-            style={[
-              styles.resendButton,
-              { backgroundColor: themeColors.button },
-            ]}
+            style={[styles.resendButton]}
             onPress={handleResendOTP}
             disabled={isResending || resendCooldown > 0}
           >
             {isResending ? (
               <ActivityIndicator color={themeColors.card} />
             ) : (
-              <Text style={[styles.buttonText, { color: themeColors.card }]}>
+              <Text style={[styles.buttonText, { color: themeColors.primary }]}>
                 {resendCooldown > 0
                   ? `Resend OTP (${resendCooldown}s)`
                   : 'Resend OTP'}

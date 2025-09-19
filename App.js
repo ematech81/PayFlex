@@ -41,6 +41,8 @@ import InvoiceCreationScreen from './src/screen/InvoiceCreationScreen';
 import InvoiceProcessingScreen from './src/screen/InvoiceProcessingScreen';
 import InvoiceDetailsScreen from 'screen/InvoiceDetailScreen';
 import TransactionDetailsScreen from 'screen/TransactionDetailsScreen';
+import SetTransactionPinScreen from 'screen/SetTransactionPinScreen';
+import ResetPinScreen from 'screen/ResetPinScreen';
 
 // 👇 Keep splash screen visible until resources load
 // SplashScreen.preventAutoHideAsync();
@@ -213,6 +215,11 @@ export default function App() {
                 name="TranactionDetails"
                 component={TransactionDetailsScreen}
               />
+              <Stack.Screen
+                name="SetTransactionPin"
+                component={SetTransactionPinScreen}
+              />
+              <Stack.Screen name="ResetPin" component={ResetPinScreen} />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

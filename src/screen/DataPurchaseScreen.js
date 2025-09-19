@@ -31,8 +31,7 @@ const providers = [
   },
 ];
 
-const BASE_URL = 'http://192.168.100.137:5000/api/';
-
+const BASE_URL = 'http://192.168.100.137:5000/api/payments';
 export default function DataPurchaseScreen({ navigation }) {
   const [selectedTab, setSelectedTab] = useState('local');
   const [selectedProvider, setSelectedProvider] = useState('mtn');
@@ -138,7 +137,7 @@ export default function DataPurchaseScreen({ navigation }) {
         style={{ alignSelf: 'start', marginTop: 20, marginBottom: 10 }}
       />
       <View style={{ marginVertical: 20, paddingHorizontal: 16 }}>
-        <Text style={{ textAlign: 'left', fontWeight: 'bold', fontSize: 20 }}>
+        <Text style={{ textAlign: 'left', fontWeight: 'bold', fontSize: 24 }}>
           Data Subscription
         </Text>
       </View>
@@ -186,7 +185,7 @@ export default function DataPurchaseScreen({ navigation }) {
                 backgroundColor: 'transparent',
                 alignItems: 'center',
               },
-              selectedProvider === p.id && { backgroundColor: '#f3aeaeff' },
+              selectedProvider === p.id && { backgroundColor: '#fffff' },
             ]}
             onPress={() => setSelectedProvider(p.id)}
           >

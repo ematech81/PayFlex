@@ -56,7 +56,7 @@ const CustomerDetailsComponent = ({
         </View>
       ) : (
         <TouchableOpacity
-          style={[styles.selectButton, { backgroundColor: themeColors.button }]}
+          style={[styles.selectButton, { borderColor: themeColors.button }]}
           onPress={handleOpenModal}
         >
           <Text style={styles.selectButtonText}>Select Customer</Text>
@@ -77,9 +77,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', // Adjust based on theme if needed
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    marginTop: 20,
   },
   customerInfo: {
     padding: 12,
@@ -101,9 +102,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: 'center',
+    borderWidth: 1,
+
+    backgroundColor: 'transparent',
   },
   selectButtonText: {
-    color: '#fff',
+    color: '#999',
     fontSize: 16,
     fontWeight: '600',
   },

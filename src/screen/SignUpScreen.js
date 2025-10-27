@@ -22,7 +22,8 @@ import AppImage from 'component/allImage';
 const { width } = Dimensions.get('window');
 const cardWidth = width * 0.9;
 const boxSize = cardWidth / 8;
-const BASE_URL = 'http://192.168.100.137:5000/api/auth';
+const BASE_URL = 'http://192.168.100.210:5000/api/auth';
+// const BASE_URL = 'http://192.168.100.210:5000/api/auth';
 
 const SignUpScreen = () => {
   const navigation = useNavigation();

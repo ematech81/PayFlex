@@ -16,7 +16,7 @@ import { useWallet } from 'context/WalletContext';
 import axios from 'axios';
 import WelcomeComponent from 'component/WelcomeComponent';
 
-const BASE_URL = 'http://192.168.100.137:5000/api/auth';
+const BASE_URL = 'http://192.168.100.210:5000/api/auth';
 
 export default function SetTransactionPinScreen({ navigation, route }) {
   const { onSuccess } = route.params || {};

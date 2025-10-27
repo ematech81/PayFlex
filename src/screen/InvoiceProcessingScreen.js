@@ -11,7 +11,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useWallet } from 'context/WalletContext';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-import { formatCurrency } from 'constants/formatCurrency';
+import { formatCurrency } from 'CONSTANT/formatCurrency';
 import ReceiptModal from 'component/ReceiptModal';
 import AlertMessage from 'component/AlertMessage';
 import Separator from 'component/Separator';

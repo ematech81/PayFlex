@@ -1,18 +1,19 @@
-import { StyleSheet, View, Image, Dimensions } from 'react-native';
+import { StyleSheet, View, Image, Dimensions,ImageBackground } from 'react-native';
 import React from 'react';
 
 const { width } = Dimensions.get('window');
 
 const logoSize = width < 400 ? 250 : 500; // Smaller logo for smaller screens
 
-const AppImage = ({ style, containerStyle }) => {
+const AppImage = ({ style, containerStyle, children }) => {
   return (
     <View style={[styles.container, containerStyle]}>
-      <Image
+      <ImageBackground
         source={require('../asset/appIcon.png')}
         style={[styles.image, { width: logoSize, height: logoSize }, style]}
-        resizeMode="contain"
+        resizeMode="cover"
       />
+      {children}
     </View>
   );
 };

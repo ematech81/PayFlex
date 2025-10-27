@@ -1,4 +1,5 @@
-import React from 'react';
+// src/screen/HomeScreen.js
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   SafeAreaView,
   View,
@@ -7,8 +8,9 @@ import {
   Dimensions,
   StatusBar,
   TouchableOpacity,
-  FlatList,
   ScrollView,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -21,28 +23,43 @@ import {
   Entypo,
   Feather,
 } from '@expo/vector-icons';
-import PromoCarousel from 'component/promoCarousel';
 import { useNavigation } from '@react-navigation/native';
+import { useThem } from 'constants/useTheme';
+import { colors } from 'constants/colors';
+import { useWallet } from 'context/WalletContext';
+import { useWalletNavigation } from 'constants/useWalletNavigation';
+import { useWalletBalance } from 'HOOKS';
+// import { formatCurrency } from 'constants/formatCurrency';
 
-const { width } = Dimensions.get('window');
+// Shared Components
+// import { PromoCard } from 'components/shared';
+
+// Custom Hooks
+// import { useWalletBalance } from 'hooks';
+
+const { width, height } = Dimensions.get('window');
 const CARD_PADDING = 13;
 const ICON_SIZE = 19;
 
+// Services Configuration
 const services = [
   {
-    id: 'beting',
+    id: 'betting',
     label: 'Betting',
     icon: <FontAwesome name="soccer-ball-o" size={ICON_SIZE} />,
+    screen: null, // Not implemented yet
   },
   {
     id: 'jamb',
     label: 'JAMB',
     icon: <FontAwesome6 name="credit-card" size={ICON_SIZE} />,
+    screen: null, // Not implemented yet
   },
   {
     id: 'bills',
     label: 'Bills',
     icon: <Ionicons name="document-text" size={ICON_SIZE} />,
+    screen: null, // Not implemented yet
   },
   {
     id: 'tv',
@@ -54,29 +71,42 @@ const services = [
     id: 'flights',
     label: 'Flights',
     icon: <FontAwesome5 name="plane" size={ICON_SIZE} />,
+    screen: null, // Not implemented yet
   },
   {
     id: 'hotels',
     label: 'Hotels',
     icon: <Ionicons name="bed" size={ICON_SIZE} />,
+    screen: null, // Not implemented yet
   },
   {
     id: 'waec',
     label: 'WAEC',
-    icon: (
-      <MaterialCommunityIcons name="card-account-details" size={ICON_SIZE} />
-    ),
+    icon: <MaterialCommunityIcons name="card-account-details" size={ICON_SIZE} />,
+    screen: null, // Not implemented yet
   },
   {
     id: 'more',
     label: 'More',
     icon: <Feather name="more-vertical" size={ICON_SIZE} />,
+    screen: null, // Not implemented yet
   },
 ];
 
+// Quick Actions Configuration
 const quickActions = [
-  { label: 'Airtime', icon: 'call', bg: '#2563eb', screen: 'Airtime' },
-  { label: 'Data', icon: 'wifi', bg: '#f97316', screen: 'Data' },
+  { 
+    label: 'Airtime', 
+    icon: 'call', 
+    bg: '#2563eb', 
+    screen: 'Airtime' 
+  },
+  { 
+    label: 'Data', 
+    icon: 'wifi', 
+    bg: '#f97316', 
+    screen: 'Data' 
+  },
   {
     label: 'Electricity',
     icon: 'flash',
@@ -91,206 +121,496 @@ const quickActions = [
   },
 ];
 
-export default function HomeScreen() {
-  const navigation = useNavigation();
+/**
+ * Service Card Component (Memoized for performance)
+ */
+const ServiceCard = React.memo(({ service, onPress, themeColors }) => {
+  const isDisabled = !service.screen;
 
   return (
-    <>
+    <TouchableOpacity
+      style={styles.serviceCard}
+      onPress={onPress}
+      activeOpacity={0.7}
+      disabled={isDisabled}
+      accessibilityLabel={`${service.label} service`}
+      accessibilityRole="button"
+      accessibilityHint={
+        isDisabled 
+          ? 'Coming soon' 
+          : `Navigate to ${service.label} screen`
+      }
+      accessibilityState={{ disabled: isDisabled }}
+    >
+      <View style={styles.serviceIconWrap}>
+        <View
+          style={[
+            styles.iconCircle,
+            { 
+              backgroundColor: `${themeColors.primary}15`,
+              opacity: isDisabled ? 0.5 : 1,
+            },
+          ]}
+        >
+          {React.cloneElement(service.icon, { 
+            color: themeColors.primary 
+          })}
+        </View>
+        {isDisabled && (
+          <View style={[
+            styles.comingSoonBadge, 
+            { backgroundColor: themeColors.primary }
+          ]}>
+            <Text style={styles.comingSoonText}>Soon</Text>
+          </View>
+        )}
+      </View>
+      <Text 
+        style={[
+          styles.serviceLabel, 
+          { color: themeColors.heading }
+        ]}
+      >
+        {service.label}
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
+/**
+ * Quick Action Item Component (Memoized)
+ */
+const QuickActionItem = React.memo(({ action, onPress }) => (
+  <TouchableOpacity
+    style={styles.quickActionItem}
+    onPress={onPress}
+    activeOpacity={0.7}
+    accessibilityLabel={`${action.label} button`}
+    accessibilityRole="button"
+    accessibilityHint={`Navigate to ${action.label} screen`}
+  >
+    <View
+      style={[
+        styles.quickActionIcon,
+        { backgroundColor: action.bg },
+      ]}
+    >
+      <Ionicons name={action.icon} size={19} color="#fff" />
+    </View>
+    <Text style={styles.quickActionText}>{action.label}</Text>
+  </TouchableOpacity>
+));
+
+/**
+ * Enhanced HomeScreen Component
+ */
+export default function HomeScreen() {
+  const navigation = useNavigation();
+  const isDarkMode = useThem();
+  const themeColors = isDarkMode ? colors.dark : colors.light;
+  const { wallet } = useWalletNavigation();
+
+  // Custom Hook for wallet balance management
+  const {
+    balance,
+    formattedBalance,
+    isVisible: balanceVisible,
+    toggleVisibility,
+  } = useWalletBalance();
+
+  // State
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  /**
+   * Refresh handler
+   */
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    setError(null);
+    
+    try {
+      // TODO: Refresh wallet balance from API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (err) {
+      setError('Failed to refresh. Please try again.');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  /**
+   * Handle service navigation
+   */
+  const handleServicePress = useCallback((screen) => {
+    if (screen) {
+      navigation.navigate(screen);
+    }
+  }, [navigation]);
+
+  /**
+   * Handle quick action navigation
+   */
+  const handleQuickActionPress = useCallback((screen) => {
+    navigation.navigate(screen);
+  }, [navigation]);
+
+  /**
+   * Get greeting based on time
+   */
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  // Get user's first name
+  const userName = wallet?.user?.name?.split(' ')[0] || 'User';
+
+  return (
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: themeColors.primary }]}
+    >
       <StatusBar
-        barStyle="dark-content"
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor="transparent"
         translucent
       />
-      <LinearGradient
-        // soft premium light gradient background
-        colors={['#F7FBFF', '#F5F6FA', '#EFF6FF']}
-        style={styles.container}
+
+      {/* Header Section */}
+      <View style={styles.headerWrapper}>
+        {/* Top Bar */}
+        <View style={styles.header}>
+          <View style={styles.user}>
+            <View>
+              <Text style={[styles.greetingTime, { color: themeColors.card }]}>
+                {getGreeting()}
+              </Text>
+              <Text style={[styles.greeting, { color: themeColors.card }]}>
+                {userName} 👋
+              </Text>
+            </View>
+            <TouchableOpacity 
+              style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+              accessibilityLabel="Notifications"
+              accessibilityRole="button"
+            >
+              <Ionicons name="notifications-outline" size={20} color="#ffffff" />
+              {/* Notification Badge */}
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>3</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Enhanced Wallet Card with Glassmorphism */}
+        <View style={styles.walletWrapper}>
+          <LinearGradient
+            colors={[
+              `${themeColors.primary}E6`,
+              `${themeColors.button}CC`,
+            ]}
+            start={[0, 0]}
+            end={[1, 1]}
+            style={styles.walletGradient}
+          >
+            <View style={styles.walletInner}>
+              {/* Top Section */}
+              <View style={styles.walletTop}>
+                <View style={styles.historyContainer}>
+                  <View style={styles.balanceContainer}>
+                    <Text style={styles.walletLabel}>
+                      Wallet Balance
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.balanceToggle}
+                      onPress={toggleVisibility}
+                      accessibilityLabel={
+                        balanceVisible ? 'Hide balance' : 'Show balance'
+                      }
+                      accessibilityRole="button"
+                    >
+                      <Entypo
+                        name={balanceVisible ? 'eye' : 'eye-with-line'}
+                        size={20}
+                        color="rgba(255,255,255,0.9)"
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.historyBtn}
+                    onPress={() => navigation.navigate('Orders')}
+                    accessibilityLabel="View transaction history"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.historyText}>History</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Balance Display */}
+                <View style={styles.balanceWrapper}>
+                  {isLoading ? (
+                    <ActivityIndicator size="large" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.walletAmount}>
+                      {formattedBalance}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Actions */}
+                <View style={styles.walletActions}>
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    onPress={() => navigation.navigate('Wallet')}
+                    activeOpacity={0.8}
+                    accessibilityLabel="Top up wallet"
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="add-circle" size={18} color="#ffffff" />
+                    <Text style={styles.topText}>Top up</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.cardDetails}
+                    onPress={() => navigation.navigate('Wallet')}
+                    accessibilityLabel="View linked card details"
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.actionText}>
+                      Linked Card *****78903
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      </View>
+
+      {/* Main Content */}
+      <View
+        style={[
+          styles.mainContent,
+          { backgroundColor: themeColors.background },
+        ]}
       >
-        <SafeAreaView style={styles.safe}>
-          {/* Greeting */}
-          <View style={styles.header}>
-            <View style={styles.user}>
-              <Text style={styles.greeting}>Hi Emmanuel</Text>
-              <TouchableOpacity style={styles.avatar}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor={themeColors.primary}
+              colors={[themeColors.primary]}
+            />
+          }
+        >
+          {/* Error Banner */}
+          {error && (
+            <View
+              style={[
+                styles.errorBanner,
+                { backgroundColor: `${themeColors.destructive}20` },
+              ]}
+            >
+              <Ionicons
+                name="alert-circle"
+                size={16}
+                color={themeColors.destructive}
+              />
+              <Text
+                style={[styles.errorText, { color: themeColors.destructive }]}
+              >
+                {error}
+              </Text>
+              <TouchableOpacity onPress={() => setError(null)}>
                 <Ionicons
-                  name="notifications-outline"
-                  size={22}
-                  color="#2b2b2b"
+                  name="close"
+                  size={16}
+                  color={themeColors.destructive}
                 />
               </TouchableOpacity>
             </View>
-            <View style={{ width: '100%' }}>
-              <Text style={styles.subGreeting}>
-                What do you want to pay for today?
+          )}
+
+          {/* Quick Actions */}
+          <View>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+                Quick Action
               </Text>
             </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={[styles.quickActions, { backgroundColor: themeColors.card }]}
+              contentContainerStyle={styles.quickActionsContent}
+            >
+              {quickActions.map((action, index) => (
+                <QuickActionItem
+                  key={index}
+                  action={action}
+                  onPress={() => handleQuickActionPress(action.screen)}
+                />
+              ))}
+            </ScrollView>
           </View>
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Wallet Card (glassmorphism) */}
-            <View style={styles.walletWrapper}>
-              <BlurView intensity={60} tint="light" style={styles.walletCard}>
-                <View style={styles.walletInner}>
-                  <View style={styles.walletTop}>
-                    <View style={styles.historyContainer}>
-                      <View style={styles.balanceContainer}>
-                        <Text style={styles.walletLabel}>Wallet Balance</Text>
-                        <TouchableOpacity style={styles.balanceToggle}>
-                          <Entypo name="eye" size={24} color="#ccc" />
-                        </TouchableOpacity>
-                      </View>
-                      <View style={styles.walletActions}>
-                        <TouchableOpacity
-                          style={[styles.actionBtn, styles.historyStyle]}
-                        >
-                          <Text style={styles.HistoryText}>History</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    {/* balance */}
-                    <View style={{ width: '100%' }}>
-                      <Text style={styles.walletAmount}>₦15,000</Text>
-                    </View>
-                    <View style={styles.walletActions}>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, styles.depositBtn]}
-                      >
-                        <Ionicons name="add-circle" size={18} color="#fff" />
-                        <Text style={styles.actionText}>Deposit</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionBtn, styles.withdrawBtn]}
-                      >
-                        <Ionicons
-                          name="cash-outline"
-                          size={18}
-                          color="#2b2b2b"
-                        />
-                        <Text style={[styles.actionText, { color: '#2b2b2b' }]}>
-                          Withdraw
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
 
-                  {/* <View style={styles.walletFooter}>
-                  <Text style={styles.cardSmall}>
-                    Linked card • • • • 1234
-                  </Text>
-                  <Text style={styles.cardSmall}>Last top-up: Aug 8</Text>
-                </View> */}
-                </View>
-              </BlurView>
+          {/* Services Grid */}
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+              Services
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Services')}
+              accessibilityLabel="View all services"
+            >
+              <Text style={[styles.viewAll, { color: themeColors.subheading }]}>
+                View All
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: themeColors.card }]}>
+            <View style={styles.grid}>
+              {services.map((service) => (
+                <ServiceCard
+                  key={service.id}
+                  service={service}
+                  onPress={() => handleServicePress(service.screen)}
+                  themeColors={themeColors}
+                />
+              ))}
             </View>
+          </View>
 
-            {/* Quick Actions */}
-            <View>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.quickActions}
-                contentContainerStyle={{
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                }}
-              >
-                {quickActions.map((action, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.quickActionItem}
-                    onPress={() => navigation.navigate(action.screen)}
-                  >
+          {/* Promo Section */}
+          <PromoCard
+            title="🎉 Refer And Win"
+            subtitle="Invite your Friends and earn up to ₦10,000"
+            buttonText="Refer"
+            onPress={() => navigation.navigate('Referral')}
+            gradientColors={['#FFD98E', '#FFB800']}
+          />
+
+          {/* Recent Transactions Preview (Optional) */}
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+              Recent Transactions
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Orders')}
+              accessibilityLabel="View all transactions"
+            >
+              <Text style={[styles.viewAll, { color: themeColors.subheading }]}>
+                View All
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.section, { backgroundColor: themeColors.card }]}>
+            {wallet?.recentTransactions?.length > 0 ? (
+              wallet.recentTransactions.slice(0, 3).map((tx, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.txRow,
+                    { borderBottomColor: themeColors.border },
+                  ]}
+                  onPress={() =>
+                    navigation.navigate('TransactionDetails', {
+                      reference: tx.reference,
+                    })
+                  }
+                >
+                  <View style={styles.txLeft}>
                     <View
                       style={[
-                        styles.quickActionIcon,
-                        { backgroundColor: action.bg },
+                        styles.txIcon,
+                        { backgroundColor: `${themeColors.primary}15` },
                       ]}
                     >
-                      <Ionicons name={action.icon} size={19} color="#fff" />
+                      <Ionicons
+                        name="receipt-outline"
+                        size={20}
+                        color={themeColors.primary}
+                      />
                     </View>
-                    <Text style={styles.quickActionText}>{action.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* Services Grid */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Services</Text>
-              {/* <TouchableOpacity>
-              <Text style={styles.viewAll}>View all</Text>
-            </TouchableOpacity> */}
-            </View>
-
-            <View style={styles.section}>
-              <View style={styles.grid}>
-                {services.map((s) => (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={styles.serviceCard}
-                    onPress={() => navigation.navigate(s.screen)}
+                    <View>
+                      <Text
+                        style={[styles.txTitle, { color: themeColors.heading }]}
+                      >
+                        {tx.type}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.txDate,
+                          { color: themeColors.subheading },
+                        ]}
+                      >
+                        {tx.date}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text
+                    style={[
+                      styles.txAmount,
+                      {
+                        color:
+                          tx.status === 'success'
+                            ? '#16a34a'
+                            : themeColors.destructive,
+                      },
+                    ]}
                   >
-                    <LinearGradient
-                      colors={['#ffffff', '#f6f8ff']}
-                      style={styles.serviceIconWrap}
-                    >
-                      <View style={styles.iconCircle}>
-                        {React.cloneElement(s.icon, { color: '#4A00E0' })}
-                      </View>
-                    </LinearGradient>
-
-                    <Text style={styles.serviceLabel}>{s.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Promotions Banner */}
-            <View
-              style={[
-                styles.promoSection,
-                { paddingHorizontal: CARD_PADDING / 2 },
-              ]}
-            >
-              <LinearGradient
-                colors={['#FFD98E', '#FFB800']}
-                start={[0, 0]}
-                end={[1, 1]}
-                style={styles.promoCard}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.promoTitle}>🎉 Refer And Win</Text>
-                  <Text style={styles.promoSubtitle}>
-                    Invite your Friends and earn up to ₦10,000
+                    {formatCurrency(tx.amount, 'NGN')}
                   </Text>
-                </View>
-                <TouchableOpacity style={styles.promoBtn}>
-                  <Text style={styles.promoBtnText}>Refer</Text>
                 </TouchableOpacity>
-              </LinearGradient>
-            </View>
-            {/* <PromoCarousel data={promoData} /> */}
-          </ScrollView>
-        </SafeAreaView>
-      </LinearGradient>
-    </>
+              ))
+            ) : (
+              <View style={styles.emptyTransactions}>
+                <Ionicons
+                  name="receipt-outline"
+                  size={48}
+                  color={themeColors.subtext}
+                />
+                <Text
+                  style={[
+                    styles.emptyText,
+                    { color: themeColors.subheading },
+                  ]}
+                >
+                  No recent transactions
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  safe: { flex: 1 },
+  container: {
+    flex: 1,
+  },
   scroll: {
     paddingHorizontal: CARD_PADDING,
-    paddingBottom: 120,
+    paddingBottom: 100,
+  },
+  headerWrapper: {
+    height: height * 0.37,
   },
   header: {
-    marginTop: 30,
-    justifyContent: 'flext-start',
+    marginTop: 35,
+    justifyContent: 'flex-start',
     alignItems: 'center',
     paddingHorizontal: 16,
   },
@@ -300,67 +620,78 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
   },
-  greeting: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#4A00E0',
-    // color: '#0f1724',
+  greetingTime: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 4,
+    opacity: 0.9,
   },
-  subGreeting: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
-    textAlign: 'left',
-    paddingBottom: 10,
+  greeting: {
+    fontSize: 18,
+    fontWeight: '700',
   },
   avatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 12,
-    backgroundColor: '#fff',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    position: 'relative',
   },
-
+  notificationBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    backgroundColor: '#ef4444',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
   walletWrapper: {
-    marginTop: 18,
-    marginBottom: 12,
+    marginTop: 16,
+    marginHorizontal: 16,
   },
-  walletCard: {
+  walletGradient: {
     borderRadius: 20,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   walletInner: {
-    padding: 10,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    backgroundColor: '#fff',
-
-    borderWidth: 1,
-    borderColor: '#4A00E0',
-    // borderColor: '#4A00E0',
+    padding: 20,
+  },
+  balanceWrapper: {
+    marginVertical: 20,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   historyContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    // alignItems: 'center',
+    alignItems: 'center',
     width: '100%',
   },
   balanceContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 5,
-    paddingHorizontal: 5,
+    gap: 8,
   },
   balanceToggle: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
   },
   walletTop: {
     flexDirection: 'column',
@@ -368,230 +699,220 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   walletLabel: {
-    color: '#374151',
-    fontSize: 12,
-    marginBottom: 6,
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13,
+    fontWeight: '500',
   },
   walletAmount: {
-    fontSize: 26,
+    fontSize: 36,
     fontWeight: '800',
-    color: '#0b1220',
+    color: '#ffffff',
+    letterSpacing: 0.5,
   },
   walletActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 16,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 2,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    gap: 6,
+  },
+  topText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  historyBtn: {
+    alignItems: 'center',
+    paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 10,
-    marginLeft: 8,
-    width: 100,
+    borderRadius: 8,
   },
-  depositBtn: {
-    backgroundColor: '#4A00E0',
-    historyStyle: {
-      // backgroundColor: 'rgba(74,0,224,0.08)',
-    },
+  cardDetails: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  withdrawBtn: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#E6E8F0',
-    paddingRight: 5,
+  historyText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
+    fontSize: 13,
   },
   actionText: {
-    color: '#fff',
-    marginLeft: 8,
-    fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
   },
-
-  HistoryText: {
-    color: '#4a00e0',
-    marginLeft: 8,
-    fontWeight: 'bold',
-    fontSize: 12,
+  mainContent: {
+    flex: 1,
+    paddingTop: 10,
+    borderTopRightRadius: 24,
+    borderTopLeftRadius: 24,
+    marginTop: -10,
   },
-  walletFooter: {
-    marginTop: 14,
+  errorBanner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 8,
   },
-  cardSmall: {
-    fontSize: 12,
-    color: '#6b7280',
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
   },
-
   section: {
     marginTop: 4,
     shadowColor: '#000',
     shadowOpacity: 0.03,
     shadowRadius: 8,
-    backgroundColor: '#fff',
     borderRadius: 20,
-  },
-  promoSection: {
-    marginTop: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    overflow: 'hidden',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: CARD_PADDING / 2,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#0f1724',
   },
   viewAll: {
     fontSize: 13,
-    color: '#6b7280',
     fontWeight: '600',
   },
-
   grid: {
-    marginTop: 12,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingHorizontal: CARD_PADDING / 2,
-    paddingVertical: 7,
+    paddingHorizontal: CARD_PADDING,
+    paddingVertical: 16,
   },
   serviceCard: {
     width: (width - CARD_PADDING * 2 - 28) / 4,
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 24,
   },
   serviceIconWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-    elevation: 2,
+    position: 'relative',
   },
   iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(74,0,224,0.08)',
+  },
+  comingSoonBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  comingSoonText: {
+    color: '#ffffff',
+    fontSize: 8,
+    fontWeight: '700',
   },
   serviceLabel: {
     fontSize: 12,
-    color: '#111827',
     fontWeight: '600',
     textAlign: 'center',
   },
-
-  promoCard: {
-    borderRadius: 16,
-    padding: 10,
-    paddingHorizontal: 16,
+  quickActions: {
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    borderRadius: 20,
+    paddingVertical: 16,
+  },
+  quickActionsContent: {
+    paddingHorizontal: CARD_PADDING,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 12,
+    width: width - CARD_PADDING * 2,
   },
-  promoTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#2b2b2b',
+  quickActionItem: {
+    alignItems: 'center',
+    width: '23%',
   },
-  promoSubtitle: {
-    fontSize: 13,
-    color: '#2b2b2b',
-    marginTop: 4,
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  promoBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: '#fff',
+  quickActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1e293b',
   },
-  promoBtnText: {
-    fontWeight: '700',
-    color: '#FF9A00',
-  },
-
   txRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
+    paddingHorizontal: CARD_PADDING,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
   },
-  txLeft: { flexDirection: 'row', alignItems: 'center' },
+  txLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   txIcon: {
     width: 44,
     height: 44,
-    borderRadius: 10,
-    backgroundColor: '#F3F6FF',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  txTitle: { fontSize: 14, fontWeight: '700', color: '#0f1724' },
-  txDate: { fontSize: 12, color: '#9AA0B4', marginTop: 4 },
-  txAmount: { fontSize: 14, fontWeight: '800' },
-
-  bottomNav: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    bottom: 5,
-    height: 66,
-    borderRadius: 16,
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  txTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  txDate: {
+    fontSize: 12,
+    marginTop: 4,
+  },
+  txAmount: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  emptyTransactions: {
     alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    paddingHorizontal: 14,
-  },
-  navItem: { alignItems: 'center', justifyContent: 'center' },
-  navLabel: { fontSize: 12, marginTop: 4, color: '#9AA0B4' },
-
-  quickActions: {
-    paddingVertical: 18,
-    marginBottom: 10,
-    marginTop: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    // elevation: 2,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-  },
-  quickActionItem: {
-    alignItems: 'center',
-    marginRight: 20,
-    width: '20%',
-  },
-  quickActionIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 25,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
+    paddingVertical: 48,
   },
-  quickActionText: { fontSize: 12, color: '#1e293b' },
+  emptyText: {
+    fontSize: 14,
+    marginTop: 12,
+  },
 });

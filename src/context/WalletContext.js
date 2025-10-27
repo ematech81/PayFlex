@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 const WalletContext = createContext();
-const BASE_URL = 'http://192.168.100.137:5000/api/auth';
+const BASE_URL = 'http://192.168.100.210:5000/api/auth';
 
 const initialInvoiceState = {
   invoices: [], // { id, customer, title, dueDate, currency, products, discount, tax, total, notes, paymentDetails, status }

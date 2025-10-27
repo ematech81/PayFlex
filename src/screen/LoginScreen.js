@@ -23,7 +23,8 @@ import { colors } from 'constants/colors';
 import AppImage from 'component/allImage';
 import { useWallet } from 'context/WalletContext';
 
-const BASE_URL = 'http://192.168.100.137:5000/api/auth';
+const BASE_URL = 'http://192.168.100.210:5000/api/auth';
+// const BASE_URL = 'http://192.168.100.210:5000/api/auth';
 const { width } = Dimensions.get('window');
 const cardWidth = width * 0.9;
 const boxSize = cardWidth / 8;

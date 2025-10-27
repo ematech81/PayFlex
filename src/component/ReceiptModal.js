@@ -14,7 +14,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-import { formatCurrency } from 'constants/formatCurrency';
+import { formatCurrency } from 'CONSTANT/formatCurrency';
 
 const ReceiptModal = ({ visible, invoice, onClose }) => {
   const isDarkMode = useThem();

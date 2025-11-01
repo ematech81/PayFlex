@@ -43,6 +43,7 @@ import InvoiceDetailsScreen from 'screen/InvoiceDetailScreen';
 import TransactionDetailsScreen from 'screen/TransactionDetailsScreen';
 import SetTransactionPinScreen from 'screen/SetTransactionPinScreen';
 import ResetPinScreen from 'screen/ResetPinScreen';
+import SetLoginPINScreen from 'screen/SetLoginPinScreen';
 
 // 👇 Keep splash screen visible until resources load
 // SplashScreen.preventAutoHideAsync();
@@ -184,6 +185,7 @@ export default function App() {
                <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="SignUp" component={SignUpScreen} />
               <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
+              <Stack.Screen name="LoginPinScreen" component={SetLoginPINScreen} />
               <Stack.Screen name="MainTabs" component={BottomTabs} />
               <Stack.Screen name="Data" component={DataPurchaseScreen} />
               <Stack.Screen name="Airtime" component={AirtimeScreen} />

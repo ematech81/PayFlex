@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-import { ValidationUtils } from 'utility/validationUtils';
+import { ValidationUtils } from 'UTILS/validationUtils';
 import { FormatUtils } from 'UTILS/formatUtils';
 
 /**

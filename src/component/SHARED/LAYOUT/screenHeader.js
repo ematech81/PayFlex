@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThem } from 'constants/useTheme';
@@ -71,7 +72,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 30,
     marginBottom: 30,
     paddingHorizontal: 4,
   },
@@ -91,6 +92,7 @@ const styles = StyleSheet.create({
   rightContainer: {
     width: 100,
     alignItems: 'flex-end',
+    marginRight: 10
   },
   rightText: {
     fontWeight: 'bold',

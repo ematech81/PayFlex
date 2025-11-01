@@ -4,6 +4,7 @@ import { API_CONFIG } from "CONFIG/apiConfig";
 import { getElectricityServiceId } from "CONFIG/servicesConfig";
 import { apiService } from "./API/apiBaseService";
 
+
 /**
  * Electricity Service
  * Handles electricity bill payment operations
@@ -19,17 +20,29 @@ export class ElectricityService {
    * @returns {Promise}
    */
   static async verifyMeter(meterNumber, disco, meterType, token) {
-    const serviceId = getElectricityServiceId(disco);
-    
-    return await apiService.post(
-      API_CONFIG.ENDPOINTS.VERIFY_METER,
-      { 
-        meterNumber, 
-        serviceID: `${serviceId}-${meterType}`,
-        disco: serviceId 
-      },
-      token
-    );
+    console.log('=== VERIFY METER SERVICE ===');
+    console.log('Meter Number:', meterNumber);
+    console.log('DISCO:', disco);
+    console.log('Meter Type:', meterType);
+    console.log('==========================');
+
+    try {
+      const response = await apiService.post(
+        '/payments/verify-meter',
+        {
+          meterNumber,
+          disco,
+          meterType,
+        },
+        token
+      );
+
+      console.log('Verification Response:', response);
+      return response;
+    } catch (error) {
+      console.error('ElectricityService.verifyMeter error:', error);
+      throw error;
+    }
   }
 
   /**
@@ -45,22 +58,32 @@ export class ElectricityService {
    * @returns {Promise}
    */
   static async payElectricityBill(data, token) {
-    const discoId = getElectricityServiceId(data.disco);
-    
+    console.log('=== PAY ELECTRICITY SERVICE ===');
+    console.log('Payload:', data);
+    console.log('==============================');
+
     const payload = {
       meterNumber: data.meterNumber,
-      disco: discoId,
-      serviceID: `${discoId}-${data.meterType}`,
+      disco: data.disco,
+      meterType: data.meterType,
       amount: Number(data.amount),
       phone: data.phone,
       pin: data.pin,
     };
 
-    return await apiService.post(
-      API_CONFIG.ENDPOINTS.PAYMENTS.PAY_ELECTRICITY,
-      payload,
-      token
-    );
+    try {
+      const response = await apiService.post(
+        '/payments/pay-electricity',
+        payload,
+        token
+      );
+
+      console.log('Payment Response:', response);
+      return response;
+    } catch (error) {
+      console.error('ElectricityService.payElectricityBill error:', error);
+      throw error;
+    }
   }
 
   /**
@@ -70,11 +93,12 @@ export class ElectricityService {
    * @returns {Promise}
    */
   static async getTariffInfo(disco, token = null) {
-    const discoId = getElectricityServiceId(disco);
-    
     return await apiService.get(
-      `${API_CONFIG.ENDPOINTS.PAYMENTS.BASE}/tariff-info?disco=${discoId}`,
+      `/payments/electricity/tariff?disco=${disco}`,
       token
     );
   }
 }
+
+    
+   

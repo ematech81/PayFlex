@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 
 const WalletContext = createContext();
-const BASE_URL = 'http://192.168.100.210:5000/api/auth';
+const BASE_URL = 'http://192.168.43.191:5000/api/auth';
 
 const initialInvoiceState = {
   invoices: [], // { id, customer, title, dueDate, currency, products, discount, tax, total, notes, paymentDetails, status }
@@ -77,76 +77,257 @@ export const WalletProvider = ({ children }) => {
     invoiceReducer,
     initialInvoiceState
   );
+ 
+
   const [wallet, setWallet] = useState({
     token: null,
     user: null,
     transactionPinSet: false,
+    isLoading: true, // ✅ Add loading state
   });
 
-  // Load stored data on app startup
+
+  
+  const [isCheckingPin, setIsCheckingPin] = useState(false);
+
+
+  /**
+   * Load stored data on app startup
+   */
   useEffect(() => {
-    const loadStoredData = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
-        const user = await AsyncStorage.getItem('user');
-        if (token && user) {
-          const parsedUser = JSON.parse(user);
-          // Check if transaction PIN is set
-          const response = await axios.get(`${BASE_URL}/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const transactionPinSet = !!response.data.transactionPinSet;
-          setWallet({
-            token,
-            user: parsedUser,
-            transactionPinSet,
-          });
-        }
-      } catch (error) {
-        console.error('Error loading stored data:', error);
-      }
-    };
     loadStoredData();
   }, []);
 
+  /**
+   * Load user data from AsyncStorage
+   */
+  const loadStoredData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const userStr = await AsyncStorage.getItem('user');
+      const pinSetStr = await AsyncStorage.getItem('transactionPinSet'); // ✅ Store locally
+
+      if (token && userStr) {
+        const parsedUser = JSON.parse(userStr);
+        const transactionPinSet = pinSetStr === 'true'; // ✅ Check local first
+
+        setWallet({
+          token,
+          user: parsedUser,
+          transactionPinSet,
+          isLoading: false,
+        });
+
+        // ✅ Verify with server in background (don't block UI)
+        verifyUserSession(token, parsedUser);
+      } else {
+        setWallet(prev => ({ ...prev, isLoading: false }));
+      }
+    } catch (error) {
+      console.error('Error loading stored data:', error);
+      setWallet(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+
+  /**
+   * Verify user session with server (background check)
+   */
+  const verifyUserSession = async (token, user) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000, // 10 second timeout
+      });
+
+      const serverPinSet = !!response.data.transactionPinSet;
+      const serverUser = response.data.user || user;
+
+      // ✅ Update if server data differs from local
+      if (serverPinSet !== wallet.transactionPinSet) {
+        await AsyncStorage.setItem('transactionPinSet', String(serverPinSet));
+        setWallet(prev => ({
+          ...prev,
+          transactionPinSet: serverPinSet,
+          user: serverUser,
+        }));
+      }
+
+
+
+      // ✅ Update user info if changed
+      if (JSON.stringify(serverUser) !== JSON.stringify(user)) {
+        await AsyncStorage.setItem('user', JSON.stringify(serverUser));
+        setWallet(prev => ({
+          ...prev,
+          user: serverUser,
+        }));
+      }
+    } catch (error) {
+      console.error('Error verifying session:', error);
+      // ✅ Don't logout on network error - keep local data
+      if (error.response?.status === 401) {
+        // Only logout if token is actually invalid
+        logout();
+      }
+    }
+  };
+
+
+
+
+  /**
+   * Login user
+   */
   const login = async (token, user) => {
     try {
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
-      // Check if transaction PIN is set
-      const response = await axios.get(`${BASE_URL}/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const transactionPinSet = !!response.data.transactionPinSet;
-      setWallet({ token, user, transactionPinSet });
+
+      // ✅ Check transaction PIN from server
+      try {
+        const response = await axios.get(`${BASE_URL}/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 10000,
+        });
+        
+        const transactionPinSet = !!response.data.transactionPinSet;
+        await AsyncStorage.setItem('transactionPinSet', String(transactionPinSet));
+
+        setWallet({
+          token,
+          user: response.data.user || user,
+          transactionPinSet,
+          isLoading: false,
+        });
+      } catch (error) {
+        console.error('Error fetching user data on login:', error);
+        
+        // ✅ Still allow login even if PIN check fails
+        setWallet({
+          token,
+          user,
+          transactionPinSet: false, // Default to false
+          isLoading: false,
+        });
+      }
     } catch (error) {
       console.error('Error storing login data:', error);
+      throw error;
     }
   };
 
+  /**
+   * Logout user
+   */
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
-      setWallet({ token: null, user: null, transactionPinSet: false });
+      await AsyncStorage.multiRemove(['token', 'user', 'transactionPinSet']);
+      setWallet({
+        token: null,
+        user: null,
+        transactionPinSet: false,
+        isLoading: false,
+      });
     } catch (error) {
       console.error('Error clearing stored data:', error);
     }
   };
 
-  const updateTransactionPinStatus = async () => {
+  /**
+   * Update transaction PIN status
+   * Called after user sets PIN for first time
+   */
+  const updateTransactionPinStatus = async (pinSet = true) => {
+    setIsCheckingPin(true);
+    
+    try {
+      // ✅ Update locally immediately (optimistic update)
+      await AsyncStorage.setItem('transactionPinSet', String(pinSet));
+      setWallet(prev => ({
+        ...prev,
+        transactionPinSet: pinSet,
+      }));
+
+      // ✅ Verify with server in background
+      if (wallet.token) {
+        try {
+          const response = await axios.get(`${BASE_URL}/me`, {
+            headers: { Authorization: `Bearer ${wallet.token}` },
+            timeout: 10000,
+          });
+          
+          const serverPinSet = !!response.data.transactionPinSet;
+          
+          // Update if server differs
+          if (serverPinSet !== pinSet) {
+            await AsyncStorage.setItem('transactionPinSet', String(serverPinSet));
+            setWallet(prev => ({
+              ...prev,
+              transactionPinSet: serverPinSet,
+            }));
+          }
+        } catch (error) {
+          console.error('Error syncing PIN status with server:', error);
+          // Keep local value if server check fails
+        }
+      }
+    } catch (error) {
+      console.error('Error updating transaction PIN status:', error);
+    } finally {
+      setIsCheckingPin(false);
+    }
+  };
+
+  /**
+   * Refresh user data from server
+   */
+  const refreshUserData = async () => {
+    if (!wallet.token) return;
+
     try {
       const response = await axios.get(`${BASE_URL}/me`, {
         headers: { Authorization: `Bearer ${wallet.token}` },
+        timeout: 10000,
       });
-      setWallet((prev) => ({
+
+      const serverUser = response.data.user;
+      const serverPinSet = !!response.data.transactionPinSet;
+
+      await AsyncStorage.setItem('user', JSON.stringify(serverUser));
+      await AsyncStorage.setItem('transactionPinSet', String(serverPinSet));
+
+      setWallet(prev => ({
         ...prev,
-        transactionPinSet: !!response.data.transactionPinSet,
+        user: serverUser,
+        transactionPinSet: serverPinSet,
       }));
+
+      return { success: true };
     } catch (error) {
-      console.error('Error checking transaction PIN status:', error);
+      console.error('Error refreshing user data:', error);
+      return { success: false, error };
     }
   };
+
+  /**
+   * Update wallet balance locally
+   */
+  const updateWalletBalance = (newBalance) => {
+    setWalletBalance(newBalance);
+    
+    // Also update in wallet.user if it exists there
+    if (wallet.user) {
+      setWallet(prev => ({
+        ...prev,
+        user: {
+          ...prev.user,
+          walletBalance: newBalance,
+        },
+      }));
+    }
+  };
+
 
   const calculateInvoice = useCallback((products, discount, tax) => {
     const subtotal = products.reduce(
@@ -241,8 +422,6 @@ export const WalletProvider = ({ children }) => {
   }, []);
 
   const value = {
-    walletBalance,
-    setWalletBalance,
     invoices: invoiceState.invoices || [],
     customers: invoiceState.customers || [],
     currentInvoice: invoiceState.currentInvoice,
@@ -256,9 +435,17 @@ export const WalletProvider = ({ children }) => {
     deleteCustomer,
     calculateInvoice,
     wallet,
+    setWallet,
+    walletBalance,
+    setWalletBalance,
+    updateWalletBalance,
+    invoiceState,
+    invoiceDispatch,
     login,
     logout,
     updateTransactionPinStatus,
+    refreshUserData,
+    isCheckingPin,
   };
 
   return (

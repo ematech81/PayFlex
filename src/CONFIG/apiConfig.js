@@ -7,7 +7,8 @@
 
 // Base URL - To be updated this for production
 const BASE_URL = __DEV__ 
-  ? 'http://192.168.100.210:5000/api' 
+  ? 'http://192.168.43.191:5000/api' 
+  // ? 'http://192.168.100.210:5000/api' 
   : 'https://your-production-api.com/api';
 
 export const API_CONFIG = {
@@ -21,7 +22,9 @@ export const API_CONFIG = {
       BUY_AIRTIME: '/payments/buy-airtime',
       BUY_DATA: '/payments/buy-data',
       PAY_TV: '/payments/pay-tv',
-      PAY_ELECTRICITY: '/payments/pay-electricity',
+      PAY_ELECTRICITY: '/payments/pay-electricity',      
+      VERIFY_METER: '/payments/verify-meter',            
+      ELECTRICITY_TARIFF: '/payments/electricity/tariff', 
       PAY_EDUCATION: '/payments/pay-education',
       PAY_BETTING: '/payments/pay-betting',
       VERIFY_PIN: '/payments/verify-transaction-pin',

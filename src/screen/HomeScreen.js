@@ -26,16 +26,13 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-import { useWallet } from 'context/WalletContext';
+// import { useWallet } from 'context/WalletContext';
 import { useWalletNavigation } from 'constants/useWalletNavigation';
 import { useWalletBalance } from 'HOOKS';
-// import { formatCurrency } from 'constants/formatCurrency';
+import { PromoCard } from 'component/SHARED';
+import { formatCurrency } from 'CONSTANT/formatCurrency';
+import { useWallet } from 'context/WalletContext';
 
-// Shared Components
-// import { PromoCard } from 'components/shared';
-
-// Custom Hooks
-// import { useWalletBalance } from 'hooks';
 
 const { width, height } = Dimensions.get('window');
 const CARD_PADDING = 13;
@@ -208,7 +205,8 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
-  const { wallet } = useWalletNavigation();
+  const { walletBalance, wallet } = useWallet();
+  // const { walletBalance } = useWallet();
 
   // Custom Hook for wallet balance management
   const {
@@ -274,7 +272,7 @@ export default function HomeScreen() {
       style={[styles.container, { backgroundColor: themeColors.primary }]}
     >
       <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        barStyle={isDarkMode ? 'light-content' : 'light-content'}
         backgroundColor="transparent"
         translucent
       />
@@ -354,9 +352,10 @@ export default function HomeScreen() {
                 {/* Balance Display */}
                 <View style={styles.balanceWrapper}>
                   {isLoading ? (
-                    <ActivityIndicator size="large" color="#ffffff" />
+                    <ActivityIndicator size="large" color="#471c1cff" />
                   ) : (
                     <Text style={styles.walletAmount}>
+                      {/* {walletBalance} */}
                       {formattedBalance}
                     </Text>
                   )}

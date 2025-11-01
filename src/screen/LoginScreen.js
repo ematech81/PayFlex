@@ -1,493 +1,203 @@
+// src/screens/LoginScreen.js
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Dimensions,
-  ActivityIndicator,
-  Switch,
-  Alert,
-  StatusBar,
-  SafeAreaView,
+  View, Text, TextInput, TouchableOpacity, Alert, Switch,
+  Modal, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform,
+  StatusBar
 } from 'react-native';
-import {
-  useNavigation,
-  useRoute,
-  CommonActions,
-} from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-import AppImage from 'component/allImage';
-import { useWallet } from 'context/WalletContext';
+import { btnStyle, btnText, inputStyle, otpBox} from 'constants/Styles';
+import { AuthService } from 'AuthFunction/authService';
+import AuthHeader from 'component/AuthHeader';
 
-const BASE_URL = 'http://192.168.100.210:5000/api/auth';
-// const BASE_URL = 'http://192.168.100.210:5000/api/auth';
-const { width } = Dimensions.get('window');
-const cardWidth = width * 0.9;
-const boxSize = cardWidth / 8;
-
-const LoginScreen = () => {
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { phone: initialPhone = '', fromSignup = false } = route.params || {};
-  const isDarkMode = useThem();
-  const themeColors = isDarkMode ? colors.dark : colors.light;
-  const [formData, setFormData] = useState({
-    phone: initialPhone,
-    pin: ['', '', '', '', '', ''],
-  });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [requirePinOnOpen, setRequirePinOnOpen] = useState(true);
-  const { wallet, login } = useWallet();
-
-  const inputRefs = useRef([]);
-
-  // Temporary useEffect to clear AsyncStorage for testing
-  // useEffect(() => {
-  //   const clearAsyncStorage = async () => {
-  //     try {
-  //       await AsyncStorage.clear();
-  //       console.log('AsyncStorage cleared for testing');
-  //     } catch (error) {
-  //       console.error('Error clearing AsyncStorage:', error);
-  //     }
-  //   };
-  //   clearAsyncStorage();
-  // }, []); // Comment out this useEffect after testing
+export default function LoginScreen({ navigation }) {
+  const isDark = useThem();
+  const theme = isDark ? colors.dark : colors.light;
+  const [phone, setPhone] = useState('');
+  const [pin, setPin] = useState(['', '', '', '', '', '']);
+  const [requirePin, setRequirePin] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [resetStep, setResetStep] = useState('phone'); // phone → otp → setpin
+  const [resetPhone, setResetPhone] = useState('');
+  const [resetOtp, setResetOtp] = useState(['', '', '', '', '', '']);
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const pinRefs = useRef([]);
 
   useEffect(() => {
-    const checkAutoLogin = async () => {
-      try {
-        const pinSetting = await AsyncStorage.getItem('requirePinOnOpen');
-        const requirePin = pinSetting !== null ? JSON.parse(pinSetting) : true;
-        setRequirePinOnOpen(requirePin);
+    loadData();
+  }, []);
 
-        if (!requirePin && !fromSignup) {
-          const token = await AsyncStorage.getItem('token');
-          console.log('Auto-login token:', token);
-          if (token) {
-            const response = await fetch(`${BASE_URL}/me`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (response.ok) {
-              console.log('Token valid, navigating to MainTabs -> Home');
-              navigation.dispatch(
-                CommonActions.reset({
-                  index: 0,
-                  routes: [
-                    { name: 'MainTabs', state: { routes: [{ name: 'Home' }] } },
-                  ],
-                })
-              );
-            } else {
-              console.log('Token invalid or expired, clearing AsyncStorage');
-              await AsyncStorage.removeItem('token');
-              await AsyncStorage.removeItem('user');
-              setFormData((prev) => ({ ...prev, phone: '' })); // Clear phone field
-            }
-          } else {
-            console.log('No token found, staying on Login');
-          }
-        } else {
-          console.log('PIN required or from signup, staying on Login');
-          if (!initialPhone && !fromSignup) {
-            const userData = await AsyncStorage.getItem('user');
-            if (userData) {
-              const user = JSON.parse(userData);
-              console.log('Retrieved user from AsyncStorage:', user);
-              if (user.phone) {
-                setFormData((prev) => ({
-                  ...prev,
-                  phone: user.phone,
-                  pin: prev.pin || ['', '', '', '', '', ''],
-                }));
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Auto-login error:', error);
-      }
-    };
-    checkAutoLogin();
-  }, [navigation, fromSignup, initialPhone]);
-
-  const handleTogglePinRequirement = async () => {
-    const newValue = !requirePinOnOpen;
-    setRequirePinOnOpen(newValue);
-    try {
-      await AsyncStorage.setItem('requirePinOnOpen', JSON.stringify(newValue));
-      console.log('Set requirePinOnOpen:', newValue);
-    } catch (error) {
-      console.error('Save pin setting error:', error);
-    }
+  const loadData = async () => {
+    const stored = await AsyncStorage.getItem('phone');
+    const req = await AsyncStorage.getItem('requirePinOnOpen');
+    if (stored) setPhone(stored);
+    if (req) setRequirePin(req === 'true');
   };
 
   const handleLogin = async () => {
-    const pin = formData.pin.join('');
-    console.log('Starting login process', {
-      phone: formData.phone,
-      pin,
-      pinLength: pin.length,
-      isNumeric: /^\d{6}$/.test(pin),
-    });
-    if (
-      !formData.phone ||
-      !pin.trim() ||
-      pin.length !== 6 ||
-      !/^\d{6}$/.test(pin)
-    ) {
-      console.log('Validation failed: Phone or PIN invalid');
-      setError('Phone number and PIN must be exactly 6 digits.');
-      return;
-    }
-    setError('');
-    setIsLoading(true);
+    const pinStr = pin.join('');
+    if (!phone || pinStr.length !== 6) return Alert.alert('Error', 'Enter phone and 6-digit PIN');
 
-    try {
-      // Verify login PIN
-      console.log('Verifying login PIN:', { phone: formData.phone, pin });
-      const pinResponse = await fetch(`${BASE_URL}/verify-login-pin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ phone: formData.phone, pin }),
+    setLoading(true);
+    const res = await AuthService.login(phone, pinStr);
+    setLoading(false);
+
+    if (res.success && !res.isNewDevice) {
+      await AsyncStorage.setItem('requirePinOnOpen', String(requirePin));
+      navigation.reset({ index: 0, routes: [{ name: 'Home' }] });
+    } else if (res.isNewDevice) {
+      navigation.navigate('VerifyCode', {
+        phone: res.phone,
+        userId: res.userId,
+        pin: pinStr,
+        isDeviceVerification: true,
       });
-
-      const pinData = await pinResponse.json();
-      console.log('Verify login PIN response:', {
-        status: pinResponse.status,
-        data: pinData,
-      });
-
-      if (!pinResponse.ok || !pinData.success) {
-        console.log('PIN verification failed:', pinData.message);
-        setError(pinData.message || 'Invalid Login PIN');
-        setIsLoading(false);
-        return;
-      }
-
-      // Proceed with login
-      console.log('Sending login payload:', { phone: formData.phone, pin });
-      const response = await fetch(`${BASE_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ phone: formData.phone, pin }),
-      });
-
-      const data = await response.json();
-      console.log('Login response:', { status: response.status, data });
-
-      if (response.ok) {
-        // Update WalletContext with token and user
-        console.log('Login successful, updating WalletContext');
-        await login(data.token, data.user);
-        console.log('Navigating to MainTabs -> Home');
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [
-              { name: 'MainTabs', state: { routes: [{ name: 'Home' }] } },
-            ],
-          })
-        );
-      } else if (data.code === 'PHONE_NOT_VERIFIED') {
-        console.log('Phone not verified:', data.message);
-        setError(data.message);
-        Alert.alert('Phone Not Verified', data.message, [
-          {
-            text: 'Verify Now',
-            onPress: () =>
-              navigation.navigate('VerifyCode', {
-                userId: data.userId,
-                phone: data.phone,
-                email: data.user?.email || '',
-              }),
-          },
-          { text: 'Cancel' },
-        ]);
-      } else {
-        console.log('Login failed:', data.message);
-        setError(data.message || 'Login failed. Please try again.');
-      }
-    } catch (error) {
-      console.error('Login error:', error.message);
-      setError('An error occurred. Please try again later.');
-    } finally {
-      setIsLoading(false);
-      console.log('Login process completed');
+    } else {
+      Alert.alert('Login Failed', res.message);
     }
   };
 
-  const handlePinChange = (text, index) => {
-    if (/[^0-9]/.test(text)) return;
-    const newPin = [...formData.pin];
-    newPin[index] = text;
-    setFormData((prev) => ({
-      ...prev,
-      pin: newPin,
-    }));
+  const startForgotPin = () => {
+    setResetPhone(phone);
+    setModalVisible(true);
+    AuthService.forgotPin(phone);
+  };
 
-    if (text && index < 5) {
-      inputRefs.current[index + 1].focus();
-    }
-    if (!text && index > 0) {
-      inputRefs.current[index - 1].focus();
+  const verifyResetCode = async () => {
+    const code = resetOtp.join('');
+    const res = await AuthService.verifyResetCode(resetPhone, code);
+    if (res.success) {
+      setResetStep('setpin');
+    } else {
+      Alert.alert('Invalid Code', res.message);
     }
   };
 
-  const handleKeyPress = ({ nativeEvent: { key } }, index) => {
-    if (key === 'Backspace' && !formData.pin[index] && index > 0) {
-      inputRefs.current[index - 1].focus();
+  const completeReset = async () => {
+    if (newPin !== confirmPin || newPin.length !== 6) {
+      return Alert.alert('Error', 'PINs do not match');
     }
-  };
-
-  const handleSignUpNavigation = () => {
-    try {
-      console.log('Attempting to navigate to SignUp');
-      navigation.navigate('SignUp');
-      console.log('Navigation to SignUp triggered');
-    } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert(
-        'Navigation Error',
-        'Failed to navigate to Sign Up screen. Please try again.'
-      );
+    const res = await AuthService.setPinAfterReset(res.resetToken, newPin);
+    if (res.success) {
+      Alert.alert('Success', 'PIN reset! Please login.', [{ text: 'OK', onPress: () => setModalVisible(false) }]);
     }
   };
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: themeColors.card }]}
-    >
-      <StatusBar
-        barStyle="light-content"
-        translucent
-        backgroundColor="#4a00e0"
-      />
-
-      <View
-        style={[styles.contentHeader, { backgroundColor: themeColors.primary }]}
-      >
-        <View
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-        >
-          <AppImage />
-          <Text style={[styles.welcomeText, { color: themeColors.card }]}>
-            Welcome Back Emmanuel
-          </Text>
-          <Text style={[styles.text, { color: themeColors.border }]}>
-            All In One App, Pay Securely With One Click
-          </Text>
-        </View>
-      </View>
-
-      <View
-        style={[styles.cardContainer, { backgroundColor: themeColors.primary }]}
-      >
-        <View style={[styles.card, { backgroundColor: themeColors.card }]}>
-          <Text
-            style={[styles.textInstruction, { color: themeColors.heading }]}
-          >
-            Please Enter Your 6 digits PIN to Login
-          </Text>
-          {error ? (
-            <Text style={[styles.error, { color: themeColors.destructive }]}>
-              {error}
-            </Text>
-          ) : null}
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+     <StatusBar barStyle='light-content' backgroundColor='transparent' translucent/>
+      <ScrollView style={{ flex: 1, backgroundColor: theme.background }}>
+        <AuthHeader title="Welcome Back" subtitle="Login to your account" />
+        <View style={{ padding: 24 }}>
           <TextInput
-            style={[
-              styles.input,
-              {
-                backgroundColor: themeColors.background,
-                color: themeColors.heading,
-              },
-            ]}
             placeholder="Phone Number"
-            placeholderTextColor={themeColors.subtext}
-            value={formData.phone}
-            onChangeText={(text) =>
-              setFormData((prev) => ({ ...prev, phone: text }))
-            }
+            value={phone}
+            onChangeText={setPhone}
             keyboardType="phone-pad"
-            // editable={!formData.phone}
+            style={inputStyle(theme)}
           />
-          <View style={styles.pinContainer}>
-            {(formData.pin || ['', '', '', '', '', '']).map((digit, index) => (
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginVertical: 20 }}>
+            {pin.map((d, i) => (
               <TextInput
-                key={index}
-                style={[
-                  styles.pinInput,
-                  {
-                    backgroundColor: themeColors.background,
-                    color: themeColors.heading,
-                    borderColor: digit
-                      ? themeColors.button
-                      : themeColors.border,
-                  },
-                ]}
-                value={digit}
-                onChangeText={(text) => handlePinChange(text, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-                keyboardType="numeric"
+                key={i}
+                ref={el => pinRefs.current[i] = el}
+                style={otpBox(theme)}
+                value={d}
+                onChangeText={v => {
+                  if (/^\d?$/.test(v)) {
+                    const newPin = [...pin];
+                    newPin[i] = v;
+                    setPin(newPin);
+                    if (v && i < 5) pinRefs.current[i + 1]?.focus();
+                    if (newPin.every(x => x)) handleLogin();
+                  }
+                }}
+                keyboardType="number-pad"
                 maxLength={1}
-                ref={(ref) => (inputRefs.current[index] = ref)}
-                textAlign="center"
+                secureTextEntry
               />
             ))}
           </View>
-          <View style={styles.switchContainer}>
-            <Text
-              style={[styles.switchLabel, { color: themeColors.subheading }]}
-            >
-              Require PIN on app open
-            </Text>
-            <Switch
-              value={requirePinOnOpen}
-              onValueChange={handleTogglePinRequirement}
-              trackColor={{
-                false: themeColors.subtext,
-                true: themeColors.button,
-              }}
-              thumbColor={themeColors.card}
-            />
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <View>
+              <Text style={{ color: theme.heading, fontWeight: '600' }}>Require PIN on app open</Text>
+              <Text style={{ color: theme.subtext, fontSize: 12 }}>Disable to skip PIN on launch</Text>
+            </View>
+            <Switch value={requirePin} onValueChange={setRequirePin} />
           </View>
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: themeColors.button }]}
-            onPress={handleLogin}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={themeColors.card} />
-            ) : (
-              <Text style={[styles.buttonText, { color: themeColors.card }]}>
-                Login
-              </Text>
-            )}
+
+          <TouchableOpacity style={btnStyle(theme)} onPress={handleLogin} disabled={loading}>
+            {loading ? <ActivityIndicator color={theme.card} /> : <Text style={btnText(theme)}>Login</Text>}
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={handleSignUpNavigation}
-          >
-            <Text style={[styles.linkText, { color: themeColors.button }]}>
-              New user? Sign Up
-            </Text>
+
+          <TouchableOpacity onPress={startForgotPin}>
+            <Text style={{ textAlign: 'center', color: theme.primary, marginVertical: 16 }}>Forgot PIN?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+            <Text style={{ textAlign: 'center', color: theme.subtext }}>Don't have an account? Sign Up</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+
+      {/* Forgot PIN Modal */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: theme.card, borderRadius: 16, padding: 24 }}>
+            {resetStep === 'phone' && (
+              <>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>Reset PIN</Text>
+                <TextInput
+                  placeholder="Enter phone"
+                  value={resetPhone}
+                  onChangeText={setResetPhone}
+                  style={inputStyle(theme)}
+                />
+                <TouchableOpacity style={btnStyle(theme)} onPress={() => { AuthService.forgotPin(resetPhone); setResetStep('otp'); }}>
+                  <Text style={btnText(theme)}>Send Code</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            {resetStep === 'otp' && (
+              <>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>Enter Code</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  {resetOtp.map((d, i) => (
+                    <TextInput key={i} style={otpBox(theme)} value={d} onChangeText={v => {
+                      if (/^\d?$/.test(v)) {
+                        const newOtp = [...resetOtp];
+                        newOtp[i] = v;
+                        setResetOtp(newOtp);
+                        if (v && i < 5) refs.current[i + 1]?.focus();
+                        if (newOtp.every(x => x)) verifyResetCode();
+                      }
+                    }} keyboardType="number-pad" maxLength={1} />
+                  ))}
+                </View>
+              </>
+            )}
+            {resetStep === 'setpin' && (
+              <>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 16 }}>Set New PIN</Text>
+                <TextInput placeholder="New 6-digit PIN" secureTextEntry maxLength={6} style={inputStyle(theme)} onChangeText={setNewPin} />
+                <TextInput placeholder="Confirm PIN" secureTextEntry maxLength={6} style={inputStyle(theme)} onChangeText={setConfirmPin} />
+                <TouchableOpacity style={btnStyle(theme)} onPress={completeReset}>
+                  <Text style={btnText(theme)}>Reset PIN</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Text style={{ textAlign: 'center', color: theme.destructive, marginTop: 16 }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </KeyboardAvoidingView>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentHeader: {
-    padding: 20,
-    width: '100%',
-    minHeight: '45%',
-    alignItems: 'center',
-    justifyCntent: 'center',
-  },
-  cardContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  welcomeText: {
-    fontSize: 20,
-    marginVertical: 5,
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  text: {
-    fontSize: 14,
-    marginBottom: 5,
-    textAlign: 'center',
-    fontWeight: '700',
-    fontStyle: 'italic',
-  },
-  textInstruction: {
-    fontSize: 15,
-    marginBottom: 5,
-    textAlign: 'center',
-    fontWeight: '600',
-    marginBottom: 15,
-  },
-  card: {
-    width: '100%',
-    padding: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  error: {
-    fontSize: 14,
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  input: {
-    width: '100%',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-    fontSize: 16,
-  },
-  pinContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 15,
-  },
-  pinInput: {
-    width: 43,
-    height: 43,
-    borderRadius: 8,
-    borderWidth: 1,
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 15,
-  },
-  switchLabel: {
-    fontSize: 14,
-  },
-  button: {
-    width: '100%',
-    borderRadius: 8,
-    padding: 15,
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  linkButton: {
-    padding: 10,
-  },
-  linkText: {
-    fontSize: 14,
-    textDecorationLine: 'underline',
-    marginBottom: 10,
-  },
-});
-
-export default LoginScreen;
+}

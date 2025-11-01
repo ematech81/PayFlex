@@ -11,7 +11,7 @@ import { FormatUtils } from 'UTILS/formatUtils';
 
 export const useWalletBalance = () => {
   const { wallet } = useWallet();
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(200);
   const [isVisible, setIsVisible] = useState(true);
   const [formattedBalance, setFormattedBalance] = useState('₦0.00');
 

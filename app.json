@@ -4,7 +4,7 @@
     "slug": "fintech-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/appIcon.png",
+    "icon": "./assets/appIcon.jpg",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -31,7 +31,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/appIcon.png"
+      "favicon": "./asset/appStoreIcon.jpg"
     },
     "plugins": ["expo-secure-store"]
   }

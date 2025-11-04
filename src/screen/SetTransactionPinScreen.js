@@ -15,8 +15,10 @@ import { colors } from 'constants/colors';
 import { useWallet } from 'context/WalletContext';
 import axios from 'axios';
 import WelcomeComponent from 'component/WelcomeComponent';
+import { ApiIPAddress } from 'utility/apiIPAdress';
+import AuthHeader from 'component/AuthHeader';
 
-const BASE_URL = 'http://192.168.100.210:5000/api/auth';
+const BASE_URL = ApiIPAddress;
 
 export default function SetTransactionPinScreen({ navigation, route }) {
   const { onSuccess } = route.params || {};
@@ -78,13 +80,16 @@ export default function SetTransactionPinScreen({ navigation, route }) {
       <StatusBar
         barStyle="light-content"
         translucent
-        backgroundColor="#4a00e0"
+        backgroundColor="transparent"
       />
-      <WelcomeComponent />
+      <AuthHeader 
+              title='Transaction PIN Set' 
+              subtitle='Set 4-digit Transaction PIN' 
+              showBack 
+              onBack={() => navigation.goBack()} 
+            />
       <View style={{ paddingHorizontal: 20 }}>
-        <Text style={[styles.headerTitle, { color: themeColors.heading }]}>
-          Set Transaction PIN
-        </Text>
+        
         <Text style={[styles.label, { color: themeColors.heading }]}>
           Enter 4-Digit PIN
         </Text>

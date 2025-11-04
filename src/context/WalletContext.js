@@ -9,9 +9,11 @@ import React, {
 import { v4 as uuidv4 } from 'uuid';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { ApiIPAddress } from 'utility/apiIPAdress';
+import { STORAGE_KEYS } from 'utility/storageKeys';
 
 const WalletContext = createContext();
-const BASE_URL = 'http://192.168.43.191:5000/api/auth';
+const BASE_URL = ApiIPAddress;
 
 const initialInvoiceState = {
   invoices: [], // { id, customer, title, dueDate, currency, products, discount, tax, total, notes, paymentDetails, status }
@@ -72,7 +74,7 @@ const invoiceReducer = (state, action) => {
 };
 
 export const WalletProvider = ({ children }) => {
-  const [walletBalance, setWalletBalance] = useState(200); // Example initial balance
+  const [walletBalance, setWalletBalance] = useState(15000000); // Example initial balance
   const [invoiceState, invoiceDispatch] = useReducer(
     invoiceReducer,
     initialInvoiceState
@@ -103,8 +105,8 @@ export const WalletProvider = ({ children }) => {
    */
   const loadStoredData = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      const userStr = await AsyncStorage.getItem('user');
+      const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+      const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       const pinSetStr = await AsyncStorage.getItem('transactionPinSet'); // ✅ Store locally
 
       if (token && userStr) {

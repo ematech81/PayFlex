@@ -32,6 +32,7 @@ import { useWalletBalance } from 'HOOKS';
 import { PromoCard } from 'component/SHARED';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { useWallet } from 'context/WalletContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const { width, height } = Dimensions.get('window');
@@ -49,43 +50,43 @@ const services = [
   {
     id: 'jamb',
     label: 'JAMB',
-    icon: <FontAwesome6 name="credit-card" size={ICON_SIZE} />,
+    icon: <FontAwesome6 name="credit-card" size={ICON_SIZE} stokeWidth='20' />,
     screen: null, // Not implemented yet
   },
   {
     id: 'bills',
     label: 'Bills',
-    icon: <Ionicons name="document-text" size={ICON_SIZE} />,
+    icon: <Ionicons name="document-text" size={ICON_SIZE}  stokeWidth='20'/>,
     screen: null, // Not implemented yet
   },
   {
     id: 'tv',
     label: 'TV Subs',
-    icon: <MaterialCommunityIcons name="television" size={ICON_SIZE} />,
+    icon: <MaterialCommunityIcons name="television" size={ICON_SIZE}  stokeWidth='20'/>,
     screen: 'TVSubscription',
   },
   {
     id: 'flights',
     label: 'Flights',
-    icon: <FontAwesome5 name="plane" size={ICON_SIZE} />,
+    icon: <FontAwesome5 name="plane" size={ICON_SIZE} stokeWidth='20' />,
     screen: null, // Not implemented yet
   },
   {
     id: 'hotels',
     label: 'Hotels',
-    icon: <Ionicons name="bed" size={ICON_SIZE} />,
+    icon: <Ionicons name="bed" size={ICON_SIZE} stokeWidth='20' />,
     screen: null, // Not implemented yet
   },
   {
     id: 'waec',
     label: 'WAEC',
-    icon: <MaterialCommunityIcons name="card-account-details" size={ICON_SIZE} />,
+    icon: <MaterialCommunityIcons name="card-account-details" size={ICON_SIZE} stokeWidth='20' />,
     screen: null, // Not implemented yet
   },
   {
     id: 'more',
     label: 'More',
-    icon: <Feather name="more-vertical" size={ICON_SIZE} />,
+    icon: <Feather name="more-vertical" size={ICON_SIZE} stokeWidth='20' />,
     screen: null, // Not implemented yet
   },
 ];
@@ -201,12 +202,13 @@ const QuickActionItem = React.memo(({ action, onPress }) => (
 /**
  * Enhanced HomeScreen Component
  */
-export default function HomeScreen() {
+export default function HomeScreen({route}) {
   const navigation = useNavigation();
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
   const { walletBalance, wallet } = useWallet();
-  // const { walletBalance } = useWallet();
+  const [user, setUser] = useState(null);
+  
 
   // Custom Hook for wallet balance management
   const {
@@ -220,6 +222,30 @@ export default function HomeScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+
+
+
+  useEffect(() => {
+    // 1️⃣ If user was passed from navigation, use it
+    if (route.params?.user) {
+      setUser(route.params.user);
+    } else {
+      // 2️⃣ Otherwise, load from AsyncStorage
+      loadUserFromStorage();
+    }
+  }, []);
+
+  const loadUserFromStorage = async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem('user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (error) {
+      console.error('Error loading user:', error);
+    }
+  };
 
   /**
    * Refresh handler
@@ -287,7 +313,7 @@ export default function HomeScreen() {
                 {getGreeting()}
               </Text>
               <Text style={[styles.greeting, { color: themeColors.card }]}>
-                {userName} 👋
+              {user ? user.firstName : ''}
               </Text>
             </View>
             <TouchableOpacity 
@@ -306,15 +332,7 @@ export default function HomeScreen() {
 
         {/* Enhanced Wallet Card with Glassmorphism */}
         <View style={styles.walletWrapper}>
-          <LinearGradient
-            colors={[
-              `${themeColors.primary}E6`,
-              `${themeColors.button}CC`,
-            ]}
-            start={[0, 0]}
-            end={[1, 1]}
-            style={styles.walletGradient}
-          >
+           
             <View style={styles.walletInner}>
               {/* Top Section */}
               <View style={styles.walletTop}>
@@ -387,7 +405,6 @@ export default function HomeScreen() {
                 </View>
               </View>
             </View>
-          </LinearGradient>
         </View>
       </View>
 
@@ -605,10 +622,10 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   headerWrapper: {
-    height: height * 0.37,
+    height: height * 0.47,
   },
   header: {
-    marginTop: 35,
+    marginTop: 30,
     justifyContent: 'flex-start',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -713,23 +730,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    marginTop: 16,
+    marginTop: 10,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 5,
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.3)',
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderColor: '#ccc',
+    // backgroundColor: 'rgba(255,255,255,0.15)',
     gap: 6,
   },
   topText: {
     color: '#ffffff',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 12,
   },
   historyBtn: {
     alignItems: 'center',
@@ -756,7 +773,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopRightRadius: 24,
     borderTopLeftRadius: 24,
-    marginTop: -10,
+    marginTop: -7,
   },
   errorBanner: {
     flexDirection: 'row',

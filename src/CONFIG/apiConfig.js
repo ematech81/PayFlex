@@ -5,10 +5,11 @@
  * Manages all API endpoints and request settings
  */
 
+import { ApiIPAddress } from "utility/apiIPAdress";
+
 // Base URL - To be updated this for production
 const BASE_URL = __DEV__ 
-  ? 'http://192.168.43.191:5000/api' 
-  // ? 'http://192.168.100.210:5000/api' 
+  ? ApiIPAddress 
   : 'https://your-production-api.com/api';
 
 export const API_CONFIG = {

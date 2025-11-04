@@ -9,7 +9,7 @@ const AppImage = ({ style, containerStyle, children }) => {
   return (
     <View style={[styles.container, containerStyle]}>
       <ImageBackground
-        source={require('../asset/appIcon.png')}
+        source={require('../asset/appIcon.jpg')}
         style={[styles.image, { width: logoSize, height: logoSize }, style]}
         resizeMode="cover"
       />

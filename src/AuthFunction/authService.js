@@ -6,6 +6,7 @@ import { STORAGE_KEYS } from 'utility/storageKeys';
 
 // ---------- Configuration ----------
 const BASE_URL = ApiIPAddress;
+
 const REQUEST_TIMEOUT = 15000; // 15 seconds
 
 

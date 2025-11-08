@@ -1,39 +1,50 @@
-
 // hooks/useWalletBalance.js
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from 'context/WalletContext';
 import { FormatUtils } from 'UTILS/formatUtils';
 
 /**
  * Wallet Balance Hook
  * Handles wallet balance display and management
+ * 
+ * @returns {Object} Wallet balance utilities
  */
-
 export const useWalletBalance = () => {
   const { wallet } = useWallet();
-  const [balance, setBalance] = useState(200);
+  
+  // ✅ Don't use hardcoded default - derive from wallet
   const [isVisible, setIsVisible] = useState(true);
-  const [formattedBalance, setFormattedBalance] = useState('₦0.00');
 
   /**
-   * Update balance when wallet changes
+   * Get balance from wallet context
+   * Default to 0 if not available
    */
-  useEffect(() => {
-    if (wallet?.user?.walletBalance !== undefined) {
-      setBalance(wallet.user.walletBalance);
-    }
+  const balance = useMemo(() => {
+    // Return actual balance or 0 (not 200!)
+    return wallet?.user?.walletBalance ?? 0;
   }, [wallet?.user?.walletBalance]);
 
   /**
-   * Update formatted balance
+   * Check if wallet is loading
    */
-  useEffect(() => {
-    if (isVisible) {
-      setFormattedBalance(FormatUtils.formatCurrency(balance, 'NGN'));
-    } else {
-      setFormattedBalance('₦ ****.**');
+  const isLoading = useMemo(() => {
+    return wallet?.isLoading ?? true;
+  }, [wallet?.isLoading]);
+
+  /**
+   * Format balance based on visibility
+   */
+  const formattedBalance = useMemo(() => {
+    if (isLoading) {
+      return '₦ ---.--'; // Show loading state
     }
-  }, [balance, isVisible]);
+
+    if (isVisible) {
+      return FormatUtils.formatCurrency(balance, 'NGN');
+    } else {
+      return '₦ ****.**';
+    }
+  }, [balance, isVisible, isLoading]);
 
   /**
    * Toggle balance visibility
@@ -53,9 +64,17 @@ export const useWalletBalance = () => {
 
   /**
    * Get balance status
-   * @returns {Object} Balance status
+   * @returns {Object} Balance status with status, message, and color
    */
   const getBalanceStatus = useCallback(() => {
+    if (isLoading) {
+      return {
+        status: 'loading',
+        message: 'Loading balance...',
+        color: '#999999',
+      };
+    }
+
     if (balance === 0) {
       return {
         status: 'empty',
@@ -75,7 +94,7 @@ export const useWalletBalance = () => {
         color: '#4CAF50',
       };
     }
-  }, [balance]);
+  }, [balance, isLoading]);
 
   /**
    * Calculate balance after transaction
@@ -86,13 +105,37 @@ export const useWalletBalance = () => {
     return balance - Number(amount);
   }, [balance]);
 
+  /**
+   * Format amount as currency
+   * @param {number} amount - Amount to format
+   * @returns {string}
+   */
+  const formatAmount = useCallback((amount) => {
+    return FormatUtils.formatCurrency(amount, 'NGN');
+  }, []);
+
+  // ✅ Log for debugging (remove in production)
+  useEffect(() => {
+    if (__DEV__) {
+      console.log('💰 Wallet Balance Hook:', {
+        balance,
+        formattedBalance,
+        isLoading,
+        hasUser: !!wallet?.user,
+        rawWalletBalance: wallet?.user?.walletBalance,
+      });
+    }
+  }, [balance, formattedBalance, isLoading, wallet?.user]);
+
   return {
     balance,
     formattedBalance,
     isVisible,
+    isLoading,
     toggleVisibility,
     isSufficient,
     getBalanceStatus,
     getBalanceAfter,
+    formatAmount,
   };
 };

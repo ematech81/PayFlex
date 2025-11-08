@@ -14,8 +14,9 @@ import { colors } from 'constants/colors';
 import { useWallet } from 'context/WalletContext';
 import axios from 'axios';
 import WelcomeComponent from 'component/WelcomeComponent';
+import { ApiIPAddress } from 'utility/apiIPAdress';
 
-const BASE_URL = 'http://192.168.100.137:5000/api/auth';
+const BASE_URL = ApiIPAddress;
 
 export default function ResetPinScreen({ navigation, route }) {
   const { pinType } = route.params; // 'transaction' or 'login'

@@ -8,200 +8,390 @@ import {
   ActivityIndicator,
   Alert,
   StatusBar,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { useWallet } from 'context/WalletContext';
 import axios from 'axios';
-import WelcomeComponent from 'component/WelcomeComponent';
-import { ApiIPAddress } from 'utility/apiIPAdress';
 import AuthHeader from 'component/AuthHeader';
+import { ApiIPAddress } from 'utility/apiIPAdress';
 
 const BASE_URL = ApiIPAddress;
 
 export default function SetTransactionPinScreen({ navigation, route }) {
-  const { onSuccess } = route.params || {};
+  const { fromScreen } = route.params || {};
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
-  const { wallet } = useWallet();
+  const { wallet, updateTransactionPinStatus } = useWallet();
+
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSetPin = async () => {
+    // Clear previous errors
+    setError('');
+
+    // Validation
     if (!pin || !/^\d{4}$/.test(pin)) {
-      setError('PIN must be 4 digits');
-      return;
+      return setError('PIN must be exactly 4 digits');
     }
     if (pin !== confirmPin) {
-      setError('PINs do not match');
-      return;
+      return setError('PINs do not match');
     }
-    setError('');
+
     setIsLoading(true);
 
     try {
-      const response = await axios.post(
+      console.log('🔐 Creating transaction PIN...');
+      
+      const { data } = await axios.post(
         `${BASE_URL}/set-transaction-pin`,
         { pin },
-        { headers: { Authorization: `Bearer ${wallet.token}` } }
+        { 
+          headers: { Authorization: `Bearer ${wallet.token}` },
+          timeout: 10000,
+        }
       );
-      if (response.data.success) {
-        Alert.alert('Success', 'Transaction PIN set successfully', [
-          {
-            text: 'OK',
-            onPress: () => {
-              navigation.goBack();
-              if (onSuccess) onSuccess();
+
+      if (data.success) {
+        console.log('✅ PIN created successfully on server');
+        
+        // ✅ FIX: Only update local status, DON'T call refreshWallet here
+        await updateTransactionPinStatus(true);
+        console.log('✅ Local PIN status updated to true');
+
+        // Show success and navigate back
+        Alert.alert(
+          'Success', 
+          'Transaction PIN created successfully!', 
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // ✅ FIX: Navigate back with fromPinSetup flag
+                if (fromScreen) {
+                  navigation.navigate(fromScreen, { 
+                    fromPinSetup: true 
+                  });
+                } else {
+                  navigation.goBack();
+                }
+              },
             },
-          },
-        ]);
+          ]
+        );
       } else {
-        setError(response.data.message || 'Failed to set PIN');
+        setError(data.message || 'Failed to set PIN');
+        console.error('❌ Server returned failure:', data.message);
       }
-    } catch (error) {
-      setError(error.response?.data?.message || 'Network error');
+    } catch (err) {
+      const message = err.response?.data?.message || 'Network error. Please try again.';
+      setError(message);
+      console.error('❌ PIN setup failed:', err.response?.data || err.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: themeColors.background }]}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={([styles.header], { backgroundColor: themeColors.primary })}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={themeColors.heading} />
-        </TouchableOpacity>
-      </View>
-      <StatusBar
-        barStyle="light-content"
-        translucent
-        backgroundColor="transparent"
-      />
-      <AuthHeader 
-              title='Transaction PIN Set' 
-              subtitle='Set 4-digit Transaction PIN' 
-              showBack 
-              onBack={() => navigation.goBack()} 
-            />
-      <View style={{ paddingHorizontal: 20 }}>
-        
-        <Text style={[styles.label, { color: themeColors.heading }]}>
-          Enter 4-Digit PIN
-        </Text>
-        <TextInput
-          style={[
-            styles.input,
-            { color: themeColors.heading, borderColor: themeColors.border },
-          ]}
-          placeholder="****"
-          placeholderTextColor={themeColors.subtext}
-          keyboardType="numeric"
-          maxLength={4}
-          secureTextEntry
-          value={pin}
-          onChangeText={setPin}
-          accessibilityLabel="Transaction PIN input"
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+        <AuthHeader
+          title="Set Transaction PIN"
+          subtitle="Create a 4-digit PIN to secure your transactions"
+          showBack
+          onBack={() => navigation.goBack()}
         />
-        <Text style={[styles.label, { color: themeColors.heading }]}>
-          Confirm PIN
-        </Text>
-        <TextInput
-          style={[
-            styles.input,
-            { color: themeColors.heading, borderColor: themeColors.border },
-          ]}
-          placeholder="****"
-          placeholderTextColor={themeColors.subtext}
-          keyboardType="numeric"
-          maxLength={4}
-          secureTextEntry
-          value={confirmPin}
-          onChangeText={setConfirmPin}
-          accessibilityLabel="Confirm transaction PIN input"
-        />
-        {error ? (
-          <Text style={[styles.error, { color: themeColors.destructive }]}>
-            {error}
-          </Text>
-        ) : null}
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            {
-              backgroundColor: isLoading
-                ? themeColors.subtext
-                : themeColors.button,
-            },
-          ]}
-          disabled={isLoading}
-          onPress={handleSetPin}
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          {isLoading ? (
-            <ActivityIndicator size="small" color={themeColors.card} />
-          ) : (
-            <Text
-              style={[styles.submitButtonText, { color: themeColors.card }]}
-            >
-              Set PIN
+          {/* Info Banner */}
+          <View style={[styles.infoBanner, { backgroundColor: `${themeColors.primary}10` }]}>
+            <Ionicons name="information-circle" size={20} color={themeColors.primary} />
+            <Text style={[styles.infoText, { color: themeColors.heading }]}>
+              Please note: Your transaction PIN is different from your login PIN. 
+              You'll need your transaction PIN to authorize payments.
             </Text>
-          )}
-        </TouchableOpacity>
+          </View>
+
+          {/* PIN Input */}
+          <Text style={[styles.label, { color: themeColors.heading }]}>
+            Enter 4-Digit PIN
+          </Text>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[
+                styles.input, 
+                { 
+                  color: themeColors.heading, 
+                  borderColor: error && !pin ? themeColors.destructive : themeColors.border,
+                  backgroundColor: themeColors.card,
+                }
+              ]}
+              placeholder="••••"
+              placeholderTextColor={themeColors.subtext}
+              keyboardType="numeric"
+              maxLength={4}
+              secureTextEntry
+              value={pin}
+              onChangeText={(text) => {
+                setPin(text);
+                setError('');
+              }}
+              editable={!isLoading}
+            />
+            {pin.length === 4 && (
+              <Ionicons 
+                name="checkmark-circle" 
+                size={24} 
+                color={themeColors.primary} 
+                style={styles.inputIcon}
+              />
+            )}
+          </View>
+
+          {/* Confirm PIN Input */}
+          <Text style={[styles.label, { color: themeColors.heading }]}>
+            Confirm PIN
+          </Text>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[
+                styles.input, 
+                { 
+                  color: themeColors.heading, 
+                  borderColor: error && !confirmPin ? themeColors.destructive : themeColors.border,
+                  backgroundColor: themeColors.card,
+                }
+              ]}
+              placeholder="••••"
+              placeholderTextColor={themeColors.subtext}
+              keyboardType="numeric"
+              maxLength={4}
+              secureTextEntry
+              value={confirmPin}
+              onChangeText={(text) => {
+                setConfirmPin(text);
+                setError('');
+              }}
+              editable={!isLoading}
+            />
+            {confirmPin.length === 4 && confirmPin === pin && (
+              <Ionicons 
+                name="checkmark-circle" 
+                size={24} 
+                color={themeColors.primary} 
+                style={styles.inputIcon}
+              />
+            )}
+          </View>
+
+          {/* Error Message */}
+          {error ? (
+            <View style={[styles.errorContainer, { backgroundColor: `${themeColors.destructive}15` }]}>
+              <Ionicons name="alert-circle" size={20} color={themeColors.destructive} />
+              <Text style={[styles.errorText, { color: themeColors.destructive }]}>
+                {error}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* PIN Requirements */}
+          <View style={[styles.requirementsContainer, { backgroundColor: themeColors.card }]}>
+            <Text style={[styles.requirementsTitle, { color: themeColors.heading }]}>
+              PIN Requirements:
+            </Text>
+            <View style={styles.requirementItem}>
+              <Ionicons 
+                name={pin.length === 4 ? "checkmark-circle" : "ellipse-outline"} 
+                size={18} 
+                color={pin.length === 4 ? themeColors.primary : themeColors.subtext} 
+              />
+              <Text style={[styles.requirementText, { color: themeColors.subtext }]}>
+                Must be exactly 4 digits
+              </Text>
+            </View>
+            <View style={styles.requirementItem}>
+              <Ionicons 
+                name={/^\d+$/.test(pin) && pin.length > 0 ? "checkmark-circle" : "ellipse-outline"} 
+                size={18} 
+                color={/^\d+$/.test(pin) && pin.length > 0 ? themeColors.primary : themeColors.subtext} 
+              />
+              <Text style={[styles.requirementText, { color: themeColors.subtext }]}>
+                Numbers only (0-9)
+              </Text>
+            </View>
+            <View style={styles.requirementItem}>
+              <Ionicons 
+                name={pin === confirmPin && pin.length === 4 ? "checkmark-circle" : "ellipse-outline"} 
+                size={18} 
+                color={pin === confirmPin && pin.length === 4 ? themeColors.primary : themeColors.subtext} 
+              />
+              <Text style={[styles.requirementText, { color: themeColors.subtext }]}>
+                Both PINs must match
+              </Text>
+            </View>
+          </View>
+
+          {/* Submit Button */}
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              { 
+                backgroundColor: isLoading || !pin || !confirmPin 
+                  ? themeColors.subtext 
+                  : themeColors.button 
+              },
+            ]}
+            disabled={isLoading || !pin || !confirmPin}
+            onPress={handleSetPin}
+            activeOpacity={0.7}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color={themeColors.card} />
+            ) : (
+              <>
+                <Text style={[styles.submitButtonText, { color: themeColors.card }]}>
+                  Set Transaction PIN
+                </Text>
+                <Ionicons name="arrow-forward" size={20} color={themeColors.card} />
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Security Note */}
+          <View style={styles.securityNote}>
+            <Ionicons name="shield-checkmark" size={20} color={themeColors.primary} />
+            <Text style={[styles.securityText, { color: themeColors.subtext }]}>
+              Your PIN is encrypted and securely stored. Never share your PIN with anyone.
+            </Text>
+          </View>
+        </ScrollView>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { 
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 10,
-    marginTop: 20,
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 24,
+    gap: 8,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
   },
   label: {
     fontSize: 16,
-    fontWeight: '500',
-    marginVertical: 10,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  inputContainer: {
+    position: 'relative',
+    marginBottom: 24,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 16,
-    marginBottom: 20,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    fontSize: 24,
+    fontWeight: '600',
+    letterSpacing: 8,
+    textAlign: 'center',
   },
-  error: {
-    fontSize: 14,
+  inputIcon: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    marginTop: -12,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
     marginBottom: 20,
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  requirementsContainer: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+  },
+  requirementsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  requirementText: {
+    fontSize: 13,
+    flex: 1,
   },
   submitButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 8,
+    gap: 8,
   },
   submitButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
   },
-  contentHeader: {
-    padding: 20,
-    width: '100%',
-    minHeight: '45%',
+  securityNote: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyCntent: 'center',
+    gap: 8,
+    marginTop: 24,
+    paddingHorizontal: 4,
+  },
+  securityText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

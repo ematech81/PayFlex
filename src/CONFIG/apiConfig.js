@@ -5,11 +5,13 @@
  * Manages all API endpoints and request settings
  */
 
-import { ApiIPAddress } from "utility/apiIPAdress";
+import { PaymentApiIPAddress } from "utility/apiIPAdress";
+
+// import { PaymentApiIPAddress} from "utility/apiIPAdress";
 
 // Base URL - To be updated this for production
 const BASE_URL = __DEV__ 
-  ? ApiIPAddress 
+  ? PaymentApiIPAddress 
   : 'https://your-production-api.com/api';
 
 export const API_CONFIG = {

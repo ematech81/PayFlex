@@ -1,11 +1,15 @@
 import 'react-native-get-random-values';
 import 'react-native-gesture-handler';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   NavigationContainer,
   DefaultTheme,
   DarkTheme,
+  useNavigation,
 } from '@react-navigation/native';
+import { View, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+// import { STORAGE_KEYS } from 'utility/authService';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
@@ -44,6 +48,7 @@ import TransactionDetailsScreen from 'screen/TransactionDetailsScreen';
 import SetTransactionPinScreen from 'screen/SetTransactionPinScreen';
 import ResetPinScreen from 'screen/ResetPinScreen';
 import SetLoginPINScreen from 'screen/SetLoginPinScreen';
+import { STORAGE_KEYS } from 'utility/storageKeys';
 
 // 👇 Keep splash screen visible until resources load
 // SplashScreen.preventAutoHideAsync();
@@ -143,21 +148,81 @@ function BottomTabs() {
   );
 }
 
-export default function App() {
-  const [appIsReady, setAppIsReady] = useState(false);
-  const isDarkMode = useThem();
 
+
+
+
+export default function App() {
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [initialRoute, setInitialRoute] = useState(null);
+  const [appIsReady, setAppIsReady] = useState(false);
+  const isDarkMode = useThem(); // your custom hook
+
+ 
+  const navigationRef = useRef(); 
+  const [routeName, setRouteName] = useState(null); // ← Track target route
+
+
+  
+  // ✅ Check auth ONCE on app start
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+      const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      const requirePinStr = await AsyncStorage.getItem(STORAGE_KEYS.REQUIRE_PIN);
+
+      console.log('🔍 Auth Check:', {
+        hasToken: !!token,
+        hasUser: !!userStr,
+        requirePinStr: requirePinStr,
+      });
+
+      // ✅ User is logged in
+      if (token && userStr) {
+        // requirePin defaults to true if not set or if explicitly 'true'
+        const requirePin = requirePinStr !== 'false';
+        
+        console.log('📊 RequirePin Status:', {
+          raw: requirePinStr,
+          parsed: requirePin,
+        });
+
+        if (requirePin) {
+          console.log('🔐 RequirePin ON → Starting at Login');
+          setInitialRoute('Login');
+        } else {
+          console.log('🏠 RequirePin OFF → Starting at MainTabs');
+          setInitialRoute('MainTabs');
+        }
+      } 
+      // ❌ User not logged in
+      else {
+        console.log('❌ No auth data → Starting at Login');
+        setInitialRoute('Login');
+      }
+
+    } catch (error) {
+      console.error('❌ Error checking auth:', error);
+      setInitialRoute('Login');
+    } finally {
+      // ✅ Done checking
+      setIsLoading(false);
+    }
+  };
+
+  
+  // === 2. Prepare app (fonts, splash, etc.) ===
   useEffect(() => {
     async function prepare() {
       try {
-        // Preload fonts
-        // await Font.loadAsync({
-        //   SpaceMono: require('./assets/fonts/SpaceMono-Regular.ttf'), // Uncomment and adjust path if you have a font
-        // });
-
-        // Ensure native modules are initialized (e.g., expo-print, react-native-pdf)
-        // Add a small delay to allow native modules to register
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // Increased from 1000ms to 2000ms
+        // Preload fonts, native modules, etc.
+        await new Promise(resolve => setTimeout(resolve, 2000));
       } catch (e) {
         console.warn(e);
       } finally {
@@ -169,8 +234,48 @@ export default function App() {
     prepare();
   }, []);
 
+
+  // // === After loading, reset navigation ===
+  // useEffect(() => {
+  //   if (!isLoading && appIsReady && routeName && navigationRef.current) {
+  //     const nav = navigationRef.current;
+
+  //     if (routeName === 'MainTabs') {
+  //       nav.reset({
+  //         index: 0,
+  //         routes: [
+  //           {
+  //             name: 'MainTabs',
+  //             state: {
+  //               routes: [{ name: 'Home' }], // Force Home tab
+  //               index: 0,
+  //             },
+  //           },
+  //         ],
+  //       });
+  //     } else {
+  //       nav.reset({
+  //         index: 0,
+  //         routes: [{ name: 'Login' }],
+  //       });
+  //     }
+  //   }
+  // }, [isLoading, appIsReady, routeName]);
+
+
+
+  // Show splash screen until app is ready
   if (!appIsReady) {
-    return null; // Splash screen remains visible
+    return null;
+  }
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
   }
 
   return (
@@ -179,9 +284,12 @@ export default function App() {
         <SafeAreaProvider>
           <NavigationContainer
             theme={isDarkMode ? DarkTheme : DefaultTheme}
-            // initialRouteName="Login"
+            ref={navigationRef}
           >
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Navigator
+             screenOptions={{ headerShown: false }}
+             initialRouteName={initialRoute} 
+            >
                <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="SignUp" component={SignUpScreen} />
               <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />

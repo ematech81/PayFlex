@@ -96,8 +96,12 @@ export default function LoginScreen({ navigation }) {
 
     // Auto-submit when all 6 digits entered
     if (newPin.every(d => d) && newPin.join('').length === 6) {
-      // Small delay to ensure state is updated
-      setTimeout(() => handleLogin(newPin), 100);
+      // ✅ Prevent toggle from being affected during auto-submit
+      // Blur all inputs to dismiss keyboard
+      pinRefs.current.forEach(ref => ref?.blur());
+      
+      // Small delay to ensure UI state is stable
+      setTimeout(() => handleLogin(newPin), 150);
     }
   };
 
@@ -105,6 +109,40 @@ export default function LoginScreen({ navigation }) {
   const handlePinKeyPress = (e, index) => {
     if (e.nativeEvent.key === 'Backspace' && !pin[index] && index > 0) {
       pinRefs.current[index - 1]?.focus();
+    }
+  };
+
+
+  // ==============================
+  // Handle RequirePin Toggle Change
+  // ==============================
+  const handleRequirePinToggle = async (newValue) => {
+    setRequirePin(newValue);
+    
+    // Save to AsyncStorage immediately
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.REQUIRE_PIN, String(newValue));
+      console.log('✅ RequirePin saved to AsyncStorage:', newValue);
+    } catch (err) {
+      console.error('❌ Error saving requirePin to AsyncStorage:', err);
+    }
+
+    // Update backend if user is logged in (has token)
+    try {
+      const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+      
+      if (token) {
+        const res = await AuthService.updateRequirePin(newValue);
+        if (res.success) {
+          console.log('✅ RequirePin updated on backend:', newValue);
+        } else {
+          console.warn('⚠️ Failed to update requirePin on backend:', res.message);
+        }
+      } else {
+        console.log('ℹ️  No token found, will sync requirePin on next login');
+      }
+    } catch (err) {
+      console.error('❌ Error updating requirePin on backend:', err);
     }
   };
 
@@ -153,6 +191,21 @@ export default function LoginScreen({ navigation }) {
           [STORAGE_KEYS.PHONE, formattedPhone],
           [STORAGE_KEYS.REQUIRE_PIN, String(requirePin)],
         ]);
+
+
+        // ✅ Update requirePin setting on backend
+        try {
+          const updateRes = await AuthService.updateRequirePin(requirePin);
+          if (updateRes.success) {
+            console.log('✅ RequirePin setting updated:', requirePin);
+          } else {
+            console.warn('⚠️ Failed to update requirePin on backend:', updateRes.message);
+          }
+        } catch (updateErr) {
+          console.warn('⚠️ Error updating requirePin:', updateErr);
+          // Don't block login if this fails
+        }
+
 
         // Navigate to home
         navigation.reset({
@@ -369,14 +422,18 @@ export default function LoginScreen({ navigation }) {
               <Text style={{ color: theme.heading, fontWeight: '600' }}>
                 Require PIN on app open
               </Text>
-              <Text style={{ color: theme.subtext, fontSize: 12 }}>
-                Disable to skip PIN on launch
+              <Text style={{ color: theme.primary, fontSize: 12, fontWeight:'600' }}>
+              <Text>
+  {requirePin ? 'PIN required every time' : 'PIN skipped on app launch'}
+</Text>
               </Text>
             </View>
             <Switch 
               value={requirePin} 
-              onValueChange={setRequirePin}
+              onValueChange={handleRequirePinToggle}
               disabled={loading}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={requirePin ? theme.card : theme.subtext}
             />
           </View>
 

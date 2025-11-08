@@ -33,6 +33,7 @@ import { PromoCard } from 'component/SHARED';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { useWallet } from 'context/WalletContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AddWalletFund from 'component/AddWalletFund';
 
 
 const { width, height } = Dimensions.get('window');
@@ -209,6 +210,26 @@ export default function HomeScreen({route}) {
   const { walletBalance, wallet } = useWallet();
   const [user, setUser] = useState(null);
   
+  // State
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+
+  // useEffect(() => {
+  //   const clearAllStorage = async () => {
+  //     try {
+  //       await AsyncStorage.clear();
+  //       console.log('🧹 All AsyncStorage cleared');
+  //     } catch (error) {
+  //       console.error('❌ Error clearing storage:', error);
+  //     }
+  //   };
+  
+  //   clearAllStorage();
+  // }, []); // Empty dependency array = runs once on mount
+
+  
 
   // Custom Hook for wallet balance management
   const {
@@ -218,10 +239,6 @@ export default function HomeScreen({route}) {
     toggleVisibility,
   } = useWalletBalance();
 
-  // State
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
 
 
 
@@ -607,6 +624,8 @@ export default function HomeScreen({route}) {
               </View>
             )}
           </View>
+
+           {__DEV__ && <AddWalletFund />}
         </ScrollView>
       </View>
     </SafeAreaView>

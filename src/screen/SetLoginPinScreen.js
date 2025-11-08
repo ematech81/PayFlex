@@ -70,8 +70,8 @@ export default function SetLoginPinScreen({ route, navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      <AuthHeader title="Set Login PIN" subtitle="Choose a 6-digit PIN" />
-
+      <AuthHeader title="Set Login PIN" subtitle="" />
+<View style={{padding: 16, marginTop: 30, marginBottom: 10}}><Text style={{fontSize: 17,color: theme.subtext}}>Create 6-Digit PIN for login</Text></View>
       <View style={{ padding: 24 }}>
         <TextInput
           placeholder="Enter 6-digit PIN"

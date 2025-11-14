@@ -1,269 +1,464 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
-  TextInput,
-  TouchableOpacity,
-  useColorScheme,
-  Dimensions,
   StyleSheet,
+  ScrollView,
+  SafeAreaView,
+  TextInput
 } from 'react-native';
-import BackBtn from 'utility/BackBtn';
 
-const { width } = Dimensions.get('window');
+// Shared Components
+import {
+  ScreenHeader,
+  ProviderSelector,
+  PayButton,
+  ConfirmationModal,
+  PinModal,
+  ResultModal,
+  PromoCard,
+  LoadingOverlay,
+} from 'component/SHARED';
 
-const TVSubscriptionScreen = ({ navigation }) => {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+// Custom Components
+import AmountInput from 'component/SHARED/INPUT/amountInput';
+import { PaymentApiIPAddress } from "utility/apiIPAdress";
+import { useServicePayment } from 'HOOKS/UseServicePayment';
+import PinSetupModal from 'component/PinSetUpModal';
+import { useWallet } from 'context/WalletContext';
 
-  const backgroundColor = isDark ? '#121212' : '#f6f6f8';
-  const textColor = isDark ? '#FFFFFF' : '#000000';
-  const primaryColor = '#4a00e0'; // Deep purple for primary colors
-  const cardColor = '#ffffff'; // Light purple for cards
+// Constants & Utils
+import { formatCurrency } from 'CONSTANT/formatCurrency';
+import { colors } from 'constants/colors';
+import { useThem } from 'constants/useTheme';
 
-  const [selectedProvider, setSelectedProvider] = useState('DStv');
-  const [smartCardNumber, setSmartCardNumber] = useState('');
 
-  const providers = ['DStv', 'GOtv', 'StarTimes', 'ShowMax'];
 
-  // Mock data aligned with VTpass API response structure (variation_code, name, variation_amount)
-  const mockPlans = {
-    DStv: [
-      {
-        variation_code: 'dstv-padi',
-        name: 'DStv Padi',
-        variation_amount: '2150',
-      },
-      {
-        variation_code: 'dstv-yanga',
-        name: 'DStv Yanga',
-        variation_amount: '2950',
-      },
-      {
-        variation_code: 'dstv-confam',
-        name: 'DStv Confam',
-        variation_amount: '5300',
-      },
-      {
-        variation_code: 'dstv-compact',
-        name: 'DStv Compact',
-        variation_amount: '9000',
-      },
-      {
-        variation_code: 'dstv-compact-plus',
-        name: 'DStv Compact Plus',
-        variation_amount: '14250',
-      },
-      {
-        variation_code: 'dstv-premium',
-        name: 'DStv Premium',
-        variation_amount: '21500',
-      },
+
+/**
+ * TV Subscription Screen - Adapted from AirtimeScreen Using Unified Payment System
+ */
+export default function TVSubscriptionScreen({ navigation, route }) {
+  const isDarkMode = useThem();
+  const themeColors = isDarkMode ? colors.dark : colors.light;
+  const { wallet, refreshWallet } = useWallet();
+
+  // Define TV Constants Inside the Screen
+  const TV_CONSTANTS = {
+    LIMITS: {
+      MIN_AMOUNT: 1000,
+      MAX_AMOUNT: 50000,
+    },
+  };
+
+  const TV_PROVIDERS = [
+    { label: 'DSTV', value: 'dstv', logo: '' },
+    { label: 'GOTV', value: 'gotv', logo: '' },
+    { label: 'Startimes', value: 'startimes', logo: '' },
+  ];
+
+  const TV_BOUQUETS = {
+    dstv: [
+      { label: 'Padi', value: 'padi', price: 4400 },
+      { label: 'Yanga', value: 'yanga', price: 6000 },
+      { label: 'Confam', value: 'confam', price: 11000 },
+      { label: 'Compact', value: 'compact', price: 19000 },
+      { label: 'Compact Plus', value: 'compact_plus', price: 30000 },
+      { label: 'Premium', value: 'premium', price: 45000 },
     ],
-    GOtv: [
-      {
-        variation_code: 'gotv-smallie',
-        name: 'GOtv Smallie',
-        variation_amount: '1300',
-      },
-      {
-        variation_code: 'gotv-jinja',
-        name: 'GOtv Jinja',
-        variation_amount: '2700',
-      },
-      {
-        variation_code: 'gotv-jolli',
-        name: 'GOtv Jolli',
-        variation_amount: '3950',
-      },
-      {
-        variation_code: 'gotv-max',
-        name: 'GOtv Max',
-        variation_amount: '5700',
-      },
-      {
-        variation_code: 'gotv-supamax',
-        name: 'GOtv SupaMax',
-        variation_amount: '8600',
-      },
+    gotv: [
+      { label: 'Smallie', value: 'smallie', price: 1900 },
+      { label: 'Jinja', value: 'jinja', price: 3900 },
+      { label: 'Jolli', value: 'jolli', price: 5800 },
+      { label: 'Max', value: 'max', price: 8500 },
+      { label: 'Supa', value: 'supa', price: 11400 },
+      { label: 'Supa Plus', value: 'supa_plus', price: 16800 },
     ],
-    StarTimes: [
-      {
-        variation_code: 'startimes-nova',
-        name: 'StarTimes Nova',
-        variation_amount: '1200',
-      },
-      {
-        variation_code: 'startimes-basic',
-        name: 'StarTimes Basic',
-        variation_amount: '2000',
-      },
-      {
-        variation_code: 'startimes-smart',
-        name: 'StarTimes Smart',
-        variation_amount: '2800',
-      },
-      {
-        variation_code: 'startimes-classic',
-        name: 'StarTimes Classic',
-        variation_amount: '3000',
-      },
-      {
-        variation_code: 'startimes-super',
-        name: 'StarTimes Super',
-        variation_amount: '5000',
-      },
-    ],
-    ShowMax: [
-      {
-        variation_code: 'showmax-mobile',
-        name: 'ShowMax Mobile',
-        variation_amount: '2900',
-      },
-      {
-        variation_code: 'showmax-entertainment',
-        name: 'ShowMax Entertainment',
-        variation_amount: '3700',
-      },
-      {
-        variation_code: 'showmax-premier-league',
-        name: 'ShowMax Premier League',
-        variation_amount: '5000',
-      },
-      {
-        variation_code: 'showmax-pro',
-        name: 'ShowMax Pro',
-        variation_amount: '6300',
-      },
+    startimes: [
+      { label: 'Nova', value: 'nova', price: 1700 },
+      { label: 'Basic', value: 'basic', price: 3000 },
+      { label: 'Smart', value: 'smart', price: 2800 },
+      { label: 'Classic', value: 'classic', price: 6000 },
+      { label: 'Super', value: 'super', price: 5300 },
     ],
   };
 
+  // Local State
+  const [smartCardNumber, setSmartCardNumber] = useState('');
+  const [provider, setProvider] = useState('');
+  const [bouquet, setBouquet] = useState('');
+  const [amount, setAmount] = useState(0);
+  const [validationErrors, setValidationErrors] = useState({});
+
+  // Get current bouquets based on provider
+  const currentBouquets = TV_BOUQUETS[provider] || [];
+
+  // Update amount when bouquet changes
+  useEffect(() => {
+    const selected = currentBouquets.find(b => b.value === bouquet);
+    setAmount(selected ? selected.price : 0);
+  }, [bouquet, currentBouquets]);
+
+  // ========================================
+  // VALIDATION FUNCTION
+  // ========================================
+  const validateTVPayment = useCallback((paymentData) => {
+    console.log('🔍 Validating TV subscription payment:', paymentData);
+    
+    const errors = {};
+
+    // Validate smart card number (10-12 digits)
+    const cleanSmartCard = (paymentData.smartCardNumber || '').replace(/\s/g, '');
+    const smartCardRegex = /^\d{10,12}$/;
+    
+    if (!cleanSmartCard) {
+      errors.smartCardNumber = 'Smart card/IUC number is required';
+    } else if (!smartCardRegex.test(cleanSmartCard)) {
+      errors.smartCardNumber = 'Invalid smart card/IUC number (10-12 digits)';
+    }
+
+    if (!paymentData.provider) {
+      errors.provider = 'Please select a TV provider';
+    }
+
+    if (!paymentData.bouquet) {
+      errors.bouquet = 'Please select a bouquet';
+    }
+
+    const amountToValidate = paymentData.amount;
+    if (!amountToValidate || amountToValidate < TV_CONSTANTS.LIMITS.MIN_AMOUNT) {
+      errors.amount = `Minimum amount is ${formatCurrency(TV_CONSTANTS.LIMITS.MIN_AMOUNT, 'NGN')}`;
+    }
+
+    if (amountToValidate > TV_CONSTANTS.LIMITS.MAX_AMOUNT) {
+      errors.amount = `Maximum amount is ${formatCurrency(TV_CONSTANTS.LIMITS.MAX_AMOUNT, 'NGN')}`;
+    }
+
+    const isValid = Object.keys(errors).length === 0;
+    console.log('✅ Validation result:', { isValid, errors });
+    setValidationErrors(errors);
+
+    return {
+      isValid,
+      errors,
+    };
+  }, []);
+
+  // ========================================
+  // PURCHASE EXECUTOR FUNCTION
+  // ========================================
+  const executeTVPurchase = useCallback(async (pin, paymentData) => {
+    try {
+      const response = await fetch(`${PaymentApiIPAddress}/payments/buy-tv-subscription`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          smartCardNumber: paymentData.smartCardNumber, // Already cleaned
+          provider: paymentData.provider,
+          bouquet: paymentData.bouquet,
+          amount: paymentData.amount,
+          pin,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'TV subscription failed');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('❌ TV subscription error:', error);
+      throw error;
+    }
+  }, []);
+
+  // ========================================
+  // UNIFIED PAYMENT HOOK
+  // ========================================
+  const payment = useServicePayment({
+    serviceName: 'TV Subscription',
+    validatePayment: validateTVPayment,
+    executePurchase: executeTVPurchase,
+    navigation,
+    route,
+  });
+
+  // ========================================
+  // RESTORE FORM DATA AFTER PIN SETUP
+  // ========================================
+  useEffect(() => {
+    payment.restoreFormData((data) => {
+      console.log('📝 Restoring TV subscription form:', data);
+      setSmartCardNumber(data.smartCardNumber);
+      setProvider(data.provider);
+      setBouquet(data.bouquet);
+      // Amount will be set via effect
+    });
+  }, [payment.pendingPaymentData]);
+
+  // ========================================
+  // INITIAL WALLET LOAD
+  // ========================================
+  useEffect(() => {
+    refreshWallet();
+  }, []);
+
+  // ========================================
+  // PAYMENT HANDLERS
+  // ========================================
+  const handlePayment = useCallback(() => {
+    // Clear errors
+    setValidationErrors({});
+
+    // Clean smart card number (remove whitespace)
+    const cleanSmartCard = smartCardNumber.replace(/\s/g, '');
+
+    // Prepare payment data
+    const paymentData = {
+      smartCardNumber: cleanSmartCard,
+      provider,
+      bouquet,
+      amount,
+    };
+
+    // Initiate payment (handles PIN check automatically)
+    payment.initiatePayment(paymentData);
+  }, [smartCardNumber, provider, bouquet, amount, payment]);
+
+  const handleTransactionComplete = useCallback(() => {
+    // Reset form
+    setSmartCardNumber('');
+    setProvider('');
+    setBouquet('');
+    setAmount(0);
+    
+    payment.handleTransactionComplete(payment.result?.reference);
+  }, [payment]);
+
+  // ========================================
+  // UTILITY FUNCTIONS
+  // ========================================
+  const getProviderLogo = useCallback(() => {
+    return TV_PROVIDERS.find(p => p.value === provider)?.logo;
+  }, [provider]);
+
+  const getProviderName = useCallback(() => {
+    return TV_PROVIDERS.find(p => p.value === provider)?.label;
+  }, [provider]);
+
+  const getBouquetName = useCallback(() => {
+    const selected = currentBouquets.find(b => b.value === bouquet);
+    return selected ? selected.label : '';
+  }, [bouquet, currentBouquets]);
+
+  // ========================================
+  // MAIN RENDER
+  // ========================================
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor,
-        padding: 16,
-      }}
-    >
-      <BackBtn style={{ marginTop: 10 }} onPress={() => navigation.goBack()} />
-      <Text
-        style={{
-          color: textColor,
-          fontSize: 24,
-          fontWeight: 'bold',
-          marginBottom: 20,
-          marginTop: 30,
-        }}
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        TV Subscription
-      </Text>
+        {/* Header */}
+        <ScreenHeader
+          title="TV Subscription"
+          onBackPress={() => navigation.goBack()}
+          rightText="History"
+          onRightPress={() => navigation.navigate('History')}
+        />
 
-      {/* Horizontal list for providers */}
-      <FlatList
-        data={providers}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => setSelectedProvider(item)}
-            style={[
-              styles.providerContainer,
-              {
-                backgroundColor:
-                  selectedProvider === item ? primaryColor : cardColor,
-              },
-            ]}
-          >
-            <Text
-              style={{
-                color: selectedProvider === item ? '#FFFFFF' : primaryColor,
-                fontWeight: 'bold',
-                fontSize: 16,
-              }}
-            >
-              {item}
-            </Text>
-          </TouchableOpacity>
+        {/* Provider Selection */}
+        <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+          Select TV Provider
+        </Text>
+        <ProviderSelector
+          providers={TV_PROVIDERS}
+          value={provider}
+          onChange={setProvider}
+          placeholder="Select TV Provider"
+          error={validationErrors.provider}
+        />
+
+        {/* Smart Card Number Input */}
+        <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+          Smart Card / IUC Number
+        </Text>
+        <TextInput // Assuming a basic TextInput; customize as PhoneInput if needed
+          style={[styles.input, { color: themeColors.text, borderColor: themeColors.border }]}
+          value={smartCardNumber}
+          onChangeText={setSmartCardNumber}
+          placeholder="Enter 10-12 digit number"
+          keyboardType="numeric"
+          maxLength={12}
+        />
+        {validationErrors.smartCardNumber && (
+          <Text style={[styles.errorText, { color: themeColors.destructive }]}>
+            {validationErrors.smartCardNumber}
+          </Text>
         )}
-        style={{ marginBottom: 20 }}
-      />
 
-      {/* Text input for smart card number */}
-      <TextInput
-        placeholder="Enter Smart Card Number"
-        placeholderTextColor={isDark ? '#AAAAAA' : '#777777'}
-        value={smartCardNumber}
-        onChangeText={setSmartCardNumber}
-        style={{
-          borderWidth: 1,
-          borderColor: primaryColor,
-          borderRadius: 10,
-          paddingHorizontal: 15,
-          paddingVertical: 12,
-          marginBottom: 20,
-          color: textColor,
-          backgroundColor: isDark ? '#333333' : '#FFFFFF',
-        }}
-      />
+        {/* Bouquet Selection */}
+        <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+          Select Bouquet
+        </Text>
+        <ProviderSelector
+          providers={currentBouquets.map(b => ({ label: `${b.label} - ${formatCurrency(b.price, 'NGN')}`, value: b.value }))}
+          value={bouquet}
+          onChange={setBouquet}
+          placeholder="Select Bouquet"
+          error={validationErrors.bouquet}
+          disabled={!provider}
+        />
 
-      {/* Plans list for selected provider */}
-      <Text
-        style={{
-          color: textColor,
-          fontSize: 18,
-          fontWeight: 'bold',
-          marginBottom: 10,
-        }}
-      >
-        Plans for {selectedProvider}
-      </Text>
-      <FlatList
-        data={mockPlans[selectedProvider] || []}
-        keyExtractor={(item) => item.variation_code}
-        renderItem={({ item }) => (
-          <View
-            style={{
-              width: width - 40, // Responsive width based on screen dimensions
-              padding: 15,
-              marginBottom: 10,
-              backgroundColor: cardColor,
-              borderRadius: 10,
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ color: textColor, fontSize: 16, flex: 1 }}>
-              {item.name}
-            </Text>
-            <Text
-              style={{ color: primaryColor, fontSize: 16, fontWeight: 'bold' }}
-            >
-              ₦{item.variation_amount}
+        {/* Amount Display (Read-Only) */}
+        <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+          Subscription Amount
+        </Text>
+        <AmountInput
+          value={amount.toString()}
+          placeholder="Amount (auto-set from bouquet)"
+          minAmount={TV_CONSTANTS.LIMITS.MIN_AMOUNT}
+          maxAmount={TV_CONSTANTS.LIMITS.MAX_AMOUNT}
+          showBalance
+          balance={wallet?.user?.walletBalance}
+          error={validationErrors.amount}
+          editable={false} // Read-only
+        />
+
+        {/* Pay Button */}
+        <PayButton
+          title="Pay"
+          onPress={handlePayment}
+          disabled={!smartCardNumber || !provider || !bouquet || payment.step === 'processing'}
+          loading={payment.step === 'processing'}
+          style={styles.payButton}
+        />
+
+        {/* Error Display */}
+        {payment.flowError && (
+          <View style={[styles.errorContainer, { backgroundColor: `${themeColors.destructive}20` }]}>
+            <Text style={[styles.errorText, { color: themeColors.destructive }]}>
+              {payment.flowError}
             </Text>
           </View>
         )}
+
+        {/* Promo Card */}
+        <PromoCard
+          title="🎉 Refer And Win"
+          subtitle="Invite your Friends and earn up to ₦10,000"
+          buttonText="Refer"
+          onPress={() => navigation.navigate('Referral')}
+        />
+      </ScrollView>
+
+      {/* ========================================
+          MODALS - Using Unified System
+          ======================================== */}
+
+      {/* PIN Setup Modal */}
+      <PinSetupModal
+        visible={payment.showPinSetupModal}
+        serviceName="TV Subscription"
+        paymentAmount={amount}
+        onCreatePin={payment.handleCreatePin}
+        onCancel={payment.handleCancelPinSetup}
+        isDarkMode={isDarkMode}
       />
-    </View>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        visible={payment.step === 'confirm'}
+        onClose={payment.handleCancelPayment}
+        onConfirm={payment.confirmPayment}
+        amount={amount}
+        serviceName="TV Subscription"
+        providerLogo={getProviderLogo()}
+        providerName={getProviderName()}
+        recipient={smartCardNumber.replace(/\s/g, '')}
+        recipientLabel="Smart Card / IUC Number"
+        walletBalance={wallet?.user?.walletBalance}
+        loading={false}
+      />
+
+      {/* PIN Input Modal */}
+      <PinModal
+        visible={payment.step === 'pin'}
+        onClose={payment.handleCancelPayment}
+        onSubmit={payment.submitPayment}
+        onForgotPin={payment.handleForgotPin}
+        loading={payment.step === 'processing'}
+        error={payment.pinError}
+        title="Enter Transaction PIN"
+        subtitle={`Confirm payment of ${formatCurrency(amount, 'NGN')} for ${getBouquetName()}`}
+      />
+
+      {/* Success/Error Result Modal */}
+      <ResultModal
+        visible={payment.step === 'result'}
+        onClose={payment.resetFlow}
+        type={payment.result ? 'success' : 'error'}
+        title={payment.result ? 'Subscription Successful!' : 'Subscription Failed'}
+        message={
+          payment.result
+            ? `Your TV subscription of ${formatCurrency(amount, 'NGN')} to ${smartCardNumber.replace(/\s/g, '')} was successful.`
+            : payment.flowError || 'Your TV subscription could not be completed. Please try again.'
+        }
+        primaryAction={{
+          label: 'View Details',
+          onPress: handleTransactionComplete,
+        }}
+        secondaryAction={{
+          label: 'Done',
+          onPress: payment.resetFlow,
+        }}
+      />
+
+      {/* Processing Overlay */}
+      <LoadingOverlay
+        visible={payment.step === 'processing'}
+        message="Processing your payment..."
+      />
+    </SafeAreaView>
   );
-};
+}
 
-export default TVSubscriptionScreen;
-
-// const { width } = Dimensions.get('window');
-
+// ========================================
+// STYLES (Reused from AirtimeScreen, with minor additions)
+ // ========================================
 const styles = StyleSheet.create({
-  providerContainer: {
-    paddingHorizontal: 2,
-
-    borderRadius: 5,
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    margin: 5,
-    width: width * 0.3,
-    height: width * 0.12,
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  payButton: {
+    marginTop: 12,
+  },
+  errorContainer: {
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

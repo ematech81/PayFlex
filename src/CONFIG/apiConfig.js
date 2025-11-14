@@ -21,26 +21,26 @@ export const API_CONFIG = {
   ENDPOINTS: {
     // Payment endpoints
     PAYMENTS: {
-      BASE: '/payments',
-      BUY_AIRTIME: '/payments/buy-airtime',
-      BUY_DATA: '/payments/buy-data',
-      PAY_TV: '/payments/pay-tv',
-      PAY_ELECTRICITY: '/payments/pay-electricity',      
-      VERIFY_METER: '/payments/verify-meter',            
-      ELECTRICITY_TARIFF: '/payments/electricity/tariff', 
-      PAY_EDUCATION: '/payments/pay-education',
-      PAY_BETTING: '/payments/pay-betting',
-      VERIFY_PIN: '/payments/verify-transaction-pin',
-      VERIFY_TRANSACTION: '/payments/verify-transaction',
-      TRANSACTION_HISTORY: '/payments/history',
+      // BASE: '/payments',
+      BUY_AIRTIME: '/buy-airtime',
+      BUY_DATA: '/buy-data',
+      PAY_TV: '/pay-tv',
+      PAY_ELECTRICITY: '/pay-electricity',      
+      VERIFY_METER: '/verify-meter',            
+      ELECTRICITY_TARIFF: '/electricity/tariff', 
+      PAY_EDUCATION: '/pay-education',
+      PAY_BETTING: '/pay-betting',
+      VERIFY_PIN: '/verify-transaction-pin',
+      VERIFY_TRANSACTION: '/verify-transaction',
+      TRANSACTION_HISTORY: '/history',
     },
     
     // Data plan endpoints
-    DATA_PLANS: '/payments/data-plans',
+    DATA_PLANS: '/data-plans',
     
     // Verification endpoints
-    VERIFY_METER: '/payments/verify-meter',
-    VERIFY_SMARTCARD: '/payments/verify-smartcard',
+    VERIFY_METER: '/verify-meter',
+    VERIFY_SMARTCARD: '/verify-smartcard',
   },
 };
 

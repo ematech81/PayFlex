@@ -17,6 +17,7 @@ export const usePaymentFlow = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
+  const [pin, setPin] = useState('');
 
   /**
    * Start payment flow
@@ -67,34 +68,25 @@ export const usePaymentFlow = () => {
    * @param {Function} paymentFn - Payment service function
    * @returns {Promise<Object|null>} Payment result or null
    */
-  const processPayment = async (pin, paymentFn) => {
-    setIsLoading(true);
-    setError(null);
-    setStep('processing');
+  // Inside usePaymentFlow.js
+// const [pin, setPin] = useState('');
 
-    try {
-      const response = await paymentFn(pin);
-      
-      if (response.success) {
-        setResult(response.data);
-        setStep('result');
-        return response.data;
-      } else {
-        const errorMessage = response.data?.message || 'Payment failed';
-        setError(errorMessage);
-        setStep('pin'); // Go back to PIN entry
-        return null;
-      }
-    } catch (error) {
-      const errorMessage = ErrorUtils.createUserMessage(error, 'processing payment');
-      setError(errorMessage);
-      setStep('pin'); // Go back to PIN entry
-      ErrorUtils.logError(error, 'processPayment');
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+const processPayment = async (enteredPin, purchaseFunction) => {
+  try {
+    setStep('processing');
+    
+    // ✅ Use the enteredPin parameter, not state
+    const result = await purchaseFunction(enteredPin);
+    
+    setResult(result);
+    setStep('result');
+    return true;
+  } catch (error) {
+    setError(error.message);
+    setStep('result');
+    return false;
+  }
+};
 
   /**
    * Cancel payment and reset flow

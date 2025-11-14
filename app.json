@@ -33,6 +33,9 @@
     "web": {
       "favicon": "./asset/appStoreIcon.jpg"
     },
-    "plugins": ["expo-secure-store"]
+    "plugins": [
+      "expo-secure-store",
+      "expo-web-browser"
+    ]
   }
 }

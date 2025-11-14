@@ -1,10 +1,10 @@
 
 // hooks/useServicePayment.js
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { usePaymentFlow } from './usePaymentFlow';
-import { useTransactionPin } from './useTransationPin';
-import { useWallet } from 'context/WalletContext';
 
+import { useWallet } from 'context/WalletContext';
+import { useTransactionPin } from './useTransationPin';
+import { usePaymentFlow } from './usePaymentFlow';
 /**
  * Unified payment hook for all VTpass services
  * Handles PIN checking, payment flow, and state restoration
@@ -29,6 +29,7 @@ export function useServicePayment({
   // Local state
   const [showPinSetupModal, setShowPinSetupModal] = useState(false);
   const [pendingPaymentData, setPendingPaymentData] = useState(null);
+  const [currentPaymentData, setCurrentPaymentData] = useState(null); //  ADD: Store current payment
   const isReturningFromPinSetup = useRef(false);
   
   // Payment flow hooks
@@ -71,17 +72,17 @@ export function useServicePayment({
         });
         
         if (result.success) {
-          console.log(`✅ [${serviceName}] Wallet refresh successful, PIN status:`, result.data?.transactionPinSet);
+          console.log(` [${serviceName}] Wallet refresh successful, PIN status:`, result.data?.transactionPinSet);
           isReturningFromPinSetup.current = true;
         } else {
-          console.error(`⚠️ [${serviceName}] Wallet refresh failed`);
+          console.error(` [${serviceName}] Wallet refresh failed`);
           isReturningFromPinSetup.current = true;
         }
       }
     });
     
     return unsubscribe;
-  }, [navigation, route.params, serviceName]);
+  }, [navigation, route.params, serviceName, refreshWallet]);
 
   // ========================================
   // EFFECT 2: Auto-Resume Payment After PIN Setup
@@ -106,7 +107,7 @@ export function useServicePayment({
     };
     
     resumePayment();
-  }, [wallet?.transactionPinSet, pendingPaymentData, serviceName]);
+  }, [wallet?.transactionPinSet, pendingPaymentData, serviceName, startPaymentDirectToConfirm]);
 
   // ========================================
   // CORE PAYMENT METHODS
@@ -119,6 +120,10 @@ export function useServicePayment({
   const initiatePayment = useCallback((paymentData) => {
     clearPinError();
     console.log(`💳 [${serviceName}] Starting payment flow, PIN status:`, wallet?.transactionPinSet);
+    console.log(`📦 [${serviceName}] Payment data:`, paymentData);
+    
+    //  CRITICAL FIX: Store payment data for later use
+    setCurrentPaymentData(paymentData);
     
     // Check if PIN is set
     if (!wallet?.transactionPinSet) {
@@ -136,14 +141,38 @@ export function useServicePayment({
     setPendingPaymentData(null);
     isReturningFromPinSetup.current = false;
     
-    // Validate and start payment flow
-    const valid = startPayment(paymentData, validatePayment);
+    // ✅ FIX: Run validation first to get detailed result
+    console.log(`🔍 [${serviceName}] Running validation...`);
+    const validationResult = validatePayment(paymentData);
+    console.log(`📊 [${serviceName}] Validation result:`, validationResult);
     
-    if (!valid) {
-      console.log(`❌ [${serviceName}] Payment validation failed`);
+    // Handle different validation return formats
+    let isValid = false;
+    if (typeof validationResult === 'boolean') {
+      isValid = validationResult;
+    } else if (validationResult && typeof validationResult === 'object') {
+      // Check for both 'isValid' and 'valid' properties
+      isValid = validationResult.isValid ?? validationResult.valid ?? false;
+    }
+    
+    console.log(`🎯 [${serviceName}] Final validation status:`, isValid);
+    
+    if (!isValid) {
+      console.log(`❌ [${serviceName}] Payment validation failed`, validationResult?.errors);
       return false;
     }
     
+    // Start payment flow with validated data
+    console.log(`🚀 [${serviceName}] Starting payment flow...`);
+    const started = startPayment(paymentData, validatePayment);
+    console.log(`📍 [${serviceName}] Payment flow started:`, started);
+    
+    if (!started) {
+      console.log(`❌ [${serviceName}] Failed to start payment flow`);
+      return false;
+    }
+    
+    console.log(`✅ [${serviceName}] Payment flow started successfully`);
     return true;
   }, [wallet, serviceName, validatePayment, startPayment, clearPinError]);
 
@@ -155,35 +184,70 @@ export function useServicePayment({
     clearPinError();
     console.log(`🚀 [${serviceName}] Starting payment directly to confirmation`);
     
-    const valid = startPayment(paymentData, validatePayment);
+    // ✅ CRITICAL FIX: Store payment data
+    setCurrentPaymentData(paymentData);
     
-    if (valid) {
+    // ✅ FIX: Validate first before calling startPayment
+    const validationResult = validatePayment(paymentData);
+    const isValid = validationResult?.isValid ?? validationResult?.valid ?? validationResult;
+    
+    if (!isValid) {
+      console.log(`❌ [${serviceName}] Payment validation failed`);
+      setPendingPaymentData(null);
+      return;
+    }
+    
+    const started = startPayment(paymentData, validatePayment);
+    
+    if (started) {
       console.log(`✅ [${serviceName}] Payment validation passed, showing confirmation modal`);
     } else {
-      console.log(`❌ [${serviceName}] Payment validation failed`);
+      console.log(`❌ [${serviceName}] Failed to start payment`);
       setPendingPaymentData(null);
     }
   }, [serviceName, startPayment, validatePayment, clearPinError]);
 
+
+
   /**
    * Process payment with PIN
+   * NOTE: The PIN should come from the PinModal, not from useTransactionPin hook
    */
-  const submitPayment = useCallback(async () => {
+  const submitPayment = useCallback(async (enteredPin) => {
     clearPinError();
     
-    const success = await processPayment(pin, executePurchase);
+    console.log(`💳 [${serviceName}] Processing payment with PIN...`);
+    console.log(`🔐 [${serviceName}] Entered PIN:`, enteredPin); // Should have value now
+    console.log(`📦 [${serviceName}] Current payment data:`, currentPaymentData);
+    
+    if (!currentPaymentData) {
+      console.error(`❌ [${serviceName}] No payment data available!`);
+      return false;
+    }
+    
+    if (!enteredPin || enteredPin.length !== 4) {
+      console.error(`❌ [${serviceName}] Invalid PIN:`, enteredPin);
+      // Set error for display
+      return false;
+    }
+    
+    // ✅ Use enteredPin (from modal) instead of pin (from hook state)
+    const success = await processPayment(enteredPin, async (transactionPin) => {
+      console.log(`🔐 [${serviceName}] Executing purchase with PIN:`, transactionPin);
+      return await executePurchase(transactionPin, currentPaymentData);
+    });
     
     if (success) {
       resetPin();
       setPendingPaymentData(null);
+      setCurrentPaymentData(null);
       isReturningFromPinSetup.current = false;
       
-      // Refresh wallet after successful purchase
       await refreshWallet();
     }
     
     return success;
-  }, [pin, executePurchase, processPayment, resetPin, clearPinError, refreshWallet]);
+  }, [currentPaymentData, executePurchase, processPayment, resetPin, clearPinError, refreshWallet, serviceName]);
 
   // ========================================
   // PIN SETUP HANDLERS
@@ -218,6 +282,7 @@ export function useServicePayment({
   const handleCancelPayment = useCallback(() => {
     cancelPayment();
     setPendingPaymentData(null);
+    setCurrentPaymentData(null); // Clear current payment data
     isReturningFromPinSetup.current = false;
   }, [cancelPayment]);
 
@@ -225,6 +290,7 @@ export function useServicePayment({
     resetFlow();
     resetPin();
     setPendingPaymentData(null);
+    setCurrentPaymentData(null); // ✅ Clear current payment data
     isReturningFromPinSetup.current = false;
     
     navigation.navigate('TransactionDetails', { reference });

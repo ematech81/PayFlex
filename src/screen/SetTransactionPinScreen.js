@@ -58,6 +58,7 @@ export default function SetTransactionPinScreen({ navigation, route }) {
           timeout: 10000,
         }
       );
+      console.log('token', wallet.token)
 
       if (data.success) {
         console.log('✅ PIN created successfully on server');

@@ -39,6 +39,6 @@ const styles = StyleSheet.create({
   logo: { alignItems: 'center' },
   circle: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   appName: { fontSize: 26, fontWeight: 'bold', marginBottom: 6 },
-  title: { fontSize: 30, fontWeight: 'bold', marginBottom: 6 },
+  title: { fontSize: 30, fontWeight: 'bold', marginBottom: 6, paddingHorizontal: 16 },
   subtitle: { fontSize: 16, opacity: 0.9 },
 });

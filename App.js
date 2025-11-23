@@ -177,21 +177,21 @@ export default function App() {
       const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       const requirePinStr = await AsyncStorage.getItem(STORAGE_KEYS.REQUIRE_PIN);
 
-      console.log('🔍 Auth Check:', {
-        hasToken: !!token,
-        hasUser: !!userStr,
-        requirePinStr: requirePinStr,
-      });
+      // console.log('🔍 Auth Check:', {
+      //   hasToken: !!token,
+      //   hasUser: !!userStr,
+      //   requirePinStr: requirePinStr,
+      // });
 
       // ✅ User is logged in
       if (token && userStr) {
         // requirePin defaults to true if not set or if explicitly 'true'
         const requirePin = requirePinStr !== 'false';
         
-        console.log('📊 RequirePin Status:', {
-          raw: requirePinStr,
-          parsed: requirePin,
-        });
+        // console.log('📊 RequirePin Status:', {
+        //   raw: requirePinStr,
+        //   parsed: requirePin,
+        // });
 
         if (requirePin) {
           console.log('🔐 RequirePin ON → Starting at Login');
@@ -297,6 +297,7 @@ export default function App() {
               <Stack.Screen name="MainTabs" component={BottomTabs} />
               <Stack.Screen name="Data" component={DataPurchaseScreen} />
               <Stack.Screen name="Airtime" component={AirtimeScreen} />
+              <Stack.Screen name="TransactionDetails" component={TransactionDetailsScreen} />
               <Stack.Screen
                 name="TVSubscription"
                 component={TVSubscriptionScreen}

@@ -33,45 +33,6 @@ const fetchWithTimeout = async (url, options = {}, timeout = REQUEST_TIMEOUT) =>
   }
 };
 
-/**
- * Handles API response and errors consistently
- */
-// const handleResponse = async (response) => {
-//   // ✅ Log everything for debugging
-//   console.log('📥 Response Status:', response.status);
-//   console.log('📥 Response Headers:', response.headers);
-//   console.log('📥 Content-Type:', response.headers.get('content-type'));
-  
-//   // Get raw text first
-//   const text = await response.text();
-//   console.log('📥 Raw Response:', text.substring(0, 500)); // First 500 chars
-  
-//   const contentType = response.headers.get('content-type');
-  
-//   // Check if response is JSON
-//   if (!contentType || !contentType.includes('application/json')) {
-//     console.error('❌ Expected JSON but got:', contentType);
-//     console.error('❌ Response body:', text);
-//     throw new Error('Server returned invalid response format');
-//   }
-
-//   // Try to parse JSON
-//   let data;
-//   try {
-//     data = JSON.parse(text);
-//   } catch (error) {
-//     console.error('❌ JSON Parse Error:', error.message);
-//     console.error('❌ Response text:', text);
-//     throw new Error('Server returned invalid response format');
-//   }
-
-//   // For non-2xx responses, throw error with message
-//   if (!response.ok) {
-//     throw new Error(data.message || `Request failed with status ${response.status}`);
-//   }
-
-//   return data;
-// };
 
 
 const handleResponse = async (response) => {
@@ -143,7 +104,7 @@ const makePaymentRequest = async (endpoint, paymentData) => {
 export const purchaseAirtime = async (pin, paymentData) => {
   return makePaymentRequest('/buy-airtime', {
     phoneNumber: paymentData.phoneNumber,
-    provider: paymentData.provider,
+    network: paymentData.network,  // ✅ CHANGED: provider → network
     amount: paymentData.amount,
     pin,
   });
@@ -162,7 +123,7 @@ export const purchaseData = async (pin, paymentData) => {
   
   return makePaymentRequest('/buy-data', {
     phoneNumber: paymentData.phoneNumber,
-    provider: paymentData.provider,
+    network: paymentData.network,
     variation_code: paymentData.planId, // ✅ Changed from planId to variation_code
     amount: paymentData.planAmount || paymentData.amount,
     pin,
@@ -187,37 +148,8 @@ export const payElectricityBill = async (pin, paymentData) => {
   });
 };
 
-/**
- * Pay cable TV subscription
- * @param {string} pin - Transaction PIN
- * @param {object} paymentData - Cable TV payment data
- * @returns {Promise<object>} Payment result
- */
-export const payCableTVSubscription = async (pin, paymentData) => {
-  return makePaymentRequest('/pay-cable-tv', {
-    smartCardNumber: paymentData.smartCardNumber,
-    provider: paymentData.provider,
-    package: paymentData.package,
-    amount: paymentData.amount,
-    pin,
-  });
-};
 
-/**
- * Pay internet subscription
- * @param {string} pin - Transaction PIN
- * @param {object} paymentData - Internet payment data
- * @returns {Promise<object>} Payment result
- */
-export const payInternetSubscription = async (pin, paymentData) => {
-  return makePaymentRequest('/pay-internet', {
-    accountNumber: paymentData.accountNumber,
-    provider: paymentData.provider,
-    package: paymentData.package,
-    amount: paymentData.amount,
-    pin,
-  });
-};
+
 
 /**
  * Verify meter number
@@ -249,35 +181,114 @@ export const verifyMeter = async (meterData) => {
   }
 };
 
+
 /**
- * Verify smart card number
- * @param {object} cardData - Card verification data
- * @returns {Promise<object>} Verification result
+ * Pay internet subscription
+ * @param {string} pin - Transaction PIN
+ * @param {object} paymentData - Internet payment data
+ * @returns {Promise<object>} Payment result
  */
-export const verifySmartCard = async (cardData) => {
+export const payInternetSubscription = async (pin, paymentData) => {
+  return makePaymentRequest('/pay-internet', {
+    accountNumber: paymentData.accountNumber,
+    provider: paymentData.provider,
+    package: paymentData.package,
+    amount: paymentData.amount,
+    pin,
+  });
+};
+
+
+
+
+
+// ALL TV SUBSCRIPTION LOGICS
+
+/**
+ * Purchase TV Subscription
+ */
+export const purchaseTVSubscription = async (pin, paymentData) => {
+  return makePaymentRequest('/subscribe-tv', {
+    smartcardNumber: paymentData.smartcardNumber,
+    provider: paymentData.provider,
+    variation_code: paymentData.variation_code,
+    amount: paymentData.amount,
+    phone: paymentData.phone,
+    pin,
+  });
+};
+
+/**
+ * Renew TV Subscription
+ */
+export const renewTVSubscription = async (pin, paymentData) => {
+  return makePaymentRequest('/renew-tv', {
+    smartcardNumber: paymentData.smartcardNumber,
+    provider: paymentData.provider,
+    amount: paymentData.amount,
+    phone: paymentData.phone,
+    pin,
+  });
+};
+
+/**
+ * Verify Smartcard
+ */
+export const verifySmartcard = async (smartcardNumber, provider) => {
   try {
     const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
     
     if (!token) {
-      throw new Error('Authentication required. Please log in again.');
+      throw new Error('Authentication required');
     }
 
-    const response = await fetchWithTimeout(`${BASE_URL}/verify-card`, {
+    const response = await fetchWithTimeout(`${BASE_URL}/verify-smartcard`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(cardData),
+      body: JSON.stringify({ smartcardNumber, provider }),
     });
 
     return await handleResponse(response);
-    
   } catch (error) {
-    console.error('❌ Card verification error:', error.message);
+    console.error('❌ Verify Smartcard Error:', error.message);
     throw error;
   }
 };
+
+
+
+/**
+ * Get TV Bouquets
+ */
+export const getTVBouquets = async (provider) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    const response = await fetchWithTimeout(
+      `${BASE_URL}/tv-plans?provider=${provider}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('❌ Get TV Bouquets Error:', error.message);
+    throw error;
+  }
+};
+
 
 /**
  * Get transaction history
@@ -342,13 +353,24 @@ export const getTransactionDetails = async (reference) => {
 
 // Export the service
 export default {
+  // Basic services
   purchaseAirtime,
   purchaseData,
+  // tv sevice 
+  purchaseTVSubscription,
+  renewTVSubscription,
+  verifySmartcard,
+  getTVBouquets,
+// electricity services 
   payElectricityBill,
-  payCableTVSubscription,
-  payInternetSubscription,
   verifyMeter,
-  verifySmartCard,
+ 
+  payInternetSubscription,
+  
+// transaction services 
   getTransactionHistory,
   getTransactionDetails,
+
+  
 };
+

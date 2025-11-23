@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
+  Alert
 } from 'react-native';
 
 // Shared Components
@@ -62,46 +63,6 @@ export default function AirtimeScreen({ navigation, route }) {
   const [validationErrors, setValidationErrors] = useState({});
 
 
-  // Test in your screen
-  const testBackend = async () => {
-    try {
-      const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
-      console.log('🧪 Testing backend connection...');
-      console.log('🧪 Token:', token?.substring(0, 20) + '...');
-      console.log('🧪 URL:', `${PaymentApiIPAddress}/buy-airtime`);
-      
-      const response = await fetch(`${PaymentApiIPAddress}/buy-airtime`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          phoneNumber: '08012345678',
-          provider: 'mtn',
-          amount: 100,
-          pin: '1234',
-        }),
-      });
-      
-      console.log('🧪 Response status:', response.status);
-      console.log('🧪 Response headers:', JSON.stringify([...response.headers]));
-      
-      const text = await response.text();
-      console.log('🧪 Response body:', text);
-      
-    } catch (error) {
-      console.error('🧪 Test failed:', error);
-    }
-  };
-  
-  // Call this on component mount
-  useEffect(() => {
-    testBackend();
-  }, []);
-
-
-
   // ========================================
   // VALIDATION FUNCTION
   // ========================================
@@ -122,9 +83,10 @@ export default function AirtimeScreen({ navigation, route }) {
       errors.phoneNumber = 'Invalid Nigerian phone number';
     }
 
-    if (!paymentData.provider) {
-      errors.provider = 'Please select a network provider';
+    if (!paymentData.network) {  
+      errors.network = 'Please select a network provider';
     }
+    
 
     // Check both amount fields (for compatibility with usePaymentFlow)
     const amountToValidate = paymentData.amount;
@@ -205,9 +167,10 @@ export default function AirtimeScreen({ navigation, route }) {
     const cleanPhone = phoneNumber.replace(/\s/g, '');
 
     // Prepare payment data
+    // In handlePayment function:
     const paymentData = {
       phoneNumber: cleanPhone,
-      provider,
+      network: provider,  // ✅ Changed from 'provider'
       amount: paymentAmount,
     };
 
@@ -215,15 +178,35 @@ export default function AirtimeScreen({ navigation, route }) {
     payment.initiatePayment(paymentData);
   }, [phoneNumber, provider, payment]);
 
+
+
+// handle traansaction complete function
   const handleTransactionComplete = useCallback(() => {
+    console.log('📍 Transaction complete triggered');
+    console.log('📦 Full payment result:', JSON.stringify(payment.result, null, 2));
+    
     // Reset form
     setPhoneNumber('');
     setProvider('');
     setAmount('');
     
-    payment.handleTransactionComplete(payment.result?.reference);
-  }, [payment]);
-
+    // Get reference - now it should be at top level
+    const reference = 
+      payment.result?.reference ||           // ✅ Top level (from backend fix)
+      payment.result?.data?.reference ||     // Nested in data
+      payment.result?.data?._id;             // Fallback to transaction ID
+    
+    console.log('✅ Using reference:', reference);
+    
+    if (!reference) {
+      console.error('❌ No reference found in result!');
+      payment.resetFlow();
+      return;
+    }
+    
+    payment.handleTransactionComplete(reference);
+  }, [payment, setPhoneNumber, setProvider, setAmount]);
+ 
   // ========================================
   // UTILITY FUNCTIONS
   // ========================================
@@ -391,25 +374,38 @@ export default function AirtimeScreen({ navigation, route }) {
 
       {/* Success/Error Result Modal */}
       <ResultModal
-        visible={payment.step === 'result'}
-        onClose={payment.resetFlow}
-        type={payment.result ? 'success' : 'error'}
-        title={payment.result ? 'Purchase Successful!' : 'Purchase Failed'}
-        message={
-          payment.result
-            ? `Your airtime purchase of ${formatCurrency(Number(amount), 'NGN')} to ${phoneNumber.replace(/\s/g, '')} was successful.`
-            : payment.flowError || 'Your airtime purchase could not be completed. Please try again.'
-        }
-        primaryAction={{
-          label: 'View Details',
-          onPress: handleTransactionComplete,
-        }}
-        secondaryAction={{
-          label: 'Done',
-          onPress: payment.resetFlow,
-        }}
-      />
-
+  visible={payment.step === 'result'}
+  onClose={() => {
+    console.log('🚪 Closing result modal');
+    payment.resetFlow();
+  }}
+  type={payment.result ? 'success' : 'error'}
+  title={payment.result ? 'Purchase Successful!' : 'Purchase Failed'}
+  message={
+    payment.result
+      ? `Your airtime purchase of ${formatCurrency(Number(amount), 'NGN')} to ${phoneNumber.replace(/\s/g, '')} was successful.`
+      : payment.flowError || 'Your airtime purchase could not be completed. Please try again.'
+  }
+  primaryAction={{
+    label: 'View Details',
+    onPress: () => {
+      console.log('👁️ View Details pressed');
+      handleTransactionComplete();
+    },
+  }}
+  secondaryAction={{
+    label: 'Done',
+    onPress: () => {
+      console.log('✅ Done pressed - closing modal');
+      // Reset form
+      setPhoneNumber('');
+      setProvider('');
+      setAmount('');
+      // Close modal
+      payment.resetFlow();
+    },
+  }}
+/>
       {/* Processing Overlay */}
       <LoadingOverlay
         visible={payment.step === 'processing'}

@@ -1,3 +1,4 @@
+// screens/TVSubscriptionScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -5,10 +6,13 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
-  TextInput
+  TextInput,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
 
-// Shared Components
+// Imports
 import {
   ScreenHeader,
   ProviderSelector,
@@ -20,34 +24,34 @@ import {
   LoadingOverlay,
 } from 'component/SHARED';
 
-// Custom Components
-import AmountInput from 'component/SHARED/INPUT/amountInput';
-import { PaymentApiIPAddress } from "utility/apiIPAdress";
-import { useServicePayment } from 'HOOKS/UseServicePayment';
 import PinSetupModal from 'component/PinSetUpModal';
+import { useServicePayment } from 'HOOKS/UseServicePayment';
 import { useWallet } from 'context/WalletContext';
-
-// Constants & Utils
+import { 
+  purchaseTVSubscription, 
+  renewTVSubscription, 
+  verifySmartcard, 
+  getTVBouquets 
+} from 'services/PaymentService';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
 
-
-
-
 /**
- * TV Subscription Screen - Adapted from AirtimeScreen Using Unified Payment System
+ * Professional TV Subscription Screen
+ * Supports: DSTV, GOTV, Startimes, Showmax
+ * Features: Real-time verification, bouquet selection, renewal/change options
  */
 export default function TVSubscriptionScreen({ navigation, route }) {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
   const { wallet, refreshWallet } = useWallet();
 
-  // Define TV Constants Inside the Screen
+  // Constants
   const TV_CONSTANTS = {
     LIMITS: {
       MIN_AMOUNT: 1000,
-      MAX_AMOUNT: 50000,
+      MAX_AMOUNT: 100000,
     },
   };
 
@@ -55,73 +59,123 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     { label: 'DSTV', value: 'dstv', logo: '' },
     { label: 'GOTV', value: 'gotv', logo: '' },
     { label: 'Startimes', value: 'startimes', logo: '' },
+    { label: 'Showmax', value: 'showmax', logo: '' },
   ];
 
-  const TV_BOUQUETS = {
-    dstv: [
-      { label: 'Padi', value: 'padi', price: 4400 },
-      { label: 'Yanga', value: 'yanga', price: 6000 },
-      { label: 'Confam', value: 'confam', price: 11000 },
-      { label: 'Compact', value: 'compact', price: 19000 },
-      { label: 'Compact Plus', value: 'compact_plus', price: 30000 },
-      { label: 'Premium', value: 'premium', price: 45000 },
-    ],
-    gotv: [
-      { label: 'Smallie', value: 'smallie', price: 1900 },
-      { label: 'Jinja', value: 'jinja', price: 3900 },
-      { label: 'Jolli', value: 'jolli', price: 5800 },
-      { label: 'Max', value: 'max', price: 8500 },
-      { label: 'Supa', value: 'supa', price: 11400 },
-      { label: 'Supa Plus', value: 'supa_plus', price: 16800 },
-    ],
-    startimes: [
-      { label: 'Nova', value: 'nova', price: 1700 },
-      { label: 'Basic', value: 'basic', price: 3000 },
-      { label: 'Smart', value: 'smart', price: 2800 },
-      { label: 'Classic', value: 'classic', price: 6000 },
-      { label: 'Super', value: 'super', price: 5300 },
-    ],
-  };
-
-  // Local State
-  const [smartCardNumber, setSmartCardNumber] = useState('');
+  // State Management
   const [provider, setProvider] = useState('');
-  const [bouquet, setBouquet] = useState('');
-  const [amount, setAmount] = useState(0);
+  const [smartcardNumber, setSmartcardNumber] = useState('');
+  const [bouquets, setBouquets] = useState([]);
+  const [selectedBouquet, setSelectedBouquet] = useState(null);
+  const [customerData, setCustomerData] = useState(null);
+  const [subscriptionType, setSubscriptionType] = useState('change'); // 'change' or 'renew'
+  
+  // Loading States
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isLoadingBouquets, setIsLoadingBouquets] = useState(false);
+  
+  // Validation
   const [validationErrors, setValidationErrors] = useState({});
 
-  // Get current bouquets based on provider
-  const currentBouquets = TV_BOUQUETS[provider] || [];
-
-  // Update amount when bouquet changes
+  // ========================================
+  // Fetch Bouquets When Provider Changes
+  // ========================================
   useEffect(() => {
-    const selected = currentBouquets.find(b => b.value === bouquet);
-    setAmount(selected ? selected.price : 0);
-  }, [bouquet, currentBouquets]);
+    if (provider) {
+      fetchBouquets();
+    } else {
+      setBouquets([]);
+      setSelectedBouquet(null);
+      setCustomerData(null);
+    }
+  }, [provider]);
+
+  const fetchBouquets = async () => {
+    setIsLoadingBouquets(true);
+    setValidationErrors({});
+    
+    try {
+      const response = await getTVBouquets(provider);
+      
+      if (response.success) {
+        setBouquets(response.data.bouquets || []);
+      } else {
+        throw new Error(response.message || 'Failed to load bouquets');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching bouquets:', error);
+      setValidationErrors({ provider: 'Failed to load bouquets. Please try again.' });
+    } finally {
+      setIsLoadingBouquets(false);
+    }
+  };
 
   // ========================================
-  // VALIDATION FUNCTION
+  // Verify Smartcard
+  // ========================================
+  const handleVerifySmartcard = async () => {
+    // Validation
+    if (!smartcardNumber || smartcardNumber.length < 10) {
+      setValidationErrors({ smartcard: 'Enter a valid smartcard number (10-11 digits)' });
+      return;
+    }
+
+    if (!provider) {
+      setValidationErrors({ provider: 'Please select a TV provider first' });
+      return;
+    }
+
+    setIsVerifying(true);
+    setValidationErrors({});
+    setCustomerData(null);
+
+    try {
+      const response = await verifySmartcard(smartcardNumber, provider);
+      
+      if (response.success) {
+        setCustomerData(response.data);
+        
+        // Show success alert with customer info
+        Alert.alert(
+          '✅ Verification Successful',
+          `Customer: ${response.data.customerName}\nCurrent Package: ${response.data.currentBouquet || 'N/A'}`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        throw new Error(response.message || 'Verification failed');
+      }
+    } catch (error) {
+      console.error('❌ Verification error:', error);
+      setValidationErrors({ smartcard: error.message || 'Verification failed' });
+      Alert.alert('Verification Failed', error.message || 'Could not verify smartcard number');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // ========================================
+  // Validation Function
   // ========================================
   const validateTVPayment = useCallback((paymentData) => {
     console.log('🔍 Validating TV subscription payment:', paymentData);
     
     const errors = {};
 
-    // Validate smart card number (10-12 digits)
-    const cleanSmartCard = (paymentData.smartCardNumber || '').replace(/\s/g, '');
-    const smartCardRegex = /^\d{10,12}$/;
-    
-    if (!cleanSmartCard) {
-      errors.smartCardNumber = 'Smart card/IUC number is required';
-    } else if (!smartCardRegex.test(cleanSmartCard)) {
-      errors.smartCardNumber = 'Invalid smart card/IUC number (10-12 digits)';
+    // Validate smartcard
+    const cleanSmartCard = (paymentData.smartcardNumber || '').replace(/\s/g, '');
+    if (!cleanSmartCard || cleanSmartCard.length < 10) {
+      errors.smartcard = 'Invalid smartcard number';
     }
 
     if (!paymentData.provider) {
       errors.provider = 'Please select a TV provider';
     }
 
-    if (!paymentData.bouquet) {
+    if (!paymentData.customerData) {
+      errors.smartcard = 'Please verify smartcard first';
+    }
+
+    if (paymentData.subscriptionType === 'change' && !paymentData.variation_code) {
       errors.bouquet = 'Please select a bouquet';
     }
 
@@ -138,43 +192,47 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     console.log('✅ Validation result:', { isValid, errors });
     setValidationErrors(errors);
 
-    return {
-      isValid,
-      errors,
-    };
+    return { isValid, errors };
   }, []);
 
   // ========================================
-  // PURCHASE EXECUTOR FUNCTION
+  // Execute Purchase
   // ========================================
   const executeTVPurchase = useCallback(async (pin, paymentData) => {
+    console.log('💳 Executing TV purchase:', paymentData);
+    
     try {
-      const response = await fetch(`${PaymentApiIPAddress}/payments/buy-tv-subscription`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          smartCardNumber: paymentData.smartCardNumber, // Already cleaned
+      let response;
+      
+      if (paymentData.subscriptionType === 'renew') {
+        // Renew current bouquet
+        response = await renewTVSubscription(pin, {
+          smartcardNumber: paymentData.smartcardNumber,
           provider: paymentData.provider,
-          bouquet: paymentData.bouquet,
           amount: paymentData.amount,
-          pin,
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'TV subscription failed');
+          phone: wallet?.user?.phoneNumber || '',
+        });
+      } else {
+        // Change/subscribe to new bouquet
+        response = await purchaseTVSubscription(pin, {
+          smartcardNumber: paymentData.smartcardNumber,
+          provider: paymentData.provider,
+          variation_code: paymentData.variation_code,
+          amount: paymentData.amount,
+          phone: wallet?.user?.phoneNumber || '',
+        });
       }
 
-      return await response.json();
+      console.log('✅ Purchase response:', response);
+      return response;
     } catch (error) {
       console.error('❌ TV subscription error:', error);
       throw error;
     }
-  }, []);
+  }, [wallet]);
 
   // ========================================
-  // UNIFIED PAYMENT HOOK
+  // Unified Payment Hook
   // ========================================
   const payment = useServicePayment({
     serviceName: 'TV Subscription',
@@ -185,75 +243,168 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   });
 
   // ========================================
-  // RESTORE FORM DATA AFTER PIN SETUP
+  // Restore Form Data After PIN Setup
   // ========================================
   useEffect(() => {
     payment.restoreFormData((data) => {
       console.log('📝 Restoring TV subscription form:', data);
-      setSmartCardNumber(data.smartCardNumber);
-      setProvider(data.provider);
-      setBouquet(data.bouquet);
-      // Amount will be set via effect
+      setSmartcardNumber(data.smartcardNumber || '');
+      setProvider(data.provider || '');
+      setSelectedBouquet(data.selectedBouquet || null);
+      setCustomerData(data.customerData || null);
+      setSubscriptionType(data.subscriptionType || 'change');
     });
   }, [payment.pendingPaymentData]);
 
   // ========================================
-  // INITIAL WALLET LOAD
+  // Initial Wallet Load
   // ========================================
   useEffect(() => {
     refreshWallet();
   }, []);
 
   // ========================================
-  // PAYMENT HANDLERS
+  // Payment Handler
   // ========================================
   const handlePayment = useCallback(() => {
-    // Clear errors
     setValidationErrors({});
 
-    // Clean smart card number (remove whitespace)
-    const cleanSmartCard = smartCardNumber.replace(/\s/g, '');
+    const cleanSmartCard = smartcardNumber.replace(/\s/g, '');
+    
+    // Calculate amount
+    const amount = subscriptionType === 'renew' 
+      ? parseFloat(customerData?.renewalAmount || 0)
+      : selectedBouquet?.fixedPrice || parseFloat(selectedBouquet?.variation_amount || 0);
 
     // Prepare payment data
     const paymentData = {
-      smartCardNumber: cleanSmartCard,
+      smartcardNumber: cleanSmartCard,
       provider,
-      bouquet,
+      variation_code: subscriptionType === 'change' ? selectedBouquet?.variation_code : undefined,
       amount,
+      subscriptionType,
+      customerData,
+      selectedBouquet: subscriptionType === 'change' ? selectedBouquet : null,
     };
 
-    // Initiate payment (handles PIN check automatically)
+    console.log('🚀 Initiating payment:', paymentData);
     payment.initiatePayment(paymentData);
-  }, [smartCardNumber, provider, bouquet, amount, payment]);
+  }, [smartcardNumber, provider, selectedBouquet, subscriptionType, customerData, payment]);
 
   const handleTransactionComplete = useCallback(() => {
     // Reset form
-    setSmartCardNumber('');
+    setSmartcardNumber('');
     setProvider('');
-    setBouquet('');
-    setAmount(0);
+    setSelectedBouquet(null);
+    setCustomerData(null);
+    setSubscriptionType('change');
+    setBouquets([]);
     
     payment.handleTransactionComplete(payment.result?.reference);
   }, [payment]);
 
   // ========================================
-  // UTILITY FUNCTIONS
+  // Helper Functions
   // ========================================
-  const getProviderLogo = useCallback(() => {
-    return TV_PROVIDERS.find(p => p.value === provider)?.logo;
-  }, [provider]);
+  const getAmount = () => {
+    if (subscriptionType === 'renew') {
+      return parseFloat(customerData?.renewalAmount || 0);
+    }
+    return selectedBouquet?.fixedPrice || parseFloat(selectedBouquet?.variation_amount || 0);
+  };
 
-  const getProviderName = useCallback(() => {
-    return TV_PROVIDERS.find(p => p.value === provider)?.label;
-  }, [provider]);
-
-  const getBouquetName = useCallback(() => {
-    const selected = currentBouquets.find(b => b.value === bouquet);
-    return selected ? selected.label : '';
-  }, [bouquet, currentBouquets]);
+  const canProceed = () => {
+    return (
+      provider &&
+      smartcardNumber &&
+      customerData &&
+      (subscriptionType === 'renew' || selectedBouquet) &&
+      payment.step !== 'processing'
+    );
+  };
 
   // ========================================
-  // MAIN RENDER
+  // Render Components
+  // ========================================
+  const renderCustomerInfo = () => {
+    if (!customerData) return null;
+
+    return (
+      <View style={[styles.customerCard, { backgroundColor: `${themeColors.success}20` }]}>
+        <Text style={[styles.customerCardTitle, { color: themeColors.success }]}>
+          ✓ Customer Verified
+        </Text>
+        <View style={styles.customerRow}>
+          <Text style={[styles.customerLabel, { color: themeColors.mutedText }]}>Name:</Text>
+          <Text style={[styles.customerValue, { color: themeColors.text }]}>
+            {customerData.customerName}
+          </Text>
+        </View>
+        {customerData.currentBouquet && (
+          <View style={styles.customerRow}>
+            <Text style={[styles.customerLabel, { color: themeColors.mutedText }]}>
+              Current Package:
+            </Text>
+            <Text style={[styles.customerValue, { color: themeColors.text }]}>
+              {customerData.currentBouquet}
+            </Text>
+          </View>
+        )}
+        {customerData.renewalAmount && (
+          <View style={styles.customerRow}>
+            <Text style={[styles.customerLabel, { color: themeColors.mutedText }]}>
+              Renewal Amount:
+            </Text>
+            <Text style={[styles.customerValue, { color: themeColors.text }]}>
+              {formatCurrency(parseFloat(customerData.renewalAmount), 'NGN')}
+            </Text>
+          </View>
+        )}
+        {customerData.dueDate && (
+          <View style={styles.customerRow}>
+            <Text style={[styles.customerLabel, { color: themeColors.mutedText }]}>Due Date:</Text>
+            <Text style={[styles.customerValue, { color: themeColors.text }]}>
+              {customerData.dueDate}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderBouquetCard = (bouquet) => {
+    const isSelected = selectedBouquet?.variation_code === bouquet.variation_code;
+    const price = bouquet.fixedPrice || parseFloat(bouquet.variation_amount);
+
+    return (
+      <TouchableOpacity
+        key={bouquet.variation_code}
+        style={[
+          styles.bouquetCard,
+          { 
+            backgroundColor: isSelected ? `${themeColors.primary}20` : themeColors.card,
+            borderColor: isSelected ? themeColors.primary : themeColors.border,
+          },
+        ]}
+        onPress={() => setSelectedBouquet(bouquet)}
+      >
+        <View style={styles.bouquetInfo}>
+          <Text style={[styles.bouquetName, { color: themeColors.text }]}>
+            {bouquet.name}
+          </Text>
+          <Text style={[styles.bouquetPrice, { color: themeColors.mutedText }]}>
+            {formatCurrency(price, 'NGN')}
+          </Text>
+        </View>
+        {isSelected && (
+          <Text style={[styles.checkmark, { color: themeColors.primary }]}>✓</Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  // ========================================
+  // Main Render
   // ========================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
@@ -276,62 +427,159 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         <ProviderSelector
           providers={TV_PROVIDERS}
           value={provider}
-          onChange={setProvider}
+          onChange={(value) => {
+            setProvider(value);
+            setCustomerData(null);
+            setSmartcardNumber('');
+            setSelectedBouquet(null);
+          }}
           placeholder="Select TV Provider"
           error={validationErrors.provider}
         />
 
-        {/* Smart Card Number Input */}
+        {/* Smartcard Number Input */}
         <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-          Smart Card / IUC Number
+          Smartcard / IUC Number
         </Text>
-        <TextInput // Assuming a basic TextInput; customize as PhoneInput if needed
-          style={[styles.input, { color: themeColors.text, borderColor: themeColors.border }]}
-          value={smartCardNumber}
-          onChangeText={setSmartCardNumber}
-          placeholder="Enter 10-12 digit number"
-          keyboardType="numeric"
-          maxLength={12}
-        />
-        {validationErrors.smartCardNumber && (
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[
+              styles.input,
+              { 
+                color: themeColors.text, 
+                borderColor: validationErrors.smartcard ? themeColors.destructive : themeColors.border,
+                backgroundColor: themeColors.card,
+              },
+            ]}
+            value={smartcardNumber}
+            onChangeText={(text) => {
+              setSmartcardNumber(text.replace(/\D/g, ''));
+              setValidationErrors({ ...validationErrors, smartcard: undefined });
+              setCustomerData(null);
+            }}
+            placeholder="Enter 10-11 digit number"
+            placeholderTextColor={themeColors.mutedText}
+            keyboardType="numeric"
+            maxLength={11}
+            editable={!isVerifying}
+          />
+          <TouchableOpacity
+            style={[
+              styles.verifyButton,
+              { backgroundColor: (!provider || !smartcardNumber || isVerifying) 
+                  ? themeColors.mutedText 
+                  : themeColors.primary 
+              },
+            ]}
+            onPress={handleVerifySmartcard}
+            disabled={isVerifying || !provider || !smartcardNumber}
+          >
+            {isVerifying ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.verifyButtonText}>Verify</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+        {validationErrors.smartcard && (
           <Text style={[styles.errorText, { color: themeColors.destructive }]}>
-            {validationErrors.smartCardNumber}
+            {validationErrors.smartcard}
           </Text>
         )}
 
-        {/* Bouquet Selection */}
-        <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-          Select Bouquet
-        </Text>
-        <ProviderSelector
-          providers={currentBouquets.map(b => ({ label: `${b.label} - ${formatCurrency(b.price, 'NGN')}`, value: b.value }))}
-          value={bouquet}
-          onChange={setBouquet}
-          placeholder="Select Bouquet"
-          error={validationErrors.bouquet}
-          disabled={!provider}
-        />
+        {/* Customer Info */}
+        {renderCustomerInfo()}
 
-        {/* Amount Display (Read-Only) */}
-        <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-          Subscription Amount
-        </Text>
-        <AmountInput
-          value={amount.toString()}
-          placeholder="Amount (auto-set from bouquet)"
-          minAmount={TV_CONSTANTS.LIMITS.MIN_AMOUNT}
-          maxAmount={TV_CONSTANTS.LIMITS.MAX_AMOUNT}
-          showBalance
-          balance={wallet?.user?.walletBalance}
-          error={validationErrors.amount}
-          editable={false} // Read-only
-        />
+        {/* Subscription Type Selection */}
+        {customerData && (
+          <>
+            <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+              Subscription Type
+            </Text>
+            <View style={styles.typeSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.typeButton,
+                  {
+                    backgroundColor: subscriptionType === 'renew' 
+                      ? themeColors.primary 
+                      : themeColors.card,
+                    borderColor: subscriptionType === 'renew'
+                      ? themeColors.primary
+                      : themeColors.border,
+                  },
+                ]}
+                onPress={() => {
+                  setSubscriptionType('renew');
+                  setSelectedBouquet(null);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.typeButtonText,
+                    { color: subscriptionType === 'renew' ? '#fff' : themeColors.text },
+                  ]}
+                >
+                  Renew Current
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.typeButton,
+                  {
+                    backgroundColor: subscriptionType === 'change' 
+                      ? themeColors.primary 
+                      : themeColors.card,
+                    borderColor: subscriptionType === 'change'
+                      ? themeColors.primary
+                      : themeColors.border,
+                  },
+                ]}
+                onPress={() => setSubscriptionType('change')}
+              >
+                <Text
+                  style={[
+                    styles.typeButtonText,
+                    { color: subscriptionType === 'change' ? '#fff' : themeColors.text },
+                  ]}
+                >
+                  Change Package
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {/* Bouquet Selection (Only for Change) */}
+        {customerData && subscriptionType === 'change' && (
+          <>
+            <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+              Select Bouquet
+            </Text>
+            {isLoadingBouquets ? (
+              <ActivityIndicator 
+                size="large" 
+                color={themeColors.primary} 
+                style={styles.loader} 
+              />
+            ) : (
+              <View style={styles.bouquetsContainer}>
+                {bouquets.map(renderBouquetCard)}
+              </View>
+            )}
+            {validationErrors.bouquet && (
+              <Text style={[styles.errorText, { color: themeColors.destructive }]}>
+                {validationErrors.bouquet}
+              </Text>
+            )}
+          </>
+        )}
 
         {/* Pay Button */}
         <PayButton
-          title="Pay"
+          title={`Pay ${formatCurrency(getAmount(), 'NGN')}`}
           onPress={handlePayment}
-          disabled={!smartCardNumber || !provider || !bouquet || payment.step === 'processing'}
+          disabled={!canProceed()}
           loading={payment.step === 'processing'}
           style={styles.payButton}
         />
@@ -347,22 +595,22 @@ export default function TVSubscriptionScreen({ navigation, route }) {
 
         {/* Promo Card */}
         <PromoCard
-          title="🎉 Refer And Win"
-          subtitle="Invite your Friends and earn up to ₦10,000"
-          buttonText="Refer"
-          onPress={() => navigation.navigate('Referral')}
+          title="🎉 Get Rewards"
+          subtitle="Earn cashback on every TV subscription"
+          buttonText="Learn More"
+          onPress={() => navigation.navigate('Rewards')}
         />
       </ScrollView>
 
       {/* ========================================
-          MODALS - Using Unified System
+          MODALS
           ======================================== */}
 
       {/* PIN Setup Modal */}
       <PinSetupModal
         visible={payment.showPinSetupModal}
         serviceName="TV Subscription"
-        paymentAmount={amount}
+        paymentAmount={getAmount()}
         onCreatePin={payment.handleCreatePin}
         onCancel={payment.handleCancelPinSetup}
         isDarkMode={isDarkMode}
@@ -373,12 +621,16 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         visible={payment.step === 'confirm'}
         onClose={payment.handleCancelPayment}
         onConfirm={payment.confirmPayment}
-        amount={amount}
+        amount={getAmount()}
         serviceName="TV Subscription"
-        providerLogo={getProviderLogo()}
-        providerName={getProviderName()}
-        recipient={smartCardNumber.replace(/\s/g, '')}
-        recipientLabel="Smart Card / IUC Number"
+        providerName={provider.toUpperCase()}
+        recipient={smartcardNumber}
+        recipientLabel="Smartcard Number"
+        additionalInfo={
+          subscriptionType === 'renew'
+            ? `Renew: ${customerData?.currentBouquet}`
+            : `Package: ${selectedBouquet?.name}`
+        }
         walletBalance={wallet?.user?.walletBalance}
         loading={false}
       />
@@ -392,18 +644,24 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         loading={payment.step === 'processing'}
         error={payment.pinError}
         title="Enter Transaction PIN"
-        subtitle={`Confirm payment of ${formatCurrency(amount, 'NGN')} for ${getBouquetName()}`}
+        subtitle={`Confirm payment of ${formatCurrency(getAmount(), 'NGN')}`}
       />
 
       {/* Success/Error Result Modal */}
       <ResultModal
         visible={payment.step === 'result'}
-        onClose={payment.resetFlow}
+        onClose={() => {
+          payment.resetFlow();
+          setSmartcardNumber('');
+          setProvider('');
+          setSelectedBouquet(null);
+          setCustomerData(null);
+        }}
         type={payment.result ? 'success' : 'error'}
         title={payment.result ? 'Subscription Successful!' : 'Subscription Failed'}
         message={
           payment.result
-            ? `Your TV subscription of ${formatCurrency(amount, 'NGN')} to ${smartCardNumber.replace(/\s/g, '')} was successful.`
+            ? `Your TV subscription of ${formatCurrency(getAmount(), 'NGN')} was successful.`
             : payment.flowError || 'Your TV subscription could not be completed. Please try again.'
         }
         primaryAction={{
@@ -412,7 +670,13 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         }}
         secondaryAction={{
           label: 'Done',
-          onPress: payment.resetFlow,
+          onPress: () => {
+            payment.resetFlow();
+            setSmartcardNumber('');
+            setProvider('');
+            setSelectedBouquet(null);
+            setCustomerData(null);
+          },
         }}
       />
 
@@ -426,8 +690,8 @@ export default function TVSubscriptionScreen({ navigation, route }) {
 }
 
 // ========================================
-// STYLES (Reused from AirtimeScreen, with minor additions)
- // ========================================
+// Styles
+// ========================================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -442,23 +706,106 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 12,
   },
+  inputContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 8,
+  },
   input: {
+    flex: 1,
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
+    fontSize: 16,
+  },
+  verifyButton: {
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    justifyContent: 'center',
+    minWidth: 90,
+  },
+  verifyButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  customerCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+  },
+  customerCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  customerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
+  customerLabel: {
+    fontSize: 14,
+  },
+  customerValue: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  typeSelector: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  typeButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  typeButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  bouquetsContainer: {
+    gap: 10,
+  },
+  bouquetCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  bouquetInfo: {
+    flex: 1,
+  },
+  bouquetName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  bouquetPrice: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  checkmark: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
   payButton: {
-    marginTop: 12,
+    marginTop: 24,
   },
   errorContainer: {
     borderRadius: 12,
     padding: 12,
-    marginBottom: 16,
+    marginTop: 16,
   },
   errorText: {
     fontSize: 13,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  loader: {
+    marginVertical: 20,
   },
 });

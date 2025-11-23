@@ -286,13 +286,29 @@ export function useServicePayment({
     isReturningFromPinSetup.current = false;
   }, [cancelPayment]);
 
+
+// function to handle successful transaction
   const handleTransactionComplete = useCallback((reference) => {
+    console.log('🎯 [ServicePayment] handleTransactionComplete called');
+    console.log('📝 Reference received:', reference);
+    
+    if (!reference) {
+      console.warn('⚠️ No reference provided, just resetting flow');
+      resetFlow();
+      resetPin();
+      setPendingPaymentData(null);
+      setCurrentPaymentData(null);
+      isReturningFromPinSetup.current = false;
+      return;
+    }
+    
     resetFlow();
     resetPin();
     setPendingPaymentData(null);
-    setCurrentPaymentData(null); // ✅ Clear current payment data
+    setCurrentPaymentData(null);
     isReturningFromPinSetup.current = false;
     
+    console.log('🧭 Navigating to TransactionDetails with reference:', reference);
     navigation.navigate('TransactionDetails', { reference });
   }, [navigation, resetFlow, resetPin]);
 

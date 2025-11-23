@@ -113,6 +113,7 @@ export default function SetTransactionPinScreen({ navigation, route }) {
           subtitle="Create a 4-digit PIN to secure your transactions"
           showBack
           onBack={() => navigation.goBack()}
+          // style={{paddingHorizontal: 16}}
         />
 
         <ScrollView
@@ -324,7 +325,7 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1.5,
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     fontSize: 24,
     fontWeight: '600',

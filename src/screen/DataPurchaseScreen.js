@@ -238,7 +238,7 @@ export default function DataPurchaseScreen({ navigation, route }) {
       }
     };
 
-    // loadDataPlans();
+    loadDataPlans();
   }, [provider]);
 
   // ========================================

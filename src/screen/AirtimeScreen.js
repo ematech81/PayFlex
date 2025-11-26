@@ -73,7 +73,8 @@ export default function AirtimeScreen({ navigation, route }) {
 
     // Validate phone number with RegEx (remove whitespace first)
     const cleanPhone = (paymentData.phoneNumber || '').replace(/\s/g, '');
-    const phoneRegex = /^0[7-9][0-1]\d{8}$/; // Nigerian phone number format
+    const phoneRegex = /^0\d{10}$/;
+
     
     if (!cleanPhone) {
       errors.phoneNumber = 'Phone number is required';

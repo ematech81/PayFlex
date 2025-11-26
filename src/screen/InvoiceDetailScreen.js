@@ -94,13 +94,13 @@ const InvoiceDetailsScreen = ({ route }) => {
           Invoice Details
         </Text>
         <View style={[styles.section, { backgroundColor: themeColors.card }]}>
-          <Text style={[styles.label, { color: themeColors.heading }]}>
+          {/* <Text style={[styles.label, { color: themeColors.heading }]}>
             Title
-          </Text>
+          </Text> */}
           <Text style={[styles.value, { color: themeColors.subheading }]}>
             {invoice?.title || 'N/A'}
           </Text>
-          <Text style={[styles.label, { color: themeColors.heading }]}>
+          {/* <Text style={[styles.label, { color: themeColors.heading }]}>
             Customer
           </Text>
           <Text style={[styles.value, { color: themeColors.subheading }]}>
@@ -126,10 +126,10 @@ const InvoiceDetailsScreen = ({ route }) => {
           <Text style={[styles.value, { color: themeColors.subheading }]}>
             {invoice?.currency || '₦'}
             {invoice?.total.toFixed(2)}
-          </Text>
-          <Text style={[styles.label, { color: themeColors.heading }]}>
+          </Text> */}
+          {/* <Text style={[styles.label, { color: themeColors.heading }]}>
             Status
-          </Text>
+          </Text> */}
           <Text
             style={[
               styles.value,

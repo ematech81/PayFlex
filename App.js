@@ -235,33 +235,6 @@ export default function App() {
   }, []);
 
 
-  // // === After loading, reset navigation ===
-  // useEffect(() => {
-  //   if (!isLoading && appIsReady && routeName && navigationRef.current) {
-  //     const nav = navigationRef.current;
-
-  //     if (routeName === 'MainTabs') {
-  //       nav.reset({
-  //         index: 0,
-  //         routes: [
-  //           {
-  //             name: 'MainTabs',
-  //             state: {
-  //               routes: [{ name: 'Home' }], // Force Home tab
-  //               index: 0,
-  //             },
-  //           },
-  //         ],
-  //       });
-  //     } else {
-  //       nav.reset({
-  //         index: 0,
-  //         routes: [{ name: 'Login' }],
-  //       });
-  //     }
-  //   }
-  // }, [isLoading, appIsReady, routeName]);
-
 
 
   // Show splash screen until app is ready
@@ -284,7 +257,7 @@ export default function App() {
         <SafeAreaProvider>
           <NavigationContainer
             theme={isDarkMode ? DarkTheme : DefaultTheme}
-            ref={navigationRef}
+            // ref={navigationRef}
           >
             <Stack.Navigator
              screenOptions={{ headerShown: false }}

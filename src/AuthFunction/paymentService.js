@@ -34,24 +34,34 @@ const fetchWithTimeout = async (url, options = {}, timeout = REQUEST_TIMEOUT) =>
 };
 
 
-
 const handleResponse = async (response) => {
   const contentType = response.headers.get('content-type');
-  
-  // Check if response is JSON
+
   if (!contentType || !contentType.includes('application/json')) {
     throw new Error('Server returned invalid response format');
   }
 
   const data = await response.json();
 
-  // For non-2xx responses, throw error with message
+  // Check HTTP layer
   if (!response.ok) {
     throw new Error(data.message || `Request failed with status ${response.status}`);
   }
 
+  //  Check backend success flag
+  if (data.success === false) {
+    throw new Error(data.message || 'Transaction failed. Please try again.');
+  }
+
+  // 🔥 Also check VTpass transaction status
+  if (data.vtpassStatus === 'failed' || data.status === 'failed') {
+    throw new Error(data.message || 'VTpass rejected the transaction.');
+  }
+
   return data;
 };
+
+
 
 /**
  * Makes authenticated payment request
@@ -109,6 +119,8 @@ export const purchaseAirtime = async (pin, paymentData) => {
     pin,
   });
 };
+
+
 
 /**
  * Purchase data bundle
@@ -254,6 +266,48 @@ export const verifySmartcard = async (smartcardNumber, provider) => {
     return await handleResponse(response);
   } catch (error) {
     console.error('❌ Verify Smartcard Error:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Get Data Plans
+ * @param {string} network - Network provider (mtn, airtel, glo, 9mobile)
+ * @returns {Promise<Object>} Data plans response
+ */
+export const getDataPlans = async (network) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    console.log('📊 Fetching data plans for:', network);
+
+    const response = await fetchWithTimeout(
+      `${BASE_URL}/data-plans?network=${network}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const result = await handleResponse(response);
+    
+    // Extract variations from the nested response structure
+    const variations = result.data?.content?.variations || 
+                      result.content?.variations || 
+                      [];
+
+    console.log(`✅ Loaded ${variations.length} data plans for ${network}`);
+
+    return variations;
+  } catch (error) {
+    console.error('❌ Get Data Plans Error:', error.message);
     throw error;
   }
 };

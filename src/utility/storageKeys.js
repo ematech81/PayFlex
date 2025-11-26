@@ -5,4 +5,5 @@ export const STORAGE_KEYS = {
     PHONE: 'phone',
     DEVICE_ID: 'deviceId',
     REQUIRE_PIN: 'requirePinOnOpen',
+    BIOMETRIC_ENABLED: 'biometricEnabled',
   };

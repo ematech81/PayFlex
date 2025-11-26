@@ -37,9 +37,7 @@ import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
 import { StatusBarComponent } from 'component/StatusBar';
-import { fetchDataPlans } from 'component/GetdataPlans';
-import { PaymentService } from 'SERVICES/API/paymentService';
-import { purchaseData } from 'AuthFunction/paymentService';
+import { getDataPlans, purchaseData } from 'AuthFunction/paymentService';
 
 
 /**
@@ -155,7 +153,8 @@ export default function DataPurchaseScreen({ navigation, route }) {
 
     // Validate phone number with RegEx (remove whitespace first)
     const cleanPhone = (paymentData.phoneNumber || '').replace(/\s/g, '');
-    const phoneRegex = /^0[7-9][0-1]\d{8}$/; // Nigerian phone number format
+    const phoneRegex = /^0\d{10}$/;
+    // const phoneRegex = /^0[7-9][0-1]\d{8}$/; // Nigerian phone number format 
     
     if (!cleanPhone) {
       errors.phoneNumber = 'Phone number is required';
@@ -165,7 +164,7 @@ export default function DataPurchaseScreen({ navigation, route }) {
       errors.phoneNumber = 'Invalid Nigerian phone number';
     }
 
-    if (!paymentData.provider) {
+    if (!paymentData.network) {
       errors.provider = 'Please select a network provider';
     }
 
@@ -216,30 +215,33 @@ export default function DataPurchaseScreen({ navigation, route }) {
     });
   }, [payment.pendingPaymentData]);
 
-  // ========================================
-  // LOAD DATA PLANS WHEN PROVIDER CHANGES
-  // ========================================
+  
   useEffect(() => {
+    if (provider) {
+      loadDataPlans();
+    } else {
+      setPlans([]);
+    }
+  }, [provider]);
+  
+  const loadDataPlans = async () => {
     if (!provider) {
       setPlans([]);
       return;
     }
-
-    const loadDataPlans = async () => {
-      try {
-        setLoadingPlans(true);
-        const fetchedPlans = await fetchDataPlans(provider);
-        setPlans(fetchedPlans);
-      } catch (error) {
-        console.error('❌ Failed to load plans:', error);
-        setPlans([]);
-      } finally {
-        setLoadingPlans(false);
-      }
-    };
-
-    loadDataPlans();
-  }, [provider]);
+  
+    try {
+      setLoadingPlans(true);
+      const fetchedPlans = await getDataPlans(provider);
+      setPlans(fetchedPlans);
+    } catch (error) {
+      console.error('❌ Failed to load plans:', error);
+      setPlans([]);
+      Alert.alert('Error', 'Failed to load data plans. Please try again.');
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
 
   // ========================================
   // INITIAL WALLET LOAD
@@ -271,7 +273,7 @@ export default function DataPurchaseScreen({ navigation, route }) {
     // Prepare payment data including the full plan object for restoration
     const paymentData = {
       phoneNumber: cleanPhone, // ✅ Clean phone number
-      provider,
+      network: provider, 
       planId: selectedPlan.variation_code,
       planAmount: parseFloat(selectedPlan.variation_amount), // ✅ Use planAmount instead of amount
       selectedPlan, // ✅ Store full plan for restoration
@@ -689,7 +691,7 @@ const styles = StyleSheet.create({
     bottom: 10,
     left: 12,
     right: 12,
-    height: 200,
+    height: 250,
     borderRadius: 16,
     borderWidth: 1,
     paddingVertical: 14,
@@ -699,7 +701,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 10,
-    backgroundColor: '#bbd6f5ff'
+    backgroundColor: '#f3f6faff'
   },
   footerContent: {
     flexDirection: 'row',

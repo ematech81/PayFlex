@@ -27,15 +27,16 @@ import {
 import PinSetupModal from 'component/PinSetUpModal';
 import { useServicePayment } from 'HOOKS/UseServicePayment';
 import { useWallet } from 'context/WalletContext';
-import { 
-  purchaseTVSubscription, 
-  renewTVSubscription, 
-  verifySmartcard, 
-  getTVBouquets 
-} from 'services/PaymentService';
+// import { 
+//   purchaseTVSubscription, 
+//   renewTVSubscription, 
+//   verifySmartcard, 
+//   getTVBouquets 
+// } from 'services/PaymentService';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
+import { getTVBouquets, purchaseTVSubscription, renewTVSubscription, verifySmartcard } from 'AuthFunction/paymentService';
 
 /**
  * Professional TV Subscription Screen

@@ -127,7 +127,7 @@ const InvoiceCreationScreen = ({ route }) => {
             setProducts={setProducts}
             currency={currency}
           />
-        );
+        ); 
       case 'account':
         return (
           <AccountInfoComponent

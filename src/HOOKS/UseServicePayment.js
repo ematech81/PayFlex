@@ -349,6 +349,7 @@ export function useServicePayment({
     handleCancelPayment,
     handleTransactionComplete,
     handleForgotPin,
+    resetFlow,
     
     // Utility
     restoreFormData: (restoreCallback) => {

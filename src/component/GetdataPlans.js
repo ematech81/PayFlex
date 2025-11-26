@@ -16,4 +16,4 @@ export const fetchDataPlans = async (provider, token) => {
     console.error('❌ Failed to load data plans:', error.response?.data || error.message);
     return [];
   }
-};
+}; 

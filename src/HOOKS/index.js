@@ -30,10 +30,3 @@ export { useDebounce } from './useDebounce';
 export { useFormValidation } from './useFormValidation';
 
 
-const Hom = () => {
-    return(
-        <View>
-            {useTVSubscription}
-        </View>
-    )
-}

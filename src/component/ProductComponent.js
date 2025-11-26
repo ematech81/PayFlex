@@ -274,8 +274,9 @@ const ProductComponent = ({ products, setProducts, currency }) => {
         </TouchableOpacity>
       )}
       <View
-        style={[styles.debtContainer, { backgroundColor: themeColors.card }]}
-      ></View>
+        style={[styles.debtContainer, { backgroundColor: themeColors.card }]} >
+          
+        </View>
     </View>
   );
 };

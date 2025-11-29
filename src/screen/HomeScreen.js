@@ -315,7 +315,7 @@ export default function HomeScreen({route}) {
       style={[styles.container, { backgroundColor: themeColors.primary }]}
     >
       <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'light-content'}
+        barStyle= "light-content"
         backgroundColor="transparent"
         translucent
       />
@@ -423,6 +423,9 @@ export default function HomeScreen({route}) {
               </View>
             </View>
         </View>
+        {/* <TouchableOpacity
+        onPress={navigation.navigate('TransactionDetails')}
+        ><Text style={{fontSize: 22, paddingLeft: 20, color: '#ffffff'}}>Go to transaction details</Text></TouchableOpacity> */}
       </View>
 
       {/* Main Content */}

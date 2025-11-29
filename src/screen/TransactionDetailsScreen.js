@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Share,
+  Image
 } from 'react-native';
 import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
@@ -19,23 +19,22 @@ import { PaymentApiIPAddress } from 'utility/apiIPAdress';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BackBtn from 'utility/BackBtn';
-
-/**
- * Professional Transaction Details Screen
- * Displays detailed information for all transaction types
- * 
- */
+import HistoryComponent from 'component/historyComponent';
+import AntDesign from '@expo/vector-icons/AntDesign';
+import Entypo from '@expo/vector-icons/Entypo';
+import { MobileProviders, TvProviders, ElectricityProviders } from 'constants/serviceImages';
 
 const BASE_URL = PaymentApiIPAddress;
 
-
+// ========================================
+// Transaction Details Screen (Updated)
+// ========================================
 export default function TransactionDetailsScreen({ navigation, route }) {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
   const { wallet } = useWallet();
   
   const { reference } = route.params || {};
-
 
   // State
   const [transaction, setTransaction] = useState(null);
@@ -114,15 +113,10 @@ export default function TransactionDetailsScreen({ navigation, route }) {
     }
   };
 
-  const getServiceIcon = (type) => {
-    const icons = {
-      airtime: '📱',
-      data: '📊',
-      electricity: '⚡',
-      tv: '📺',
-      education: '📚',
-    };
-    return icons[type] || '💳';
+  const getServiceLogo = (serviceID) => {
+    const allProviders = [...MobileProviders, ...TvProviders, ...ElectricityProviders];
+    const provider = allProviders.find(p => serviceID?.toLowerCase().includes(p.value));
+    return provider ? provider.logo : require('../asset/fallback.jpg');
   };
 
   const getServiceName = (type) => {
@@ -139,7 +133,6 @@ export default function TransactionDetailsScreen({ navigation, route }) {
   const getProviderName = (serviceID) => {
     if (!serviceID) return 'N/A';
     
-    // Extract provider from serviceID
     if (serviceID.includes('mtn')) return 'MTN';
     if (serviceID.includes('airtel')) return 'Airtel';
     if (serviceID.includes('glo')) return 'Glo';
@@ -149,7 +142,6 @@ export default function TransactionDetailsScreen({ navigation, route }) {
     if (serviceID.includes('startimes')) return 'Startimes';
     if (serviceID.includes('showmax')) return 'Showmax';
     
-    // For electricity
     if (serviceID.includes('ikeja')) return 'Ikeja Electric (IKEDC)';
     if (serviceID.includes('eko')) return 'Eko Electric (EKEDC)';
     if (serviceID.includes('kano')) return 'Kano Electric (KEDCO)';
@@ -165,70 +157,57 @@ export default function TransactionDetailsScreen({ navigation, route }) {
   // ========================================
   // Action Handlers
   // ========================================
-  const handleShare = async () => {
-    if (!transaction) return;
-
-    try {
-      const message = `
-Transaction Receipt
-------------------
-Type: ${getServiceName(transaction.type)}
-Amount: ${formatCurrency(transaction.amount, 'NGN')}
-Status: ${transaction.status?.toUpperCase()}
-Reference: ${transaction.reference}
-Date: ${formatDate(transaction.createdAt)}
-      `.trim();
-
-      await Share.share({
-        message,
-        title: 'Transaction Receipt',
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
+  const handleShare = () => {
+    if (!transaction) {
+      Alert.alert('Error', 'No transaction data available');
+      return;
     }
+    
+    console.log('📤 Navigating to ShareReceipt with reference:', transaction.reference);
+    
+    // ✅ TASK 1: Pass the transaction reference
+    navigation.navigate('ShareReceipt', { 
+      reference: transaction.reference,
+      transaction: transaction //  pass full transaction for immediate use
+    });
   };
 
-  const handleDownloadReceipt = () => {
-    // TODO: Implement receipt download/PDF generation
-    Alert.alert('Coming Soon', 'Receipt download will be available soon');
-  };
-
+  // ✅ TASK 2: Report Issue Handler (Always visible, navigates to IssueReport screen)
   const handleReportIssue = () => {
-    // TODO: Navigate to support screen
-    Alert.alert(
-      'Report Issue',
-      'Would you like to report an issue with this transaction?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Contact Support',
-          onPress: () => navigation.navigate('Support', { transaction }),
-        },
-      ]
-    );
+    if (!transaction) {
+      Alert.alert('Error', 'No transaction data available');
+      return;
+    }
+    
+    console.log('⚠️ Navigating to IssueReport with transaction:', transaction.reference);
+    
+    // Navigate to IssueReport screen with transaction data
+    navigation.navigate('IssueReport', { 
+      transaction: transaction,
+      reference: transaction.reference
+    });
   };
 
   // ========================================
   // Render Service-Specific Details
   // ========================================
-  const renderServiceDetails = () => {
-    if (!transaction) return null;
+  const renderServiceDetails = (txn, colors) => {
+    if (!txn) return null;
 
-    const { type } = transaction;
+    const { type } = txn;
 
-    // Common details
     const commonDetails = (
       <>
         <DetailRow
           label="Reference"
-          value={transaction.reference}
+          value={txn.reference}
           copiable
-          themeColors={themeColors}
+          themeColors={colors}
         />
         <DetailRow
           label="Transaction ID"
-          value={transaction.transactionId || 'N/A'}
-          themeColors={themeColors}
+          value={txn.transactionId || 'N/A'}
+          themeColors={colors}
         />
       </>
     );
@@ -239,13 +218,13 @@ Date: ${formatDate(transaction.createdAt)}
           <>
             <DetailRow
               label="Phone Number"
-              value={transaction.phoneNumber}
-              themeColors={themeColors}
+              value={txn.phoneNumber}
+              themeColors={colors}
             />
             <DetailRow
               label="Network"
-              value={getProviderName(transaction.serviceID)}
-              themeColors={themeColors}
+              value={getProviderName(txn.serviceID)}
+              themeColors={colors}
             />
             {commonDetails}
           </>
@@ -256,18 +235,18 @@ Date: ${formatDate(transaction.createdAt)}
           <>
             <DetailRow
               label="Phone Number"
-              value={transaction.phoneNumber}
-              themeColors={themeColors}
+              value={txn.phoneNumber}
+              themeColors={colors}
             />
             <DetailRow
               label="Network"
-              value={getProviderName(transaction.serviceID)}
-              themeColors={themeColors}
+              value={getProviderName(txn.serviceID)}
+              themeColors={colors}
             />
             <DetailRow
               label="Data Plan"
-              value={transaction.variation_code || 'N/A'}
-              themeColors={themeColors}
+              value={txn.variation_code || 'N/A'}
+              themeColors={colors}
             />
             {commonDetails}
           </>
@@ -278,26 +257,26 @@ Date: ${formatDate(transaction.createdAt)}
           <>
             <DetailRow
               label="Meter Number"
-              value={transaction.billersCode}
-              themeColors={themeColors}
+              value={txn.billersCode}
+              themeColors={colors}
             />
             <DetailRow
               label="Distribution Company"
-              value={getProviderName(transaction.serviceID)}
-              themeColors={themeColors}
+              value={getProviderName(txn.serviceID)}
+              themeColors={colors}
             />
             <DetailRow
               label="Meter Type"
-              value={transaction.variation_code || 'N/A'}
-              themeColors={themeColors}
+              value={txn.variation_code || 'N/A'}
+              themeColors={colors}
             />
-            {transaction.purchasedCode && (
+            {txn.purchasedCode && (
               <DetailRow
                 label="Token"
-                value={transaction.purchasedCode}
+                value={txn.purchasedCode}
                 copiable
                 highlighted
-                themeColors={themeColors}
+                themeColors={colors}
               />
             )}
             {commonDetails}
@@ -309,23 +288,23 @@ Date: ${formatDate(transaction.createdAt)}
           <>
             <DetailRow
               label="Smartcard Number"
-              value={transaction.billersCode}
-              themeColors={themeColors}
+              value={txn.billersCode}
+              themeColors={colors}
             />
             <DetailRow
               label="Provider"
-              value={getProviderName(transaction.serviceID)}
-              themeColors={themeColors}
+              value={getProviderName(txn.serviceID)}
+              themeColors={colors}
             />
             <DetailRow
               label="Package"
-              value={transaction.variation_code || 'N/A'}
-              themeColors={themeColors}
+              value={txn.variation_code || 'N/A'}
+              themeColors={colors}
             />
             <DetailRow
               label="Subscription Type"
-              value={transaction.subscription_type || 'N/A'}
-              themeColors={themeColors}
+              value={txn.subscription_type || 'N/A'}
+              themeColors={colors}
             />
             {commonDetails}
           </>
@@ -386,26 +365,29 @@ Date: ${formatDate(transaction.createdAt)}
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: themeColors.card }]}>
-      <BackBtn
-        onPress={() => navigation.goBack()}
-        
-      />
+        <BackBtn onPress={() => navigation.goBack()} />
         <Text style={[styles.headerTitle, { color: themeColors.heading }]}>
           Transaction Details
         </Text>
-       
+        <HistoryComponent
+  onPress={() => navigation.navigate('MainTabs', { screen: 'Orders' })} // ✅ String quotes
+/>
+
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Status Card */}
         <View style={[styles.statusCard, { backgroundColor: themeColors.card }]}>
           <View style={styles.statusIconContainer}>
-            <Text style={styles.statusIcon}>{getServiceIcon(transaction.type)}</Text>
+            <Image 
+              source={getServiceLogo(transaction.serviceID || transaction.type)} 
+              style={{ width: 40, height: 40, resizeMode: 'cover', borderRadius: 100 }}
+            />
           </View>
           <Text style={[styles.serviceTitle, { color: themeColors.heading }]}>
             {getServiceName(transaction.type)}
           </Text>
-          <Text style={[styles.amountText, { color: themeColors.heading }]}>
+          <Text style={[styles.amountText, { color: themeColors.primary }]}>
             {formatCurrency(transaction.amount, 'NGN')}
           </Text>
           <View
@@ -430,7 +412,7 @@ Date: ${formatDate(transaction.createdAt)}
           <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
             Transaction Details
           </Text>
-          {renderServiceDetails()}
+          {renderServiceDetails(transaction, themeColors)}
           
           {/* Commission & Discount */}
           {(transaction.commission || transaction.discount) && (
@@ -469,33 +451,36 @@ Date: ${formatDate(transaction.createdAt)}
             </Text>
           </View>
         )}
-
+ 
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
-        <View>
-        <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: themeColors.primary }]}
-            onPress={handleDownloadReceipt}
-          >
-            <Text style={styles.actionButtonText}> Download Receipt</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-          <Text style={styles.shareIcon}>Share Receipt</Text>
-        </TouchableOpacity>
-        </View>
-          
-          
-          {transaction.status === 'failed' && (
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { backgroundColor: themeColors.destructive },
-              ]}
-              onPress={handleReportIssue}
+          {/* Share Receipt Button */}
+          <View style={styles.receiptShare}>
+            <TouchableOpacity 
+              onPress={handleShare} 
+              style={[styles.actionButton, { backgroundColor: 'rgba(84, 3, 245, 0.2)' }]}
             >
-              <Text style={styles.actionButtonText}>⚠️ Report Issue</Text>
+              <Entypo name="share" size={24} color="#5403f5ff" />
+              <Text style={[styles.actionButtonText, { color: themeColors.primary }]}>
+                Share Receipt
+              </Text>
             </TouchableOpacity>
-          )}
+          </View>
+          
+          {/* ✅ TASK 2: Report Issue Button (Always Visible) */}
+          <TouchableOpacity
+            style={[
+              styles.reportButton,
+              { 
+                backgroundColor: themeColors.destructive,
+                borderColor: themeColors.destructive,
+              },
+            ]}
+            onPress={handleReportIssue}
+          >
+            <AntDesign name="warning" size={20} color="#FFF" />
+            <Text style={styles.reportButtonText}>Report Issue</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -507,7 +492,6 @@ Date: ${formatDate(transaction.createdAt)}
 // ========================================
 const DetailRow = ({ label, value, copiable, highlighted, themeColors }) => {
   const handleCopy = () => {
-    // TODO: Implement copy to clipboard
     Alert.alert('Copied', `${label} copied to clipboard`);
   };
 
@@ -526,7 +510,7 @@ const DetailRow = ({ label, value, copiable, highlighted, themeColors }) => {
         </Text>
         {copiable && (
           <TouchableOpacity onPress={handleCopy} style={styles.copyButton}>
-            <Text style={[styles.copyIcon, { color: themeColors.primary }]}>📋</Text>
+            <Text style={[styles.copyIcon, { color: themeColors.primary }]}>copy</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -587,23 +571,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E0E0E0',
     marginTop: 20,
   },
-  backBtn: {
-    padding: 8,
-  },
-  backBtnText: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginRight: 20,
-  },
-  shareBtn: {
-    padding: 8,
-  },
-  shareIcon: {
-    fontSize: 20,
   },
   scrollContent: {
     padding: 16,
@@ -621,16 +592,14 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   statusIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 40,
+    height: 40,
+    borderRadius: 100,
     backgroundColor: 'rgba(84, 3, 245, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-  },
-  statusIcon: {
-    fontSize: 40,
+    overflow: 'hidden',
   },
   serviceTitle: {
     fontSize: 18,
@@ -702,7 +671,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   copyIcon: {
-    fontSize: 16,
+    fontSize: 12,
   },
   failureCard: {
     borderRadius: 12,
@@ -720,6 +689,10 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     gap: 12,
+    marginTop: 20,
+  },
+  receiptShare: {
+    alignItems: 'center',
   },
   actionButton: {
     borderRadius: 12,
@@ -727,10 +700,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
+    width: 200,
   },
   actionButtonText: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  reportButton: {
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+  },
+  reportButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

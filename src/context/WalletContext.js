@@ -11,6 +11,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { ApiIPAddress } from 'utility/apiIPAdress';
 import { STORAGE_KEYS } from 'utility/storageKeys';
+import { getTransactionHistory } from 'AuthFunction/paymentService';
+
 
 const WalletContext = createContext();
 const BASE_URL = ApiIPAddress;
@@ -88,6 +90,9 @@ const [wallet, setWallet] = useState({
   transactionPinSet: false,
   isLoading: true,
 });
+const [transactions, setTransactions] = useState([]);
+const [transactionStats, setTransactionStats] = useState(null);
+const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
 
 const normalizeUserData = (user) => {
   if (!user) return null;
@@ -318,6 +323,40 @@ const updateWalletBalance = async (newBalance) => {
 };
 
 
+
+
+/**
+ * Fetch Transaction History
+ */
+
+
+const fetchTransactions = async (filters = {}) => {
+  setIsLoadingTransactions(true);
+  try {
+    console.log('🔵 WalletContext: Fetching with filters:', filters);
+    
+    const response = await getTransactionHistory(filters);
+    
+    console.log('🔵 WalletContext: Response received:', response); // ✅ Add this
+    
+    if (response.success) {
+      console.log('🔵 WalletContext: Transactions count:', response.data.transactions.length); // ✅ Add this
+      
+      setTransactions(response.data.transactions);
+      setTransactionStats(response.data.stats);
+      return response.data;
+    }
+    
+    throw new Error(response.message || 'Failed to fetch transactions');
+  } catch (error) {
+    console.error('❌ WalletContext: Fetch Transactions Error:', error);
+    setTransactions([]); // ✅ Add this - clear transactions on error
+    throw error;
+  } finally {
+    setIsLoadingTransactions(false);
+  }
+};
+
   const calculateInvoice = useCallback((products, discount, tax) => {
     const subtotal = products.reduce(
       (sum, item) => sum + item.quantity * item.price,
@@ -435,6 +474,9 @@ const updateWalletBalance = async (newBalance) => {
     updateTransactionPinStatus,
     refreshWallet,
     wallet,
+    transactions, 
+    isLoadingTransactions, 
+    fetchTransactions, 
     
   };
 

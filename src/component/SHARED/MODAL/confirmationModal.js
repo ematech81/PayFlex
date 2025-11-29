@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   container: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: height * 0.85,
+    minHeight: height * 0.55,
     paddingBottom: 20,
   },
   header: {

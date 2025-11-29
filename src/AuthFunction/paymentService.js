@@ -41,6 +41,12 @@ const handleResponse = async (response) => {
     throw new Error('Server returned invalid response format');
   }
 
+  // ✅ Handle 304 Not Modified (cached response)
+  if (response.status === 304) {
+    console.log('⚠️ 304 Not Modified - using cached data');
+    return { success: true, data: { transactions: [], pagination: {}, stats: {} } };
+  }
+
   const data = await response.json();
 
   // Check HTTP layer
@@ -194,6 +200,7 @@ export const verifyMeter = async (meterData) => {
 };
 
 
+
 /**
  * Pay internet subscription
  * @param {string} pin - Transaction PIN
@@ -345,38 +352,6 @@ export const getTVBouquets = async (provider) => {
 
 
 /**
- * Get transaction history
- * @param {object} filters - Filter parameters
- * @returns {Promise<object>} Transaction history
- */
-export const getTransactionHistory = async (filters = {}) => {
-  try {
-    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
-    
-    if (!token) {
-      throw new Error('Authentication required. Please log in again.');
-    }
-
-    const queryParams = new URLSearchParams(filters).toString();
-    const url = `${BASE_URL}/transactions${queryParams ? `?${queryParams}` : ''}`;
-
-    const response = await fetchWithTimeout(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    return await handleResponse(response);
-    
-  } catch (error) {
-    console.error('❌ Transaction history error:', error.message);
-    throw error;
-  }
-};
-
-/**
  * Get transaction details
  * @param {string} reference - Transaction reference
  * @returns {Promise<object>} Transaction details
@@ -405,6 +380,63 @@ export const getTransactionDetails = async (reference) => {
   }
 };
 
+/**
+ * Get Transaction History with Filters
+ */
+// In PaymentService.js - Update this function
+
+export const getTransactionHistory = async (filters = {}) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    // Build query params
+    const params = new URLSearchParams();
+    if (filters.category && filters.category !== 'all') {
+      params.append('category', filters.category);
+    }
+    if (filters.status && filters.status !== 'all') {
+      params.append('status', filters.status);
+    }
+    if (filters.startDate) {
+      params.append('startDate', filters.startDate);
+    }
+    if (filters.endDate) {
+      params.append('endDate', filters.endDate);
+    }
+    if (filters.page) {
+      params.append('page', filters.page);
+    }
+    if (filters.limit) {
+      params.append('limit', filters.limit);
+    }
+
+    const queryString = params.toString();
+    const url = `${BASE_URL}/transactions/history${queryString ? `?${queryString}` : ''}`;
+
+    console.log('🟢 PaymentService: Fetching from:', url);
+
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await handleResponse(response);
+    
+    console.log('🟢 PaymentService: Data received:', data); // ✅ Add this
+    
+    return data;
+  } catch (error) {
+    console.error('❌ PaymentService: Get Transaction History Error:', error.message);
+    throw error;
+  }
+};
 // Export the service
 export default {
   // Basic services

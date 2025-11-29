@@ -49,6 +49,7 @@ import SetTransactionPinScreen from 'screen/SetTransactionPinScreen';
 import ResetPinScreen from 'screen/ResetPinScreen';
 import SetLoginPINScreen from 'screen/SetLoginPinScreen';
 import { STORAGE_KEYS } from 'utility/storageKeys';
+import ShareReceiptScreen from 'screen/ShareReceiptScreen';
 
 // 👇 Keep splash screen visible until resources load
 // SplashScreen.preventAutoHideAsync();
@@ -271,6 +272,7 @@ export default function App() {
               <Stack.Screen name="Data" component={DataPurchaseScreen} />
               <Stack.Screen name="Airtime" component={AirtimeScreen} />
               <Stack.Screen name="TransactionDetails" component={TransactionDetailsScreen} />
+              <Stack.Screen name="ShareReceipt" component={ShareReceiptScreen} />
               <Stack.Screen
                 name="TVSubscription"
                 component={TVSubscriptionScreen}

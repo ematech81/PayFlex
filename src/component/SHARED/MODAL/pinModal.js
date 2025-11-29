@@ -137,14 +137,17 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
   },
   container: {
-    width: '90%',
-    maxWidth: 400,
-    borderRadius: 24,
+    width: '100%',
+    minHeight: height * 0.45,
+    // borderRadius: 24,
     padding: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+
   },
   closeButton: {
     alignSelf: 'flex-end',

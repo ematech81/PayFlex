@@ -6,6 +6,7 @@ import {
   Text,
   StyleSheet,
   Dimensions,
+  Platform,
   StatusBar,
   TouchableOpacity,
   ScrollView,
@@ -26,7 +27,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-// import { useWallet } from 'context/WalletContext';
+
 import { useWalletNavigation } from 'constants/useWalletNavigation';
 import { useWalletBalance } from 'HOOKS';
 import { PromoCard } from 'component/SHARED';
@@ -36,9 +37,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AddWalletFund from 'component/AddWalletFund';
 
 
+
+
+
+
 const { width, height } = Dimensions.get('window');
 const CARD_PADDING = 13;
 const ICON_SIZE = 19;
+
+// Detect if device is tablet
+const isTablet = () => {
+  const aspectRatio = height / width;
+  return (
+    (Platform.OS === 'ios' && Platform.isPad) || 
+    (Platform.OS === 'android' && aspectRatio < 1.6)
+  );
+};
 
 // Services Configuration
 const services = [
@@ -207,27 +221,13 @@ export default function HomeScreen({route}) {
   const navigation = useNavigation();
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
-  const { walletBalance, wallet } = useWallet();
+  const { wallet,refreshWallet } = useWallet();
   const [user, setUser] = useState(null);
   
   // State
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
-
-  // useEffect(() => {
-  //   const clearAllStorage = async () => {
-  //     try {
-  //       await AsyncStorage.clear();
-  //       console.log('🧹 All AsyncStorage cleared');
-  //     } catch (error) {
-  //       console.error('❌ Error clearing storage:', error);
-  //     }
-  //   };
-  
-  //   clearAllStorage();
-  // }, []); // Empty dependency array = runs once on mount
 
   
 
@@ -239,6 +239,9 @@ export default function HomeScreen({route}) {
     toggleVisibility,
   } = useWalletBalance();
 
+useEffect(() => {
+    refreshWallet();
+  }, []);
 
 
 
@@ -644,7 +647,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   headerWrapper: {
-    height: height * 0.47,
+    height: isTablet() ? height * 0.33 : height * 0.45,
   },
   header: {
     marginTop: 30,

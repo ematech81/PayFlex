@@ -6,4 +6,5 @@ export const STORAGE_KEYS = {
     DEVICE_ID: 'deviceId',
     REQUIRE_PIN: 'requirePinOnOpen',
     BIOMETRIC_ENABLED: 'biometricEnabled',
+    HAS_SEEN_ONBOARDING: '@payflex_has_seen_onboarding',
   };

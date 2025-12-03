@@ -28,6 +28,7 @@ import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import * as FileSystem from 'expo-file-system';
 import AppImage from 'component/allImage';
+import { StatusBarComponent } from 'component/StatusBar';
 
 const BASE_URL = PaymentApiIPAddress;
 
@@ -399,6 +400,7 @@ export default function ShareReceiptScreen({ navigation, route }) {
   // ========================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+    <StatusBarComponent/>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: themeColors.card }]}>
         <BackBtn onPress={() => navigation.goBack()} />

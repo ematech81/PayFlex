@@ -19,6 +19,8 @@ import { useWallet } from 'context/WalletContext';
 import axios from 'axios';
 import AuthHeader from 'component/AuthHeader';
 import { ApiIPAddress } from 'utility/apiIPAdress';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from 'utility/storageKeys';
 
 const BASE_URL = ApiIPAddress;
 
@@ -34,6 +36,8 @@ export default function SetTransactionPinScreen({ navigation, route }) {
   const [error, setError] = useState('');
 
   const handleSetPin = async () => {
+
+    
     // Clear previous errors
     setError('');
 
@@ -48,13 +52,14 @@ export default function SetTransactionPinScreen({ navigation, route }) {
     setIsLoading(true);
 
     try {
+      const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
       console.log('🔐 Creating transaction PIN...');
       
       const { data } = await axios.post(
         `${BASE_URL}/set-transaction-pin`,
         { pin },
         { 
-          headers: { Authorization: `Bearer ${wallet.token}` },
+          headers: { Authorization: `Bearer ${token}` },
           timeout: 10000,
         }
       );

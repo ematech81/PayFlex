@@ -387,9 +387,10 @@ export default function LoginScreen({ navigation }) {
           <View
             style={{
               flexDirection: 'row',
-              justifyContent: 'space-between',
+              justifyContent: 'center',
               marginTop: 10,
               marginBottom: 16,
+              gap: 10
    
             }}
           >

@@ -532,14 +532,15 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   listContent: {
-    padding: 16,
+    padding: 10,
     paddingBottom: 40,
   },
   transactionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 16,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
@@ -559,21 +560,21 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 2,
   },
   serviceIcon: {
-    fontSize: 24,
+    fontSize: 20,
   },
   transactionDetails: {
     flex: 1,
   },
   serviceName: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     marginBottom: 4,
   },
   transactionDate: {
-    fontSize: 12,
+    fontSize: 10,
     marginBottom: 6,
   },
   statusBadge: {
@@ -589,10 +590,10 @@ const styles = StyleSheet.create({
   transactionRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   transactionAmount: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   emptyContainer: {

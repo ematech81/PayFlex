@@ -281,6 +281,8 @@ const styles = StyleSheet.create({
   serviceInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    width: '200'
   },
   providerLogo: {
     width: 20,

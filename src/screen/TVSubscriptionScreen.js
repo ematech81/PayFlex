@@ -1,4 +1,4 @@
-// screens/TVSubscriptionScreen.js
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  FlatList,
+  StatusBar
 } from 'react-native';
 
 // Imports
@@ -23,32 +25,20 @@ import {
   PromoCard,
   LoadingOverlay,
 } from 'component/SHARED';
+import { Ionicons } from '@expo/vector-icons';
 
 import PinSetupModal from 'component/PinSetUpModal';
 import { useServicePayment } from 'HOOKS/UseServicePayment';
 import { useWallet } from 'context/WalletContext';
-// import { 
-//   purchaseTVSubscription, 
-//   renewTVSubscription, 
-//   verifySmartcard, 
-//   getTVBouquets 
-// } from 'services/PaymentService';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
 import { getTVBouquets, purchaseTVSubscription, renewTVSubscription, verifySmartcard } from 'AuthFunction/paymentService';
+import { customImages } from 'constants/serviceImages';
 
-/**
- * Professional TV Subscription Screen
- * Supports: DSTV, GOTV, Startimes, Showmax
- * Features: Real-time verification, bouquet selection, renewal/change options
- */
-export default function TVSubscriptionScreen({ navigation, route }) {
-  const isDarkMode = useThem();
-  const themeColors = isDarkMode ? colors.dark : colors.light;
-  const { wallet, refreshWallet } = useWallet();
 
-  // Constants
+
+//   // Constants
   const TV_CONSTANTS = {
     LIMITS: {
       MIN_AMOUNT: 1000,
@@ -57,11 +47,24 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   };
 
   const TV_PROVIDERS = [
-    { label: 'DSTV', value: 'dstv', logo: '' },
-    { label: 'GOTV', value: 'gotv', logo: '' },
-    { label: 'Startimes', value: 'startimes', logo: '' },
-    { label: 'Showmax', value: 'showmax', logo: '' },
+    { label: 'DSTV', value: 'dstv', logo: customImages.Dstv },
+    { label: 'GOTV', value: 'gotv', logo: customImages.Gotv },
+    { label: 'Startimes', value: 'startimes', logo: customImages.Startimes },
+    { label: 'Showmax', value: 'showmax', logo: customImages.Showmax },
   ];
+
+
+
+
+
+
+/**
+ * TV Subscription Screen - Optimized Structure
+ */
+export default function TVSubscriptionScreen({ navigation, route }) {
+  const isDarkMode = useThem();
+  const themeColors = isDarkMode ? colors.dark : colors.light;
+  const { wallet, refreshWallet } = useWallet();
 
   // State Management
   const [provider, setProvider] = useState('');
@@ -69,6 +72,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   const [bouquets, setBouquets] = useState([]);
   const [selectedBouquet, setSelectedBouquet] = useState(null);
   const [customerData, setCustomerData] = useState(null);
+  //  const [phoneNumber, setPhoneNumber] = useState('');
   const [subscriptionType, setSubscriptionType] = useState('change'); // 'change' or 'renew'
   
   // Loading States
@@ -199,8 +203,17 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   // ========================================
   // Execute Purchase
   // ========================================
+  // ========================================
+  // Execute Purchase
+  // ========================================
+
+
   const executeTVPurchase = useCallback(async (pin, paymentData) => {
     console.log('💳 Executing TV purchase:', paymentData);
+
+    const userPhone = wallet?.user?.phone || wallet?.user?.phoneNumber || '';
+  
+  console.log('📱 Using phone number:', userPhone);
     
     try {
       let response;
@@ -211,7 +224,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
           smartcardNumber: paymentData.smartcardNumber,
           provider: paymentData.provider,
           amount: paymentData.amount,
-          phone: wallet?.user?.phoneNumber || '',
+          phone: userPhone,
         });
       } else {
         // Change/subscribe to new bouquet
@@ -220,7 +233,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
           provider: paymentData.provider,
           variation_code: paymentData.variation_code,
           amount: paymentData.amount,
-          phone: wallet?.user?.phoneNumber || '',
+          phone: userPhone,
         });
       }
 
@@ -273,9 +286,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     const cleanSmartCard = smartcardNumber.replace(/\s/g, '');
     
     // Calculate amount
-    const amount = subscriptionType === 'renew' 
-      ? parseFloat(customerData?.renewalAmount || 0)
-      : selectedBouquet?.fixedPrice || parseFloat(selectedBouquet?.variation_amount || 0);
+    const amount = getAmount();
 
     // Prepare payment data
     const paymentData = {
@@ -308,20 +319,81 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   // Helper Functions
   // ========================================
   const getAmount = () => {
+    let rawAmount = 0;
+    
     if (subscriptionType === 'renew') {
-      return parseFloat(customerData?.renewalAmount || 0);
+      // ✅ Handle multiple possible field names from VTPass
+      rawAmount = parseFloat(
+        customerData?.renewalAmount || 
+        customerData?.Renewal_Amount || 
+        customerData?.renewal_amount || 
+        0
+      );
+    } else {
+      // ✅ For change package
+      rawAmount = parseFloat(
+        selectedBouquet?.variation_amount || 
+        selectedBouquet?.fixedPrice || 
+        0
+      );
     }
-    return selectedBouquet?.fixedPrice || parseFloat(selectedBouquet?.variation_amount || 0);
+    
+    return isNaN(rawAmount) ? 0 : rawAmount;
   };
-
+  
   const canProceed = () => {
-    return (
-      provider &&
-      smartcardNumber &&
-      customerData &&
-      (subscriptionType === 'renew' || selectedBouquet) &&
-      payment.step !== 'processing'
-    );
+    // Basic requirements
+    const hasBasicData = provider && smartcardNumber && customerData;
+    const isNotProcessing = payment.step !== 'processing';
+    const hasValidAmount = getAmount() > 0;
+    
+    // Type-specific requirements
+    let hasTypeRequirement = false;
+    
+    if (subscriptionType === 'renew') {
+      // ✅ For renewal, just need customer data with renewal amount
+      hasTypeRequirement = !!(
+        customerData?.renewalAmount || 
+        customerData?.Renewal_Amount || 
+        customerData?.renewal_amount
+      );
+    } else if (subscriptionType === 'change') {
+      // ✅ For change, need selected bouquet
+      hasTypeRequirement = !!selectedBouquet;
+    }
+    
+    console.log('🔍 canProceed check:', {
+      hasBasicData,
+      isNotProcessing,
+      hasValidAmount,
+      hasTypeRequirement,
+      subscriptionType,
+      renewalAmount: customerData?.renewalAmount,
+      selectedBouquet: !!selectedBouquet,
+    });
+    
+    return hasBasicData && isNotProcessing && hasValidAmount && hasTypeRequirement;
+  };
+  const cleanBouquetName = (bouquet) => {
+    if (!bouquet) return '';
+    let cleanName = bouquet.name || '';
+    const price = parseFloat(bouquet.variation_amount || 0);
+    const formatted = price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+    const patterns = [
+      new RegExp(`\\s+N${formatted.replace(/,/g, ',')}$`),
+      new RegExp(` - ${formatted} Naira - `, 'g'),
+      new RegExp(` - N${formatted} - `, 'g'),
+      new RegExp(` - ${formatted} - `, 'g'),
+      new RegExp(` - N${formatted}$`, 'g'),
+      new RegExp(` - ${formatted}$`, 'g'),
+    ];
+
+    patterns.forEach(pattern => {
+      cleanName = cleanName.replace(pattern, '');
+    });
+
+    return cleanName.trim();
   };
 
   // ========================================
@@ -373,9 +445,10 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     );
   };
 
-  const renderBouquetCard = (bouquet) => {
+  const renderBouquetCard = ({ item: bouquet }) => {
     const isSelected = selectedBouquet?.variation_code === bouquet.variation_code;
-    const price = bouquet.fixedPrice || parseFloat(bouquet.variation_amount);
+    const price = parseFloat(bouquet.variation_amount || 0);
+    const cleanName = cleanBouquetName(bouquet);
 
     return (
       <TouchableOpacity
@@ -391,9 +464,9 @@ export default function TVSubscriptionScreen({ navigation, route }) {
       >
         <View style={styles.bouquetInfo}>
           <Text style={[styles.bouquetName, { color: themeColors.text }]}>
-            {bouquet.name}
+            {cleanName}
           </Text>
-          <Text style={[styles.bouquetPrice, { color: themeColors.mutedText }]}>
+          <Text style={[styles.bouquetPrice, { color: themeColors.primary }]}>
             {formatCurrency(price, 'NGN')}
           </Text>
         </View>
@@ -409,199 +482,217 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   // ========================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <ScreenHeader
-          title="TV Subscription"
-          onBackPress={() => navigation.goBack()}
-          rightText="History"
-          onRightPress={() => navigation.navigate('History')}
-        />
-
-        {/* Provider Selection */}
-        <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-          Select TV Provider
-        </Text>
-        <ProviderSelector
-          providers={TV_PROVIDERS}
-          value={provider}
-          onChange={(value) => {
-            setProvider(value);
-            setCustomerData(null);
-            setSmartcardNumber('');
-            setSelectedBouquet(null);
-          }}
-          placeholder="Select TV Provider"
-          error={validationErrors.provider}
-        />
-
-        {/* Smartcard Number Input */}
-        <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-          Smartcard / IUC Number
-        </Text>
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={[
-              styles.input,
-              { 
-                color: themeColors.text, 
-                borderColor: validationErrors.smartcard ? themeColors.destructive : themeColors.border,
-                backgroundColor: themeColors.card,
-              },
-            ]}
-            value={smartcardNumber}
-            onChangeText={(text) => {
-              setSmartcardNumber(text.replace(/\D/g, ''));
-              setValidationErrors({ ...validationErrors, smartcard: undefined });
-              setCustomerData(null);
-            }}
-            placeholder="Enter 10-11 digit number"
-            placeholderTextColor={themeColors.mutedText}
-            keyboardType="numeric"
-            maxLength={11}
-            editable={!isVerifying}
+    <StatusBar
+           barStyle= { isDarkMode ? 'light-content' : 'dark-content'}
+          //  barStyle= "dark-content"
+           backgroundColor="transparent"
+           translucent
+         />
+      <View style={styles.mainContainer}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <ScreenHeader
+            title="TV Sub"
+            onBackPress={() => navigation.goBack()}
+            rightText="History"
+            onRightPress={() => navigation.navigate('History')}
           />
-          <TouchableOpacity
-            style={[
-              styles.verifyButton,
-              { backgroundColor: (!provider || !smartcardNumber || isVerifying) 
-                  ? themeColors.mutedText 
-                  : themeColors.primary 
-              },
-            ]}
-            onPress={handleVerifySmartcard}
-            disabled={isVerifying || !provider || !smartcardNumber}
-          >
-            {isVerifying ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.verifyButtonText}>Verify</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-        {validationErrors.smartcard && (
-          <Text style={[styles.errorText, { color: themeColors.destructive }]}>
-            {validationErrors.smartcard}
+
+          {/* Provider Selection */}
+          <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+            Select TV Provider
           </Text>
-        )}
+          <ProviderSelector
+            providers={TV_PROVIDERS}
+            value={provider}
+            onChange={(value) => {
+              setProvider(value);
+              setCustomerData(null);
+              setSmartcardNumber('');
+              setSelectedBouquet(null);
+            }}
+            placeholder="Select TV Provider"
+            error={validationErrors.provider}
+          />
 
-        {/* Customer Info */}
-        {renderCustomerInfo()}
-
-        {/* Subscription Type Selection */}
-        {customerData && (
-          <>
-            <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-              Subscription Type
-            </Text>
-            <View style={styles.typeSelector}>
-              <TouchableOpacity
-                style={[
-                  styles.typeButton,
-                  {
-                    backgroundColor: subscriptionType === 'renew' 
-                      ? themeColors.primary 
-                      : themeColors.card,
-                    borderColor: subscriptionType === 'renew'
-                      ? themeColors.primary
-                      : themeColors.border,
-                  },
-                ]}
-                onPress={() => {
-                  setSubscriptionType('renew');
-                  setSelectedBouquet(null);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    { color: subscriptionType === 'renew' ? '#fff' : themeColors.text },
-                  ]}
-                >
-                  Renew Current
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.typeButton,
-                  {
-                    backgroundColor: subscriptionType === 'change' 
-                      ? themeColors.primary 
-                      : themeColors.card,
-                    borderColor: subscriptionType === 'change'
-                      ? themeColors.primary
-                      : themeColors.border,
-                  },
-                ]}
-                onPress={() => setSubscriptionType('change')}
-              >
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    { color: subscriptionType === 'change' ? '#fff' : themeColors.text },
-                  ]}
-                >
-                  Change Package
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-
-        {/* Bouquet Selection (Only for Change) */}
-        {customerData && subscriptionType === 'change' && (
-          <>
-            <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-              Select Bouquet
-            </Text>
-            {isLoadingBouquets ? (
-              <ActivityIndicator 
-                size="large" 
-                color={themeColors.primary} 
-                style={styles.loader} 
-              />
-            ) : (
-              <View style={styles.bouquetsContainer}>
-                {bouquets.map(renderBouquetCard)}
-              </View>
-            )}
-            {validationErrors.bouquet && (
-              <Text style={[styles.errorText, { color: themeColors.destructive }]}>
-                {validationErrors.bouquet}
-              </Text>
-            )}
-          </>
-        )}
-
-        {/* Pay Button */}
-        <PayButton
-          title={`Pay ${formatCurrency(getAmount(), 'NGN')}`}
-          onPress={handlePayment}
-          disabled={!canProceed()}
-          loading={payment.step === 'processing'}
-          style={styles.payButton}
-        />
-
-        {/* Error Display */}
-        {payment.flowError && (
-          <View style={[styles.errorContainer, { backgroundColor: `${themeColors.destructive}20` }]}>
-            <Text style={[styles.errorText, { color: themeColors.destructive }]}>
-              {payment.flowError}
-            </Text>
+          {/* Smartcard Number Input */}
+          <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+            Smartcard / IUC Number
+          </Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[
+                styles.input,
+                { 
+                  color: themeColors.text, 
+                  borderColor: validationErrors.smartcard ? themeColors.destructive : themeColors.border,
+                  backgroundColor: themeColors.card,
+                },
+              ]}
+              value={smartcardNumber}
+              onChangeText={(text) => {
+                setSmartcardNumber(text.replace(/\D/g, ''));
+                setValidationErrors({ ...validationErrors, smartcard: undefined });
+                setCustomerData(null);
+              }}
+              placeholder="Enter 10-11 digit number"
+              placeholderTextColor={themeColors.mutedText}
+              keyboardType="numeric"
+              maxLength={11}
+              editable={!isVerifying}
+            />
+            <TouchableOpacity
+              style={[
+                styles.verifyButton,
+                { backgroundColor: (!provider || !smartcardNumber || isVerifying) 
+                    ? themeColors.subheading 
+                    : themeColors.primary 
+                },
+              ]}
+              onPress={handleVerifySmartcard}
+              disabled={isVerifying || !provider || !smartcardNumber}
+            >
+              {isVerifying ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Text style={styles.verifyButtonText}>Verify</Text>
+              )}
+            </TouchableOpacity>
           </View>
-        )}
+          {validationErrors.smartcard && (
+            <Text style={[styles.errorText, { color: themeColors.destructive }]}>
+              {validationErrors.smartcard}
+            </Text>
+          )}
 
-        {/* Promo Card */}
-        <PromoCard
-          title="🎉 Get Rewards"
-          subtitle="Earn cashback on every TV subscription"
-          buttonText="Learn More"
-          onPress={() => navigation.navigate('Rewards')}
-        />
-      </ScrollView>
+          {/* Customer Info */}
+          {renderCustomerInfo()}
+
+          {/* Subscription Type Selection */}
+          {customerData && (
+            <>
+              <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+                Subscription Type
+              </Text>
+              <View style={styles.typeSelector}>
+                <TouchableOpacity
+                  style={[
+                    styles.typeButton,
+                    {
+                      backgroundColor: subscriptionType === 'renew' 
+                        ? themeColors.primary 
+                        : themeColors.card,
+                      borderColor: subscriptionType === 'renew'
+                        ? themeColors.primary
+                        : themeColors.border,
+                    },
+                  ]}
+                  onPress={() => {
+                    setSubscriptionType('renew');
+                    setSelectedBouquet(null);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.typeButtonText,
+                      { color: subscriptionType === 'renew' ? '#fff' : themeColors.text },
+                    ]}
+                  >
+                    Renew Current
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.typeButton,
+                    {
+                      backgroundColor: subscriptionType === 'change' 
+                        ? themeColors.primary 
+                        : themeColors.card,
+                      borderColor: subscriptionType === 'change'
+                        ? themeColors.primary
+                        : themeColors.border,
+                    },
+                  ]}
+                  onPress={() => setSubscriptionType('change')}
+                >
+                  <Text
+                    style={[
+                      styles.typeButtonText,
+                      { color: subscriptionType === 'change' ? '#fff' : themeColors.text },
+                    ]}
+                  >
+                    Change Package
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+         
+          {/* Bouquet Selection (Only for Change) */}
+{customerData && subscriptionType === 'change' && (
+  <>
+    <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+      Select Bouquet
+    </Text>
+    {isLoadingBouquets ? (
+      <ActivityIndicator 
+        size="large" 
+        color={themeColors.primary} 
+        style={styles.loader} 
+      />
+    ) : (
+      <View style={styles.bouquetsContainer}>
+        {bouquets.map((bouquet) => renderBouquetCard({ item: bouquet }))}
+      </View>
+    )}
+    {validationErrors.bouquet && (
+      <Text style={[styles.errorText, { color: themeColors.destructive }]}>
+        {validationErrors.bouquet}
+      </Text>
+    )}
+  </>
+)}
+
+          {/* Error Display */}
+          {payment.flowError && (
+            <View style={[styles.errorContainer, { backgroundColor: `${themeColors.destructive}20` }]}>
+              <Text style={[styles.errorText, { color: themeColors.destructive }]}>
+                {payment.flowError}
+              </Text>
+            </View>
+          )}
+
+      
+        <View style={styles.bottomSpacer} />
+ 
+
+          {/* Promo Card */}
+          <PromoCard
+            title="🎉 Get Rewards"
+            subtitle="Earn cashback on every TV subscription"
+            buttonText="Learn More"
+            onPress={() => navigation.navigate('Rewards')}
+          />
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+
+        {/* Sticky Pay Button */}
+        {canProceed() && (
+        <View style={[styles.stickyFooter, { backgroundColor: themeColors.background }]}>
+          <PayButton
+            title={`Pay ${formatCurrency(getAmount(), 'NGN')}`}
+            onPress={handlePayment}
+            disabled={!canProceed()}
+            loading={payment.step === 'processing'}
+            style={styles.payButton}
+          />
+        </View>
+      )}
+      </View>
 
       {/* ========================================
           MODALS
@@ -630,7 +721,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         additionalInfo={
           subscriptionType === 'renew'
             ? `Renew: ${customerData?.currentBouquet}`
-            : `Package: ${selectedBouquet?.name}`
+            : `Package: ${cleanBouquetName(selectedBouquet)}`
         }
         walletBalance={wallet?.user?.walletBalance}
         loading={false}
@@ -690,6 +781,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   );
 }
 
+
 // ========================================
 // Styles
 // ========================================
@@ -697,13 +789,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  mainContainer: {
+    flex: 1,
+    position: 'relative', // Important for sticky footer positioning
+  },
   scrollContent: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 100,
+  },
+  bottomSpacer: {
+    height: 80, // Space for the sticky button
+  },
+  stickyFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    paddingBottom: 20,
+    borderTopWidth: 3,
+    borderTopColor: '#5403f5ff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
+    height: 200
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     marginTop: 20,
     marginBottom: 12,
   },
@@ -786,8 +901,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bouquetPrice: {
-    fontSize: 14,
+    fontSize: 16,
     marginTop: 4,
+    fontWeight: 'bold',
+    marginTop: 10
   },
   checkmark: {
     fontSize: 24,

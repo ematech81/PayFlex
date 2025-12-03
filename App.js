@@ -24,7 +24,7 @@ import {
 } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
-import { WalletProvider } from 'context/WalletContext';
+import { useWallet, WalletProvider } from 'context/WalletContext';
 
 // Screens
 import HomeScreen from './src/screen/HomeScreen';
@@ -50,6 +50,7 @@ import ResetPinScreen from 'screen/ResetPinScreen';
 import SetLoginPINScreen from 'screen/SetLoginPinScreen';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 import ShareReceiptScreen from 'screen/ShareReceiptScreen';
+import OnboardingScreen from 'screen/OnboardingScreen';
 
 // 👇 Keep splash screen visible until resources load
 // SplashScreen.preventAutoHideAsync();
@@ -159,6 +160,7 @@ export default function App() {
   const [initialRoute, setInitialRoute] = useState(null);
   const [appIsReady, setAppIsReady] = useState(false);
   const isDarkMode = useThem(); // your custom hook
+  // const { refreshWallet } = useWallet();
 
  
   const navigationRef = useRef(); 
@@ -177,23 +179,30 @@ export default function App() {
       const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
       const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       const requirePinStr = await AsyncStorage.getItem(STORAGE_KEYS.REQUIRE_PIN);
-
-      // console.log('🔍 Auth Check:', {
-      //   hasToken: !!token,
-      //   hasUser: !!userStr,
-      //   requirePinStr: requirePinStr,
-      // });
-
-      // ✅ User is logged in
+      const hasSeenOnboarding = await AsyncStorage.getItem(STORAGE_KEYS.HAS_SEEN_ONBOARDING); // ✅ New
+  
+      console.log('🔍 Auth Check:', {
+        hasToken: !!token,
+        hasUser: !!userStr,
+        hasSeenOnboarding: hasSeenOnboarding === 'true',
+      });
+  
+      // ✅ CASE 1: First-time user (never seen onboarding)
+      if (!hasSeenOnboarding) {
+        console.log('👋 First time user → Show Onboarding');
+        setInitialRoute('Onboarding');
+        return;
+      }
+  
+      // ✅ CASE 2: User is logged in
       if (token && userStr) {
-        // requirePin defaults to true if not set or if explicitly 'true'
         const requirePin = requirePinStr !== 'false';
         
-        // console.log('📊 RequirePin Status:', {
-        //   raw: requirePinStr,
-        //   parsed: requirePin,
-        // });
-
+        console.log('📊 RequirePin Status:', {
+          raw: requirePinStr,
+          parsed: requirePin,
+        });
+  
         if (requirePin) {
           console.log('🔐 RequirePin ON → Starting at Login');
           setInitialRoute('Login');
@@ -202,20 +211,33 @@ export default function App() {
           setInitialRoute('MainTabs');
         }
       } 
-      // ❌ User not logged in
+      // ✅ CASE 3: Returning user but not logged in
       else {
-        console.log('❌ No auth data → Starting at Login');
+        console.log('🔓 Has seen onboarding but not logged in → Starting at Login');
         setInitialRoute('Login');
       }
-
+  
     } catch (error) {
       console.error('❌ Error checking auth:', error);
-      setInitialRoute('Login');
+      setInitialRoute('Onboarding'); // ✅ Safe fallback
     } finally {
-      // ✅ Done checking
       setIsLoading(false);
     }
   };
+
+
+  //  useEffect(() => {
+  //     const clearAllStorage = async () => {
+  //       try {
+  //         await AsyncStorage.clear();
+  //         console.log('🧹 All AsyncStorage cleared');
+  //       } catch (error) {
+  //         console.error('❌ Error clearing storage:', error);
+  //       }
+  //     };
+    
+  //     clearAllStorage();
+  //   }, []); // Empty dependency array = runs once on mount
 
   
   // === 2. Prepare app (fonts, splash, etc.) ===
@@ -258,12 +280,13 @@ export default function App() {
         <SafeAreaProvider>
           <NavigationContainer
             theme={isDarkMode ? DarkTheme : DefaultTheme}
-            // ref={navigationRef}
+            ref={navigationRef}
           >
             <Stack.Navigator
              screenOptions={{ headerShown: false }}
              initialRouteName={initialRoute} 
             >
+               <Stack.Screen name="Onboarding" component={OnboardingScreen} />
                <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="SignUp" component={SignUpScreen} />
               <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />

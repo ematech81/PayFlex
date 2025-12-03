@@ -45,6 +45,7 @@ import { useThem } from 'constants/useTheme';
 import { useServicePayment } from 'HOOKS/UseServicePayment';
 import paymentService, { purchaseAirtime } from 'AuthFunction/paymentService';
 import { STORAGE_KEYS } from 'utility/storageKeys';
+import { StatusBarComponent } from 'component/StatusBar';
 
 
 /**
@@ -199,11 +200,11 @@ export default function AirtimeScreen({ navigation, route }) {
     
     console.log('✅ Using reference:', reference);
     
-    if (!reference) {
-      console.error('❌ No reference found in result!');
-      payment.resetFlow();
-      return;
-    }
+    // if (!reference) {
+    //   console.error('❌ No reference found in result!');
+    //   payment.resetFlow();
+    //   return;
+    // }
     
     payment.handleTransactionComplete(reference);
   }, [payment, setPhoneNumber, setProvider, setAmount]);
@@ -232,6 +233,7 @@ export default function AirtimeScreen({ navigation, route }) {
   // ========================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+    <StatusBarComponent/>
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

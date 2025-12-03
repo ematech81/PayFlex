@@ -4,7 +4,7 @@
     "slug": "fintech-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/appIcon.jpg",
+    "icon": "./assets/appIcon2.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {

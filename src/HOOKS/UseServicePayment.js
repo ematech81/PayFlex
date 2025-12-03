@@ -288,29 +288,63 @@ export function useServicePayment({
 
 
 // function to handle successful transaction
-  const handleTransactionComplete = useCallback((reference) => {
-    console.log('🎯 [ServicePayment] handleTransactionComplete called');
-    console.log('📝 Reference received:', reference);
+const handleTransactionComplete = useCallback((reference) => {
+  console.log('🎯 [ServicePayment] handleTransactionComplete called');
+  console.log('📝 Reference received:', reference);
+  console.log('📦 Full result object:', result); // ✅ Add this
+  
+  resetFlow();
+  resetPin();
+  setPendingPaymentData(null);
+  setCurrentPaymentData(null);
+  isReturningFromPinSetup.current = false;
+  
+  // ✅ Try multiple reference locations
+  const finalReference = 
+    reference || 
+    result?.reference || 
+    result?.data?.reference ||
+    result?.data?._id;
+  
+  if (!finalReference) {
+    console.warn('⚠️ No reference found in any location');
+    console.log('Available result keys:', Object.keys(result || {}));
+    return;
+  }
+  
+  console.log('🧭 Navigating to TransactionDetails with reference:', finalReference);
+  
+  setTimeout(() => {
+    navigation.navigate('TransactionDetails', { reference: finalReference });
+  }, 100);
+}, [navigation, resetFlow, resetPin, result]); // ✅ Add 'result' to dependencies
+
+
+
+
+  // const handleTransactionComplete = useCallback((reference) => {
+  //   console.log('🎯 [ServicePayment] handleTransactionComplete called');
+  //   console.log('📝 Reference received:', reference);
     
-    if (!reference) {
-      console.warn('⚠️ No reference provided, just resetting flow');
-      resetFlow();
-      resetPin();
-      setPendingPaymentData(null);
-      setCurrentPaymentData(null);
-      isReturningFromPinSetup.current = false;
-      return;
-    }
+  //   if (!reference) {
+  //     console.warn('⚠️ No reference provided, just resetting flow');
+  //     resetFlow();
+  //     resetPin();
+  //     setPendingPaymentData(null);
+  //     setCurrentPaymentData(null);
+  //     isReturningFromPinSetup.current = false;
+  //     return;
+  //   }
     
-    resetFlow();
-    resetPin();
-    setPendingPaymentData(null);
-    setCurrentPaymentData(null);
-    isReturningFromPinSetup.current = false;
+  //   resetFlow();
+  //   resetPin();
+  //   setPendingPaymentData(null);
+  //   setCurrentPaymentData(null);
+  //   isReturningFromPinSetup.current = false;
     
-    console.log('🧭 Navigating to TransactionDetails with reference:', reference);
-    navigation.navigate('TransactionDetails', { reference });
-  }, [navigation, resetFlow, resetPin]);
+  //   console.log('🧭 Navigating to TransactionDetails with reference:', reference);
+  //   navigation.navigate('TransactionDetails', { reference });
+  // }, [navigation, resetFlow, resetPin]);
 
   const handleForgotPin = useCallback(() => {
     resetPin();

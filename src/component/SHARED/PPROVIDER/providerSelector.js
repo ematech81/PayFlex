@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   label: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     marginBottom: 6,
   },
@@ -131,11 +131,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   dropdown: {
-    height: 50,
+    height: 70,
   },
   providerLogo: {
-    width: 24,
-    height: 24,
+    width: 30,
+    height: 30,
     marginRight: 8,
     resizeMode: 'contain',
     borderRadius: 12,

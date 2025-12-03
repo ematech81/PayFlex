@@ -232,7 +232,7 @@ export const purchaseTVSubscription = async (pin, paymentData) => {
     provider: paymentData.provider,
     variation_code: paymentData.variation_code,
     amount: paymentData.amount,
-    phone: paymentData.phone,
+    phone: paymentData.phone || paymentData.phoneNumber,
     pin,
   });
 };
@@ -245,10 +245,10 @@ export const renewTVSubscription = async (pin, paymentData) => {
     smartcardNumber: paymentData.smartcardNumber,
     provider: paymentData.provider,
     amount: paymentData.amount,
-    phone: paymentData.phone,
+    phone: paymentData.phone || paymentData.phoneNumber,
     pin,
   });
-};
+}; 
 
 /**
  * Verify Smartcard

@@ -23,6 +23,7 @@ import HistoryComponent from 'component/historyComponent';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Entypo from '@expo/vector-icons/Entypo';
 import { MobileProviders, TvProviders, ElectricityProviders } from 'constants/serviceImages';
+import { StatusBarComponent } from 'component/StatusBar';
 
 const BASE_URL = PaymentApiIPAddress;
 
@@ -158,10 +159,10 @@ export default function TransactionDetailsScreen({ navigation, route }) {
   // Action Handlers
   // ========================================
   const handleShare = () => {
-    if (!transaction) {
-      Alert.alert('Error', 'No transaction data available');
-      return;
-    }
+    // if (!transaction) {
+    //   Alert.alert('Error', 'No transaction data available');
+    //   return;
+    // }
     
     console.log('📤 Navigating to ShareReceipt with reference:', transaction.reference);
     
@@ -191,129 +192,68 @@ export default function TransactionDetailsScreen({ navigation, route }) {
   // ========================================
   // Render Service-Specific Details
   // ========================================
-  const renderServiceDetails = (txn, colors) => {
-    if (!txn) return null;
+  // ========================================
+// Render Service-Specific Details
+// ========================================
+const renderServiceDetails = (txn, colors) => {
+  if (!txn) return null;
 
-    const { type } = txn;
+  const { type } = txn;
 
-    const commonDetails = (
-      <>
-        <DetailRow
-          label="Reference"
-          value={txn.reference}
-          copiable
-          themeColors={colors}
-        />
-        <DetailRow
-          label="Transaction ID"
-          value={txn.transactionId || 'N/A'}
-          themeColors={colors}
-        />
-      </>
-    );
+  const commonDetails = (
+    <>
+      <DetailRow label="Reference" value={txn.reference} copiable themeColors={colors} />
+      <DetailRow label="Transaction ID" value={txn.transactionId || 'N/A'} themeColors={colors} />
+    </>
+  );
 
-    switch (type) {
-      case 'airtime':
-        return (
-          <>
-            <DetailRow
-              label="Phone Number"
-              value={txn.phoneNumber}
-              themeColors={colors}
-            />
-            <DetailRow
-              label="Network"
-              value={getProviderName(txn.serviceID)}
-              themeColors={colors}
-            />
-            {commonDetails}
-          </>
-        );
+  switch (type) {
+    case 'airtime':
+      return (
+        <>
+          <DetailRow label="Phone Number" value={txn.phoneNumber} themeColors={colors} />
+          <DetailRow label="Network" value={getProviderName(txn.serviceID)} themeColors={colors} />
+          {commonDetails}
+        </>
+      );
 
-      case 'data':
-        return (
-          <>
-            <DetailRow
-              label="Phone Number"
-              value={txn.phoneNumber}
-              themeColors={colors}
-            />
-            <DetailRow
-              label="Network"
-              value={getProviderName(txn.serviceID)}
-              themeColors={colors}
-            />
-            <DetailRow
-              label="Data Plan"
-              value={txn.variation_code || 'N/A'}
-              themeColors={colors}
-            />
-            {commonDetails}
-          </>
-        );
+    case 'data':
+      return (
+        <>
+          <DetailRow label="Phone Number" value={txn.phoneNumber} themeColors={colors} />
+          <DetailRow label="Network" value={getProviderName(txn.serviceID)} themeColors={colors} />
+          <DetailRow label="Data Plan" value={txn.variation_code || 'N/A'} themeColors={colors} />
+          {commonDetails}
+        </>
+      );
 
-      case 'electricity':
-        return (
-          <>
-            <DetailRow
-              label="Meter Number"
-              value={txn.billersCode}
-              themeColors={colors}
-            />
-            <DetailRow
-              label="Distribution Company"
-              value={getProviderName(txn.serviceID)}
-              themeColors={colors}
-            />
-            <DetailRow
-              label="Meter Type"
-              value={txn.variation_code || 'N/A'}
-              themeColors={colors}
-            />
-            {txn.purchasedCode && (
-              <DetailRow
-                label="Token"
-                value={txn.purchasedCode}
-                copiable
-                highlighted
-                themeColors={colors}
-              />
-            )}
-            {commonDetails}
-          </>
-        );
+    case 'electricity':
+      return (
+        <>
+          <DetailRow label="Meter Number" value={txn.billersCode} themeColors={colors} />
+          <DetailRow label="Distribution Company" value={getProviderName(txn.serviceID)} themeColors={colors} />
+          <DetailRow label="Meter Type" value={txn.variation_code || 'N/A'} themeColors={colors} />
+          {txn.purchasedCode && <DetailRow label="Token" value={txn.purchasedCode} copiable highlighted themeColors={colors} />}
+          {commonDetails}
+        </>
+      );
 
-      case 'tv':
-        return (
-          <>
-            <DetailRow
-              label="Smartcard Number"
-              value={txn.billersCode}
-              themeColors={colors}
-            />
-            <DetailRow
-              label="Provider"
-              value={getProviderName(txn.serviceID)}
-              themeColors={colors}
-            />
-            <DetailRow
-              label="Package"
-              value={txn.variation_code || 'N/A'}
-              themeColors={colors}
-            />
-            <DetailRow
-              label="Subscription Type"
-              value={txn.subscription_type || 'N/A'}
-              themeColors={colors}
-            />
-            {commonDetails}
-          </>
-        );
+    case 'tv':
+      return (
+        <>
+          <DetailRow label="Smartcard Number" value={txn.billersCode} themeColors={colors} />
+          <DetailRow label="Provider" value={getProviderName(txn.serviceID)} themeColors={colors} />
+          <DetailRow label="Package" value={txn.variation_code || 'N/A'} themeColors={colors} />
+          <DetailRow label="Subscription Type" value={txn.subscription_type || 'N/A'} themeColors={colors} />
+          {commonDetails}
+        </>
+      );
 
-      default:
-        return commonDetails;
-    }
-  };
+    default:
+      return commonDetails;
+  }
+};
+
 
   // ========================================
   // Render States
@@ -363,6 +303,7 @@ export default function TransactionDetailsScreen({ navigation, route }) {
   // ========================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+    <StatusBarComponent/>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: themeColors.card }]}>
         <BackBtn onPress={() => navigation.goBack()} />
@@ -370,7 +311,7 @@ export default function TransactionDetailsScreen({ navigation, route }) {
           Transaction Details
         </Text>
         <HistoryComponent
-  onPress={() => navigation.navigate('MainTabs', { screen: 'Orders' })} // ✅ String quotes
+  onPress={() => navigation.navigate('MainTabs', { screen: 'Orders' })}
 />
 
       </View>
@@ -689,28 +630,32 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     gap: 12,
-    marginTop: 20,
+    marginVertical: 30,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
   },
   receiptShare: {
     alignItems: 'center',
   },
   actionButton: {
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    width: 200,
+    // width: 100,
   },
   actionButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
     marginLeft: 8,
   },
   reportButton: {
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -719,7 +664,7 @@ const styles = StyleSheet.create({
   },
   reportButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
   },
 });

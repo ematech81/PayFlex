@@ -33,6 +33,7 @@ export const ElectricityProviders = [
 export const customImages = {
   AppLogo: require('../asset/appStoreIcon.jpg'),
   ReceiptBackground: require('../asset/receiptBg.jpg'),
-
-
-}
+  Dstv: require('../asset/dstv.jpg'),
+Gotv: require('../asset/gotv.jpg') ,
+Showmax: require('../asset/showMax.jpg') ,
+Startimes: require('../asset/starTimes.jpg') }

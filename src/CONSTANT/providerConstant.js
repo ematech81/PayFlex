@@ -85,6 +85,8 @@ export const ELECTRICITY_PROVIDERS = [
     value: 'ekedc',
     shortName: 'EKEDC',
     region: 'Lagos',
+    logo: require('../asset/electricity/ekoLogo.jpg'),
+
   },
   {
     id: 'ikedc',
@@ -92,6 +94,8 @@ export const ELECTRICITY_PROVIDERS = [
     value: 'ikedc',
     shortName: 'IKEDC',
     region: 'Lagos',
+    logo: require('../asset/electricity/ikejaLogo.jpg'),
+
   },
   {
     id: 'aedc',
@@ -99,6 +103,8 @@ export const ELECTRICITY_PROVIDERS = [
     value: 'aedc',
     shortName: 'AEDC',
     region: 'Abuja',
+    logo: require('../asset/electricity/abujaLogo.jpg'),
+
   },
   {
     id: 'phed',
@@ -106,6 +112,8 @@ export const ELECTRICITY_PROVIDERS = [
     value: 'phed',
     shortName: 'PHED',
     region: 'Rivers',
+    logo: require('../asset/electricity/portharcoutLogo.jpg'),
+
   },
   {
     id: 'ibedc',
@@ -113,6 +121,8 @@ export const ELECTRICITY_PROVIDERS = [
     value: 'ibedc',
     shortName: 'IBEDC',
     region: 'Oyo',
+    logo: require('../asset/electricity/ibadanLogo.jpg'),
+
   },
   {
     id: 'kaedco',
@@ -120,6 +130,8 @@ export const ELECTRICITY_PROVIDERS = [
     value: 'kaedco',
     shortName: 'KAEDCO',
     region: 'Kano',
+    logo: require('../asset/electricity/kanoLogo.jpg'),
+
   },
   {
     id: 'kedco',
@@ -127,6 +139,8 @@ export const ELECTRICITY_PROVIDERS = [
     value: 'kedco',
     shortName: 'KEDCO',
     region: 'Kaduna',
+    logo: require('../asset/electricity/kadunaLogo.jpg'),
+
   },
   {
     id: 'jed',
@@ -134,6 +148,35 @@ export const ELECTRICITY_PROVIDERS = [
     value: 'jed',
     shortName: 'JED',
     region: 'Plateau',
+    logo: require('../asset/electricity/josLogo.jpg'),
+
+  },
+  {
+    id: 'eedc',
+    label: 'Enugu Electric (EEDC)',
+    value: 'eedc',
+    shortName: 'EEDC',
+    region: 'Enugu',
+    logo: require('../asset/electricity/enuguLogo.jpg'),
+
+  },
+  {
+    id: 'bedc',
+    label: 'Benin Electric (BEDC)',
+    value: 'bedc',
+    shortName: 'BEDC',
+    region: 'Benin',
+    logo: require('../asset/electricity/beninLogo.jpg'),
+
+  },
+  {
+    id: 'aba',
+    label: 'ABA Electric (ABA)',
+    value: 'aba',
+    shortName: 'BEDC',
+    region: 'Benin',
+    logo: require('../asset/electricity/abaLogo.jpg'),
+
   },
 ];
 

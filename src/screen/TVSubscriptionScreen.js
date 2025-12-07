@@ -47,10 +47,30 @@ import { customImages } from 'constants/serviceImages';
   };
 
   const TV_PROVIDERS = [
-    { label: 'DSTV', value: 'dstv', logo: customImages.Dstv },
-    { label: 'GOTV', value: 'gotv', logo: customImages.Gotv },
-    { label: 'Startimes', value: 'startimes', logo: customImages.Startimes },
-    { label: 'Showmax', value: 'showmax', logo: customImages.Showmax },
+    { 
+      label: 'DSTV', 
+      value: 'dstv', 
+      logo: customImages.Dstv,
+      requiresSmartcard: true
+    },
+    { 
+      label: 'GOTV', 
+      value: 'gotv', 
+      logo: customImages.Gotv,
+      requiresSmartcard: true 
+    },
+    { 
+      label: 'Startimes', 
+      value: 'startimes', 
+      logo: customImages.Startimes,
+      requiresSmartcard: true 
+    },
+    { 
+      label: 'Showmax', 
+      value: 'showmax', 
+      logo: customImages.Showmax,
+      requiresSmartcard: false // Showmax doesn't need smartcard
+    },
   ];
 
 
@@ -115,38 +135,120 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     }
   };
 
-  // ========================================
-  // Verify Smartcard
-  // ========================================
+
+  // Helper function to normalize VTpass response
+  const normalizeVTpassResponse = (response) => {
+    // Check for error in different possible locations
+    const error = 
+      response.error ||
+      response.content?.error ||
+      response.data?.error ||
+      response.data?.content?.error;
+    
+    // Extract customer data from different possible locations
+    const customerData = {
+      customerName: 
+        response.customerName ||
+        response.Customer_Name ||
+        response.data?.customerName ||
+        response.data?.Customer_Name ||
+        response.content?.Customer_Name,
+      
+      currentBouquet: 
+        response.currentBouquet ||
+        response.Current_Bouquet ||
+        response.data?.currentBouquet ||
+        response.data?.Current_Bouquet ||
+        response.content?.Current_Bouquet,
+      
+      renewalAmount: 
+        response.renewalAmount ||
+        response.Renewal_Amount ||
+        response.data?.renewalAmount ||
+        response.data?.Renewal_Amount ||
+        response.content?.Renewal_Amount,
+      
+      dueDate: 
+        response.dueDate ||
+        response.Due_Date ||
+        response.data?.dueDate ||
+        response.data?.Due_Date ||
+        response.content?.Due_Date,
+      
+      status: 
+        response.status ||
+        response.Status ||
+        response.data?.status ||
+        response.data?.Status ||
+        response.content?.Status,
+    };
+    
+    return { error, customerData };
+  };
+
+
+
   const handleVerifySmartcard = async () => {
-    // Validation
+    // Get provider info
+    const providerInfo = TV_PROVIDERS.find(p => p.value === provider);
+    
+    // ✅ CHECK: Does this provider require smartcard verification?
+    if (providerInfo && !providerInfo.requiresSmartcard) {
+      console.log('⏭️ Skipping smartcard verification for', provider);
+      
+      // For non-smartcard providers (like Showmax), set dummy customer data
+      setCustomerData({
+        customerName: 'Showmax Customer',
+        smartcardNumber: smartcardNumber || 'N/A',
+        currentBouquet: null,
+        renewalAmount: null,
+        dueDate: null,
+        status: 'ACTIVE',
+      });
+      
+      // Show success alert (but mention it's Showmax)
+      Alert.alert(
+        '✅ Ready for Showmax',
+        'Proceed to select your Showmax package.\n\nNote: Showmax subscriptions are activated via email/phone.',
+        [{ text: 'OK' }]
+      );
+      
+      // Fetch packages for Showmax
+      fetchBouquets();
+      return;
+    }
+  
+    // ✅ Rest of your existing verification logic for smartcard providers
     if (!smartcardNumber || smartcardNumber.length < 10) {
       setValidationErrors({ smartcard: 'Enter a valid smartcard number (10-11 digits)' });
       return;
     }
-
+  
     if (!provider) {
       setValidationErrors({ provider: 'Please select a TV provider first' });
       return;
     }
-
-    setIsVerifying(true);
-    setValidationErrors({});
-    setCustomerData(null);
-
+  
     try {
       const response = await verifySmartcard(smartcardNumber, provider);
       
+      console.log('📡 Verification response:', response);
+      
+      // ✅ Now backend returns success: false for invalid cards
       if (response.success) {
         setCustomerData(response.data);
+  
+        console.log('✅ Meter verified:', response.data);
+        console.log('🔍 Full customer data:', JSON.stringify(response.data, null, 2)); 
         
         // Show success alert with customer info
         Alert.alert(
           '✅ Verification Successful',
-          `Customer: ${response.data.customerName}\nCurrent Package: ${response.data.currentBouquet || 'N/A'}`,
+          `Customer: ${response.data.customerName || 'N/A'}\nCurrent Package: ${response.data.currentBouquet || 'N/A'}`,
           [{ text: 'OK' }]
         );
       } else {
+        // This will now trigger for invalid smartcards
         throw new Error(response.message || 'Verification failed');
       }
     } catch (error) {
@@ -158,6 +260,9 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     }
   };
 
+
+
+// };
   // ========================================
   // Validation Function
   // ========================================
@@ -200,13 +305,11 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     return { isValid, errors };
   }, []);
 
-  // ========================================
-  // Execute Purchase
-  // ========================================
-  // ========================================
-  // Execute Purchase
-  // ========================================
 
+
+  // ========================================
+  // Execute Purchase
+  // ========================================
 
   const executeTVPurchase = useCallback(async (pin, paymentData) => {
     console.log('💳 Executing TV purchase:', paymentData);
@@ -315,6 +418,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     payment.handleTransactionComplete(payment.result?.reference);
   }, [payment]);
 
+  
   // ========================================
   // Helper Functions
   // ========================================
@@ -340,40 +444,56 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     
     return isNaN(rawAmount) ? 0 : rawAmount;
   };
-  
+
+
   const canProceed = () => {
+    const providerInfo = TV_PROVIDERS.find(p => p.value === provider);
+    
     // Basic requirements
-    const hasBasicData = provider && smartcardNumber && customerData;
+    const hasBasicData = provider && customerData;
+    
+    // For smartcard providers, need smartcard number
+    // For Showmax, we just need some identifier (email/phone)
+    if (providerInfo?.requiresSmartcard) {
+      if (!smartcardNumber || smartcardNumber.length < 10) {
+        return false;
+      }
+    } else {
+      // Showmax - just need some input
+      if (!smartcardNumber || smartcardNumber.trim().length === 0) {
+        return false;
+      }
+    }
+    
     const isNotProcessing = payment.step !== 'processing';
-    const hasValidAmount = getAmount() > 0;
+    
+    // Development mode check
+    const isDevelopmentMode = __DEV__;
+    const hasValidAmount = isDevelopmentMode ? true : getAmount() > 0;
     
     // Type-specific requirements
     let hasTypeRequirement = false;
     
     if (subscriptionType === 'renew') {
-      // ✅ For renewal, just need customer data with renewal amount
-      hasTypeRequirement = !!(
-        customerData?.renewalAmount || 
-        customerData?.Renewal_Amount || 
-        customerData?.renewal_amount
-      );
+      // Only allow renewal for smartcard providers that have renewal amounts
+      if (providerInfo?.requiresSmartcard) {
+        if (isDevelopmentMode) {
+          hasTypeRequirement = true;
+        } else {
+          hasTypeRequirement = getAmount() > 0;
+        }
+      } else {
+        // Showmax doesn't have renewal concept
+        hasTypeRequirement = false;
+      }
     } else if (subscriptionType === 'change') {
-      // ✅ For change, need selected bouquet
+      // For change package, need selected bouquet
       hasTypeRequirement = !!selectedBouquet;
     }
     
-    console.log('🔍 canProceed check:', {
-      hasBasicData,
-      isNotProcessing,
-      hasValidAmount,
-      hasTypeRequirement,
-      subscriptionType,
-      renewalAmount: customerData?.renewalAmount,
-      selectedBouquet: !!selectedBouquet,
-    });
-    
     return hasBasicData && isNotProcessing && hasValidAmount && hasTypeRequirement;
-  };
+  }; 
+  
   const cleanBouquetName = (bouquet) => {
     if (!bouquet) return '';
     let cleanName = bouquet.name || '';
@@ -482,12 +602,6 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   // ========================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-    <StatusBar
-           barStyle= { isDarkMode ? 'light-content' : 'dark-content'}
-          //  barStyle= "dark-content"
-           backgroundColor="transparent"
-           translucent
-         />
       <View style={styles.mainContainer}>
         <ScrollView 
           contentContainerStyle={styles.scrollContent}
@@ -518,55 +632,117 @@ export default function TVSubscriptionScreen({ navigation, route }) {
             error={validationErrors.provider}
           />
 
-          {/* Smartcard Number Input */}
-          <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-            Smartcard / IUC Number
-          </Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[
-                styles.input,
-                { 
-                  color: themeColors.text, 
-                  borderColor: validationErrors.smartcard ? themeColors.destructive : themeColors.border,
-                  backgroundColor: themeColors.card,
-                },
-              ]}
-              value={smartcardNumber}
-              onChangeText={(text) => {
-                setSmartcardNumber(text.replace(/\D/g, ''));
-                setValidationErrors({ ...validationErrors, smartcard: undefined });
-                setCustomerData(null);
-              }}
-              placeholder="Enter 10-11 digit number"
-              placeholderTextColor={themeColors.mutedText}
-              keyboardType="numeric"
-              maxLength={11}
-              editable={!isVerifying}
-            />
-            <TouchableOpacity
-              style={[
-                styles.verifyButton,
-                { backgroundColor: (!provider || !smartcardNumber || isVerifying) 
-                    ? themeColors.subheading 
-                    : themeColors.primary 
-                },
-              ]}
-              onPress={handleVerifySmartcard}
-              disabled={isVerifying || !provider || !smartcardNumber}
-            >
-              {isVerifying ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text style={styles.verifyButtonText}>Verify</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-          {validationErrors.smartcard && (
-            <Text style={[styles.errorText, { color: themeColors.destructive }]}>
-              {validationErrors.smartcard}
-            </Text>
-          )}
+
+{/* Smartcard Number Input - Only show for smartcard providers */}
+{provider && TV_PROVIDERS.find(p => p.value === provider)?.requiresSmartcard && (
+  <>
+    <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+      Smartcard / IUC Number
+    </Text>
+    <View style={styles.inputContainer}>
+      <TextInput
+        style={[
+          styles.input,
+          { 
+            color: themeColors.text, 
+            borderColor: validationErrors.smartcard ? themeColors.destructive : themeColors.border,
+            backgroundColor: themeColors.card,
+          },
+        ]}
+        value={smartcardNumber}
+        onChangeText={(text) => {
+          setSmartcardNumber(text.replace(/\D/g, ''));
+          setValidationErrors({ ...validationErrors, smartcard: undefined });
+          setCustomerData(null);
+        }}
+        placeholder="Enter 10-11 digit number"
+        placeholderTextColor={themeColors.mutedText}
+        keyboardType="numeric"
+        maxLength={11}
+        editable={!isVerifying}
+      />
+      <TouchableOpacity
+        style={[
+          styles.verifyButton,
+          { backgroundColor: (!provider || !smartcardNumber || isVerifying) 
+              ? themeColors.subheading 
+              : themeColors.primary 
+          },
+        ]}
+        onPress={handleVerifySmartcard}
+        disabled={isVerifying || !provider || !smartcardNumber}
+      >
+        {isVerifying ? (
+          <ActivityIndicator size="small" color="#ffffff" />
+        ) : (
+          <Text style={styles.verifyButtonText}>Verify</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+    {validationErrors.smartcard && (
+      <Text style={[styles.errorText, { color: themeColors.destructive }]}>
+        {validationErrors.smartcard}
+      </Text>
+    )}
+  </>
+)}
+
+{/* Showmax-specific input */}
+{provider === 'showmax' && (
+  <>
+    <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
+      Email or Phone Number
+    </Text>
+    <View style={styles.inputContainer}>
+      <TextInput
+        style={[
+          styles.input,
+          { 
+            color: themeColors.text, 
+            borderColor: themeColors.border,
+            backgroundColor: themeColors.card,
+          },
+        ]}
+        value={smartcardNumber}
+        onChangeText={(text) => {
+          setSmartcardNumber(text);
+          // Auto-fetch packages for Showmax
+          if (text.length > 3) {
+            fetchBouquets();
+          }
+        }}
+        placeholder="Enter email or phone for activation"
+        placeholderTextColor={themeColors.mutedText}
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
+      <TouchableOpacity
+        style={[
+          styles.verifyButton,
+          { backgroundColor: themeColors.primary }
+        ]}
+        onPress={() => {
+          // For Showmax, we don't verify, just fetch packages
+          fetchBouquets();
+          setCustomerData({
+            customerName: 'Showmax Customer',
+            smartcardNumber: smartcardNumber || 'N/A',
+            currentBouquet: null,
+            renewalAmount: null,
+            dueDate: null,
+            status: 'ACTIVE',
+          });
+        }}
+        disabled={!smartcardNumber}
+      >
+        <Text style={styles.verifyButtonText}>Continue</Text>
+      </TouchableOpacity>
+    </View>
+    <Text style={[styles.helpText, { color: themeColors.mutedText }]}>
+      Showmax will be activated on the provided email/phone
+    </Text>
+  </>
+)}
 
           {/* Customer Info */}
           {renderCustomerInfo()}
@@ -666,7 +842,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
             </View>
           )}
 
-      
+       
         <View style={styles.bottomSpacer} />
  
 
@@ -681,17 +857,22 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         </ScrollView>
 
         {/* Sticky Pay Button */}
-        {canProceed() && (
-        <View style={[styles.stickyFooter, { backgroundColor: themeColors.background }]}>
-          <PayButton
-            title={`Pay ${formatCurrency(getAmount(), 'NGN')}`}
-            onPress={handlePayment}
-            disabled={!canProceed()}
-            loading={payment.step === 'processing'}
-            style={styles.payButton}
-          />
-        </View>
-      )}
+{customerData && canProceed() && (
+  <View style={[styles.stickyFooter, { backgroundColor: themeColors.background }]}>
+    {__DEV__ && getAmount() === 0 && (
+      <View style={styles.testingBanner}>
+        <Text style={styles.testingText}>🛠️ TESTING MODE: Amount is 0</Text>
+      </View>
+    )}
+    <PayButton
+      title={`Pay ${formatCurrency(getAmount(), 'NGN')}`}
+      onPress={handlePayment}
+      disabled={payment.step === 'processing'}
+      loading={payment.step === 'processing'}
+      style={styles.payButton}
+    />
+  </View>
+)}
       </View>
 
       {/* ========================================
@@ -780,8 +961,6 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     </SafeAreaView>
   );
 }
-
-
 // ========================================
 // Styles
 // ========================================
@@ -925,5 +1104,23 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginVertical: 20,
+  },
+  testingBanner: {
+    backgroundColor: '#FFA500',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  testingText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  helpText: {
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
 });

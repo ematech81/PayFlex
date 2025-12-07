@@ -21,7 +21,7 @@ import {
   ConfirmationModal,
   PinModal,
   ResultModal,
-  LoadingOverlay,
+  LoadingOverlay, 
   EmptyState,
 } from 'component/SHARED';
 
@@ -335,7 +335,7 @@ export default function DataPurchaseScreen({ navigation, route }) {
         title="Data"
         onBackPress={() => navigation.goBack()}
         rightText="History"
-        onRightPress={() => navigation.navigate('History')}
+        onRightPress={() => navigation.navigate('MainTabs', {screen: 'Orders'})}
       />
 
       <ScrollView 

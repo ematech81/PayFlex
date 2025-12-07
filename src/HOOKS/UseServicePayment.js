@@ -213,11 +213,15 @@ export function useServicePayment({
    * Process payment with PIN
    * NOTE: The PIN should come from the PinModal, not from useTransactionPin hook
    */
+
+
+  // In hooks/useServicePayment.js
+
   const submitPayment = useCallback(async (enteredPin) => {
     clearPinError();
     
     console.log(`💳 [${serviceName}] Processing payment with PIN...`);
-    console.log(`🔐 [${serviceName}] Entered PIN:`, enteredPin); // Should have value now
+    console.log(`🔐 [${serviceName}] Entered PIN:`, enteredPin);
     console.log(`📦 [${serviceName}] Current payment data:`, currentPaymentData);
     
     if (!currentPaymentData) {
@@ -227,11 +231,9 @@ export function useServicePayment({
     
     if (!enteredPin || enteredPin.length !== 4) {
       console.error(`❌ [${serviceName}] Invalid PIN:`, enteredPin);
-      // Set error for display
       return false;
     }
     
-    // ✅ Use enteredPin (from modal) instead of pin (from hook state)
     const success = await processPayment(enteredPin, async (transactionPin) => {
       console.log(`🔐 [${serviceName}] Executing purchase with PIN:`, transactionPin);
       return await executePurchase(transactionPin, currentPaymentData);
@@ -239,6 +241,10 @@ export function useServicePayment({
     
     if (success) {
       resetPin();
+      
+      // ✅ AUTO-SAVE BENEFICIARY ON SUCCESS
+      await saveBeneficiaryOnSuccess(currentPaymentData);
+      
       setPendingPaymentData(null);
       setCurrentPaymentData(null);
       isReturningFromPinSetup.current = false;
@@ -248,6 +254,99 @@ export function useServicePayment({
     
     return success;
   }, [currentPaymentData, executePurchase, processPayment, resetPin, clearPinError, refreshWallet, serviceName]);
+  
+  // ✅ ADD THIS NEW FUNCTION
+  const saveBeneficiaryOnSuccess = useCallback(async (paymentData) => {
+    try {
+      const { saveBeneficiary } = require('utility/beneficiaryStorage');
+      
+      // Determine service type and beneficiary data
+      let serviceType = serviceName.toLowerCase();
+      let beneficiaryData = {};
+      
+      switch (serviceType) {
+        case 'airtime':
+        case 'data':
+          beneficiaryData = {
+            phoneNumber: paymentData.phoneNumber || paymentData.phone,
+            network: paymentData.network,
+          };
+          break;
+          
+        case 'electricity':
+          beneficiaryData = {
+            meterNumber: paymentData.billersCode || paymentData.meterNumber,
+            disco: paymentData.disco || paymentData.serviceID,
+            meterType: paymentData.meterType || paymentData.variation_code,
+            customerName: paymentData.customerName,
+          };
+          break;
+          
+        case 'tv':
+          beneficiaryData = {
+            smartcardNumber: paymentData.billersCode || paymentData.smartcardNumber,
+            provider: paymentData.provider || paymentData.serviceID,
+            customerName: paymentData.customerName,
+          };
+          break;
+          
+        case 'education':
+          beneficiaryData = {
+            phone: paymentData.phone,
+            service: paymentData.service,
+            // Don't save JAMB profile codes for privacy
+          };
+          break;
+          
+        default:
+          console.warn('Unknown service type for beneficiary:', serviceType);
+          return;
+      }
+      
+      await saveBeneficiary(serviceType, beneficiaryData);
+      console.log(`✅ [${serviceName}] Beneficiary saved automatically`);
+    } catch (error) {
+      console.error(`❌ [${serviceName}] Failed to save beneficiary:`, error);
+      // Don't throw - this is not critical
+    }
+  }, [serviceName]);
+
+
+  // const submitPayment = useCallback(async (enteredPin) => {
+  //   clearPinError();
+    
+  //   console.log(`💳 [${serviceName}] Processing payment with PIN...`);
+  //   console.log(`🔐 [${serviceName}] Entered PIN:`, enteredPin); // Should have value now
+  //   console.log(`📦 [${serviceName}] Current payment data:`, currentPaymentData);
+    
+  //   if (!currentPaymentData) {
+  //     console.error(`❌ [${serviceName}] No payment data available!`);
+  //     return false;
+  //   }
+    
+  //   if (!enteredPin || enteredPin.length !== 4) {
+  //     console.error(`❌ [${serviceName}] Invalid PIN:`, enteredPin);
+  //     // Set error for display
+  //     return false;
+  //   }
+    
+  //   // ✅ Use enteredPin (from modal) instead of pin (from hook state)
+  //   const success = await processPayment(enteredPin, async (transactionPin) => {
+  //     console.log(`🔐 [${serviceName}] Executing purchase with PIN:`, transactionPin);
+  //     return await executePurchase(transactionPin, currentPaymentData);
+  //   });
+    
+  //   if (success) {
+  //     resetPin();
+  //     setPendingPaymentData(null);
+  //     setCurrentPaymentData(null);
+  //     isReturningFromPinSetup.current = false;
+      
+  //     await refreshWallet();
+  //   }
+    
+  //   return success;
+  // }, [currentPaymentData, executePurchase, processPayment, resetPin, clearPinError, refreshWallet, serviceName]);
 
   // ========================================
   // PIN SETUP HANDLERS
@@ -322,30 +421,7 @@ const handleTransactionComplete = useCallback((reference) => {
 
 
 
-  // const handleTransactionComplete = useCallback((reference) => {
-  //   console.log('🎯 [ServicePayment] handleTransactionComplete called');
-  //   console.log('📝 Reference received:', reference);
-    
-  //   if (!reference) {
-  //     console.warn('⚠️ No reference provided, just resetting flow');
-  //     resetFlow();
-  //     resetPin();
-  //     setPendingPaymentData(null);
-  //     setCurrentPaymentData(null);
-  //     isReturningFromPinSetup.current = false;
-  //     return;
-  //   }
-    
-  //   resetFlow();
-  //   resetPin();
-  //   setPendingPaymentData(null);
-  //   setCurrentPaymentData(null);
-  //   isReturningFromPinSetup.current = false;
-    
-  //   console.log('🧭 Navigating to TransactionDetails with reference:', reference);
-  //   navigation.navigate('TransactionDetails', { reference });
-  // }, [navigation, resetFlow, resetPin]);
-
+ 
   const handleForgotPin = useCallback(() => {
     resetPin();
     navigation.navigate('ResetPin', { pinType: 'transaction' });

@@ -8,6 +8,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  ScrollView
 } from 'react-native';
 
 
@@ -32,6 +33,7 @@ export default function TabSelector({
         { backgroundColor: themeColors.card },
         style,
       ]}
+      
     >
       {tabs.map((tab) => (
         <TouchableOpacity
@@ -82,6 +84,6 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontWeight: '500',
-    fontSize: 15,
+    fontSize: 12,
   },
 });

@@ -51,6 +51,9 @@ import SetLoginPINScreen from 'screen/SetLoginPinScreen';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 import ShareReceiptScreen from 'screen/ShareReceiptScreen';
 import OnboardingScreen from 'screen/OnboardingScreen';
+import EducationPurchaseScreen from 'screen/EducationPurchaseScreen';
+import AllServicesScreen from 'screen/AllServicesScreen';
+import AirtimeToCashScreen from 'screen/Airtime-CashScreen';
 
 // 👇 Keep splash screen visible until resources load
 // SplashScreen.preventAutoHideAsync();
@@ -287,15 +290,25 @@ export default function App() {
              initialRouteName={initialRoute} 
             >
                <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+     
+
+               {/* =====authentication screens======= */}
                <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="SignUp" component={SignUpScreen} />
               <Stack.Screen name="VerifyCode" component={VerifyCodeScreen} />
               <Stack.Screen name="LoginPinScreen" component={SetLoginPINScreen} /> 
+              <Stack.Screen
+                name="SetTransactionPin"
+                component={SetTransactionPinScreen}
+              />
+              <Stack.Screen name="ResetPin" component={ResetPinScreen} />
+
+               {/* =====home and service screens======= */}
+
               <Stack.Screen name="MainTabs" component={BottomTabs} />
               <Stack.Screen name="Data" component={DataPurchaseScreen} />
               <Stack.Screen name="Airtime" component={AirtimeScreen} />
-              <Stack.Screen name="TransactionDetails" component={TransactionDetailsScreen} />
-              <Stack.Screen name="ShareReceipt" component={ShareReceiptScreen} />
+             
               <Stack.Screen
                 name="TVSubscription"
                 component={TVSubscriptionScreen}
@@ -304,6 +317,22 @@ export default function App() {
                 name="ElectricityPurchase"
                 component={ElectricityPurchaseScreen}
               />
+              <Stack.Screen
+                name="EducationPurchase"
+                component={EducationPurchaseScreen}
+              />
+              <Stack.Screen
+                name="AllServices"
+                component={AllServicesScreen}
+              />
+              <Stack.Screen
+                name="Airtime-Cash"
+                component={AirtimeToCashScreen}
+              />
+
+
+{/* =====invoice and related screens======= */}
+              
               <Stack.Screen
                 name="CustomerRegistration"
                 component={CustomerRegistrationScreen}
@@ -320,15 +349,15 @@ export default function App() {
                 name="InvoiceProcessing"
                 component={InvoiceProcessingScreen}
               />
+
+{/* =====other screens======= */}
+               <Stack.Screen name="TransactionDetails" component={TransactionDetailsScreen} />
+              <Stack.Screen name="ShareReceipt" component={ShareReceiptScreen} />
               <Stack.Screen
                 name="TranactionDetails"
                 component={TransactionDetailsScreen}
               />
-              <Stack.Screen
-                name="SetTransactionPin"
-                component={SetTransactionPinScreen}
-              />
-              <Stack.Screen name="ResetPin" component={ResetPinScreen} />
+             
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

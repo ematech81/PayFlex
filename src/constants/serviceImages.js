@@ -36,4 +36,9 @@ export const customImages = {
   Dstv: require('../asset/dstv.jpg'),
 Gotv: require('../asset/gotv.jpg') ,
 Showmax: require('../asset/showMax.jpg') ,
-Startimes: require('../asset/starTimes.jpg') }
+Startimes: require('../asset/starTimes.jpg'), 
+Jamb: require('../asset/education/jambLogo.jpg'), 
+Waec: require('../asset/education/waecoLogo.jpg'), 
+Neco: require('../asset/education/necoLogo.jpg'), 
+Nabteb: require('../asset/education/nabtebLogo.jpg'), 
+}

@@ -1,5 +1,5 @@
 import { Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React from 'react';
+import React  from 'react';
 import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
 import { customImages } from 'constants/serviceImages';
@@ -132,8 +132,9 @@ overflow: 'hidden',
 
     },
     normalText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: 500,
+        fontStyle: 'italic',
     },
     getStartedButton: {
         width: '100%',

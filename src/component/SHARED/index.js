@@ -13,6 +13,7 @@
 // export { default as PhoneInput } from './INPUT/PhoneInput';
 export { default as AmountInput }from './INPUT/phoneInput';
 export { default as PinInput }from './INPUT/pinInput';
+export { default as BeneficiaryInput }from './INPUT/beneficiaryInput';
 
 // Providers
 export { default as ProviderSelector } from './PPROVIDER/providerSelector';

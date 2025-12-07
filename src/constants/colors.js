@@ -2,7 +2,7 @@ export const colors = {
   light: {
     primary: '#5403f5ff',
     background: '#f6f6f8',
-    buttonBackground: 'rgba(84, 3, 245, 0.2)', 
+    buttonBackground: 'rgba(84, 3, 245, 0.1)', 
     card: '#FFFFFF',
     heading: '#333',
     subheading: '#666',
@@ -16,7 +16,7 @@ export const colors = {
   dark: {
     primary: '#6b5bff',
     background: '#1c2526',
-    buttonBackground: 'rgba(107, 91, 255, 0.35)',
+    buttonBackground: 'rgba(107, 91, 255, 0.3)',
     card: '#2c3e50',
     heading: '#fff',
     subheading: '#ccc',

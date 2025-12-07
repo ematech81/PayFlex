@@ -43,7 +43,7 @@ import AddWalletFund from 'component/AddWalletFund';
 
 const { width, height } = Dimensions.get('window');
 const CARD_PADDING = 13;
-const ICON_SIZE = 19;
+const ICON_SIZE = 22;
 
 // Detect if device is tablet
 const isTablet = () => {
@@ -66,13 +66,13 @@ const services = [
     id: 'jamb',
     label: 'JAMB',
     icon: <FontAwesome6 name="credit-card" size={ICON_SIZE} stokeWidth='20' />,
-    screen: null, // Not implemented yet
+    screen: 'EducationPurchase', 
   },
   {
-    id: 'bills',
-    label: 'Bills',
-    icon: <Ionicons name="document-text" size={ICON_SIZE}  stokeWidth='20'/>,
-    screen: null, // Not implemented yet
+    id: 'airtim-cash',
+    label: 'Airtime to Cash',
+   icon: <FontAwesome5 name="exchange-alt" size={ICON_SIZE}  stokeWidth='20'/>,
+    screen: 'Airtime-Cash', 
   },
   {
     id: 'tv',
@@ -96,13 +96,13 @@ const services = [
     id: 'waec',
     label: 'WAEC',
     icon: <MaterialCommunityIcons name="card-account-details" size={ICON_SIZE} stokeWidth='20' />,
-    screen: null, // Not implemented yet
+    screen: 'EducationPurchase', // Not implemented yet
   },
   {
     id: 'more',
     label: 'More',
-    icon: <Feather name="more-vertical" size={ICON_SIZE} stokeWidth='20' />,
-    screen: null, // Not implemented yet
+    icon: <Feather name="more-horizontal" size={ICON_SIZE} stokeWidth='20' />,
+    screen: 'AllServices', 
   },
 ];
 
@@ -160,7 +160,7 @@ const ServiceCard = React.memo(({ service, onPress, themeColors }) => {
           style={[
             styles.iconCircle,
             { 
-              backgroundColor: `${themeColors.primary}15`,
+              backgroundColor: `${themeColors.buttonBackground}15`,
               opacity: isDisabled ? 0.5 : 1,
             },
           ]}
@@ -507,7 +507,7 @@ useEffect(() => {
               Services
             </Text>
             <TouchableOpacity
-              onPress={() => navigation.navigate('Services')}
+              onPress={() => navigation.navigate('AllServices')}
               accessibilityLabel="View all services"
             >
               <Text style={[styles.viewAll, { color: themeColors.subheading }]}>
@@ -846,13 +846,14 @@ const styles = StyleSheet.create({
   serviceCard: {
     width: (width - CARD_PADDING * 2 - 28) / 4,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 35,
   },
   serviceIconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
     position: 'relative',
+    // backgroundColor: 'red'
   },
   iconCircle: {
     width: 50,
@@ -860,6 +861,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
+    // backgroundColor: '#000'
   },
   comingSoonBadge: {
     position: 'absolute',

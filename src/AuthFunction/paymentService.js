@@ -149,6 +149,10 @@ export const purchaseData = async (pin, paymentData) => {
 
 };
 
+
+
+// ----------ALL ELECTRICTY SUBSCRIPTION LOGICS ----------
+
 /**
  * Pay electricity bill
  * @param {string} pin - Transaction PIN
@@ -219,9 +223,8 @@ export const payInternetSubscription = async (pin, paymentData) => {
 
 
 
+// ----------ALL TV SUBSCRIPTION LOGICS ----------
 
-
-// ALL TV SUBSCRIPTION LOGICS
 
 /**
  * Purchase TV Subscription
@@ -350,6 +353,171 @@ export const getTVBouquets = async (provider) => {
   }
 };
 
+
+
+
+
+// ---------- EDUCATION SERVICE METHODS (VTU AFRICA) ----------
+
+/**
+ * Get Available Exam Products
+ * @returns {Promise<Object>} Exam products by type
+ */
+export const getExamProducts = async () => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    console.log('📊 Fetching exam products...');
+
+    const response = await fetchWithTimeout(
+      `${BASE_URL}/exam-products`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const result = await handleResponse(response);
+    console.log('✅ Loaded exam products:', result.data);
+
+    return result.data;
+  } catch (error) {
+    console.error('❌ Get Exam Products Error:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Verify JAMB Profile Code
+ * @param {string} profilecode - JAMB profile code
+ * @param {string} product_code - Product code (1 = UTME, 2 = Direct Entry)
+ * @returns {Promise<Object>} Verification result with candidate name
+ */
+export const verifyJAMBProfile = async (profilecode, product_code) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    console.log('🔍 Verifying JAMB profile:', profilecode);
+
+    const response = await fetchWithTimeout(
+      `${BASE_URL}/verify-jamb-profile`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ profilecode, product_code }),
+      }
+    );
+
+    const result = await handleResponse(response);
+    console.log('✅ JAMB profile verified:', result.data);
+
+    return result;
+  } catch (error) {
+    console.error('❌ Verify JAMB Profile Error:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Purchase Exam PIN
+ * @param {string} pin - Transaction PIN
+ * @param {object} paymentData - Exam payment data
+ * @returns {Promise<object>} Purchase result with PINs
+ */
+export const purchaseExamPin = async (pin, paymentData) => {
+  console.log('🔐 PIN received in purchaseExamPin:', pin);
+  console.log('📦 Payment data received:', paymentData);
+  
+  const requestBody = {
+    service: paymentData.service,
+    product_code: paymentData.product_code,
+    quantity: paymentData.quantity,
+    phone: paymentData.phone,
+    pin,
+  };
+
+  // Add JAMB specific fields if present
+  if (paymentData.service === 'jamb') {
+    requestBody.profilecode = paymentData.profilecode;
+    requestBody.sender = paymentData.sender;
+  }
+
+  return makePaymentRequest('/purchase-exam-pin', requestBody);
+};
+
+/**
+ * Verify Airtime to Cash Service
+ * @param {string} network - Network provider
+ * @returns {Promise<Object>} Service availability with transfer phone
+ */
+export const verifyAirtimeToCash = async (network) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    console.log('🔍 Verifying Airtime to Cash service:', network);
+
+    const response = await fetchWithTimeout(
+      `${BASE_URL}/verify-airtime-to-cash`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ network }),
+      }
+    );
+
+    const result = await handleResponse(response);
+    console.log('✅ Service verification:', result);
+
+    return result;
+  } catch (error) {
+    console.error('❌ Verify Airtime to Cash Error:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Convert Airtime to Cash
+ * @param {string} pin - Transaction PIN
+ * @param {object} conversionData - Conversion data
+ * @returns {Promise<object>} Conversion result
+ */
+export const convertAirtimeToCash = async (pin, conversionData) => {
+  console.log('🔐 PIN received:', pin);
+  console.log('📦 Conversion data:', conversionData);
+  
+  return makePaymentRequest('/convert-airtime-to-cash', {
+    network: conversionData.network,
+    senderNumber: conversionData.senderNumber,
+    amount: conversionData.amount,
+    sitePhone: conversionData.sitePhone,
+    pin,
+  });
+};
+
+
+
+// ----------CUSTOM FUNTION LOGICS ----------
 
 /**
  * Get transaction details

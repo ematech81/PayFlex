@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import {
   ResultModal,
   PromoCard,
   LoadingOverlay,
+  BeneficiaryInput,
 } from 'component/SHARED';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -43,7 +44,7 @@ import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
 import { useServicePayment } from 'HOOKS/UseServicePayment';
-import paymentService, { purchaseAirtime } from 'AuthFunction/paymentService';
+import  { purchaseAirtime } from 'AuthFunction/paymentService';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 import { StatusBarComponent } from 'component/StatusBar';
 
@@ -62,6 +63,8 @@ export default function AirtimeScreen({ navigation, route }) {
   const [provider, setProvider] = useState('');
   const [amount, setAmount] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
+
+  const inputRef = useRef(null);
 
 
   // ========================================
@@ -228,23 +231,37 @@ export default function AirtimeScreen({ navigation, route }) {
     { label: 'International', value: 'International', disabled: true },
   ];
 
+
+  // After successful purchase, save as beneficiary:
+const handleAirtimeSuccess = async () => {
+  // Save current input
+  await saveBeneficiary('airtime', {
+    phoneNumber: phoneNumber,
+    network: provider,
+  });
+  
+  // Continue with success flow
+  payment.handleTransactionComplete();
+};
+
   // ========================================
   // MAIN RENDER
   // ========================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
     <StatusBarComponent/>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
+    {/* Header */}
         <ScreenHeader
           title="Airtime"
           onBackPress={() => navigation.goBack()}
           rightText="History"
-          onRightPress={() => navigation.navigate('History')}
+          onRightPress={() => navigation.navigate('MainTabs', {screen: 'Orders'})}
         />
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+      
 
         {/* Tabs */}
         <TabSelector
@@ -266,13 +283,37 @@ export default function AirtimeScreen({ navigation, route }) {
         />
 
         {/* Phone Number Input */}
-        <PhoneInput
+        {/* Phone Number Input with Network Detection */}
+<BeneficiaryInput
+  value={phoneNumber}
+  onChangeText={setPhoneNumber}
+  onNetworkDetected={setProvider} // ✅ Network auto-detection callback
+  onBeneficiarySelect={(beneficiary) => {
+    // Auto-fill network if saved
+    if (beneficiary.network) {
+      setProvider(beneficiary.network);
+    }
+  }}
+  serviceType="airtime"
+  placeholder="08XX-XXX-XXXX"
+  label="Phone Number"
+  error={validationErrors.phoneNumber}
+  keyboardType="phone-pad"
+  maxLength={11}
+  icon="call-outline"
+  identifierField="phoneNumber"
+  secondaryField="network"
+  displayField={(item) => `${item.phoneNumber} - ${item.network?.toUpperCase()}`}
+  enableNetworkDetection={true} // ✅ Enable network detection
+  enableValidation={true} // ✅ Enable "Valid phone number" message
+/>
+        {/* <PhoneInput
           value={phoneNumber}
           onChangeText={setPhoneNumber}
           onNetworkDetected={setProvider}
           placeholder="08XX-XXX-XXXX"
           error={validationErrors.phoneNumber}
-        />
+        /> */}
 
         {/* Quick Amounts */}
         <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>

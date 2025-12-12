@@ -51,7 +51,7 @@ const services = [
     label: 'Betting',
     icon: 'soccer-ball-o',
     iconLib: FontAwesome,
-    screen: 'Airtime',
+    screen: 'Betting',
     color: '#FF6B6B',
   },
   {

@@ -517,6 +517,69 @@ export const convertAirtimeToCash = async (pin, conversionData) => {
 
 
 
+
+
+// ----------betting ----------
+
+/**
+ * Verify Betting Account
+ * @param {string} service - Betting service name
+ * @param {string} userid - Betting account user ID
+ * @returns {Promise<Object>} Verification result with customer name
+ */
+export const verifyBettingAccount = async (service, userid) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    console.log('🔍 Verifying betting account:', service, userid);
+
+    const response = await fetchWithTimeout(
+      `${BASE_URL}/verify-betting-account`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ service, userid }),
+      }
+    );
+
+    const result = await handleResponse(response);
+    console.log('✅ Account verification result:', result);
+
+    return result;
+  } catch (error) {
+    console.error('❌ Verify Betting Account Error:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Fund Betting Account
+ * @param {string} pin - Transaction PIN
+ * @param {object} fundingData - Betting funding data
+ * @returns {Promise<object>} Funding result
+ */
+export const fundBettingAccount = async (pin, fundingData) => {
+  console.log('🔐 PIN received in fundBettingAccount:', pin);
+  console.log('📦 Funding data received:', fundingData);
+  
+  return makePaymentRequest('/fund-betting-account', {
+    service: fundingData.service,
+    userid: fundingData.userid,
+    amount: fundingData.amount,
+    phone: fundingData.phone,
+    pin,
+  });
+};
+
+
+
 // ----------CUSTOM FUNTION LOGICS ----------
 
 /**
@@ -625,6 +688,8 @@ export default {
   getTransactionHistory,
   getTransactionDetails,
 
-  
+  // betting
+  verifyBettingAccount,
+  fundBettingAccount
 };
 

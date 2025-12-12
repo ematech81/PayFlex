@@ -11,6 +11,7 @@ export const colors = {
     button: '#007AFF',
     border: '#ccc',
     processing: '#f9fc77ff',
+
     neutral: 'rgba(74,0,224,0.08)',
   },
   dark: {
@@ -24,6 +25,7 @@ export const colors = {
     destructive: '#ff6b6b',
     button: '#4a90e2',
     processing: '#eef108ff',
+
     neutral: 'rgba(74,0,224,0.03)',
   },
 };

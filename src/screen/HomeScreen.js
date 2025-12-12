@@ -60,7 +60,7 @@ const services = [
     id: 'betting',
     label: 'Betting',
     icon: <FontAwesome name="soccer-ball-o" size={ICON_SIZE} />,
-    screen: null, // Not implemented yet
+    screen: 'Betting', 
   },
   {
     id: 'jamb',

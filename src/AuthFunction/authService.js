@@ -644,3 +644,41 @@ export const AuthService = {
     }
   },
 };
+
+
+// ================================================
+// settings and it related logics
+// ================================================
+/**
+ * Change Login PIN
+ * @param {string} currentPin - Current 6-digit login PIN
+ * @param {string} newPin - New 6-digit login PIN
+ * @returns {Promise<Object>} Response
+ */
+export const changeLoginPin = async (currentPin, newPin) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    const response = await fetchWithTimeout(
+      `${BASE_URL}/change-login-pin`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPin, newPin }),
+      }
+    );
+
+    const result = await handleResponse(response);
+    return result;
+  } catch (error) {
+    console.error('❌ Change Login PIN Error:', error.message);
+    throw error;
+  }
+};

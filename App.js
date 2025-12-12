@@ -54,6 +54,22 @@ import OnboardingScreen from 'screen/OnboardingScreen';
 import EducationPurchaseScreen from 'screen/EducationPurchaseScreen';
 import AllServicesScreen from 'screen/AllServicesScreen';
 import AirtimeToCashScreen from 'screen/Airtime-CashScreen';
+import BettingScreen from 'screen/BettingScreen';
+import EditProfileScreen from 'screen/UserProfile/EditProfileScreen';
+import VerifyNINScreen from 'screen/UserProfile/VerifyNINScreen';
+import FundWalletBalance from 'screen/UserProfile/FundWalletBalance';
+import ExpensesScreen from 'screen/UserProfile/ExpensesScreen';
+import ReferralScreen from 'screen/UserProfile/ReferralScreen';
+import Analytics from 'screen/UserProfile/Analytics';
+import Settings from 'screen/UserProfile/Settings';
+import NotificationSettings from 'screen/UserProfile/NotificationSettings';
+import HelpSupport from 'screen/UserProfile/HelpSupport';
+import About from 'screen/UserProfile/About';
+import { AuthProvider } from 'context/AuthContext';
+import PaymentSettings from 'screen/Settings/PaymentSettings';
+import LoginSettingsScreen from 'screen/Settings/LoginSettingsScreen';
+import ChangeLoginScreen from 'screen/Settings/ChangeLoginScreen';
+// import MyProfile from 'screen/UserProfile/MyProfile';
 
 // 👇 Keep splash screen visible until resources load
 // SplashScreen.preventAutoHideAsync();
@@ -279,6 +295,7 @@ export default function App() {
 
   return (
     <WalletProvider>
+    <AuthProvider>
       <PaperProvider theme={isDarkMode ? DarkTheme : DefaultTheme}>
         <SafeAreaProvider>
           <NavigationContainer
@@ -329,7 +346,77 @@ export default function App() {
                 name="Airtime-Cash"
                 component={AirtimeToCashScreen}
               />
+              <Stack.Screen
+                name="Betting"
+                component={BettingScreen}
+              />
 
+
+{/* =====user profile and related screens======= */}
+
+              <Stack.Screen
+                name="EditProfile"
+                component={EditProfileScreen}
+              />
+              <Stack.Screen
+                name="VerifyNIN"
+                component={VerifyNINScreen}
+              />
+              <Stack.Screen
+                name="FundWallet"
+                component={FundWalletBalance}
+              />
+              <Stack.Screen
+                name="Expenses"
+                component={ExpensesScreen}
+              />
+
+              <Stack.Screen
+                name="Referral"
+                component={ReferralScreen}
+              />
+
+              {/* <Stack.Screen
+                name="MyProfile"
+                component={MyProfile}
+              /> */}
+              <Stack.Screen
+                name="Analytics"
+                component={Analytics}
+              />
+              <Stack.Screen
+                name="Settings"
+                component={Settings}
+              />
+              <Stack.Screen
+                name="Notification"
+                component={NotificationSettings}
+              />
+              <Stack.Screen
+                name="HelpSupport"
+                component={HelpSupport}
+              />
+              <Stack.Screen
+                name="About"
+                component={About}
+              />
+
+
+{/* =====settings and related screens======= */}
+               
+              <Stack.Screen
+                name="LoginSettings"
+                component={LoginSettingsScreen}
+              />
+              <Stack.Screen
+                name="PaymentSettings"
+                component={PaymentSettings}
+              />
+             
+              <Stack.Screen
+                name="ChangeLogin"
+                component={ChangeLoginScreen}
+              />
 
 {/* =====invoice and related screens======= */}
               
@@ -362,6 +449,7 @@ export default function App() {
           </NavigationContainer>
         </SafeAreaProvider>
       </PaperProvider>
+    </AuthProvider>
     </WalletProvider>
   );
 }

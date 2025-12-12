@@ -132,9 +132,9 @@ overflow: 'hidden',
 
     },
     normalText: {
-        fontSize: 15,
+        fontSize: 17,
         fontWeight: 500,
-        fontStyle: 'italic',
+        // fontStyle: 'italic',
     },
     getStartedButton: {
         width: '100%',

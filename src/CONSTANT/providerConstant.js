@@ -210,36 +210,36 @@ export const EDUCATION_PROVIDERS = [
 /**
  * Betting Service Providers
  */
-export const BETTING_PROVIDERS = [
-  {
-    id: 'bet9ja',
-    label: 'Bet9ja',
-    value: 'bet9ja',
-    logo: require('../asset/bet9ja.jpg'),
-    requiresUserId: true,
-  },
-  {
-    id: 'sportybet',
-    label: 'SportyBet',
-    value: 'sportybet',
-    logo: require('../asset/sportyBet.jpg'),
-    requiresUserId: true,
-  },
-  {
-    id: 'betway',
-    label: 'Betway',
-    value: 'betway',
-    logo: require('../asset/betway.webp'),
-    requiresUserId: true,
-  },
-  {
-    id: 'nairabet',
-    label: 'NairaBet',
-    value: 'nairabet',
-    logo: require('../asset/nairaBet.jpg'),
-    requiresUserId: true,
-  },
-];
+// export const BETTING_PROVIDERS = [
+//   {
+//     id: 'bet9ja',
+//     label: 'Bet9ja',
+//     value: 'bet9ja',
+//     logo: require('../asset/betting/bet9ja.jpg'),
+//     requiresUserId: true,
+//   },
+//   {
+//     id: 'sportybet',
+//     label: 'SportyBet',
+//     value: 'sportybet',
+//     logo: require('../asset/betting/sportyBet.jpg'),
+//     requiresUserId: true,
+//   },
+//   {
+//     id: 'betway',
+//     label: 'Betway',
+//     value: 'betway',
+//     logo: require('../asset/betting/BetwayLogo.jpg'),
+//     requiresUserId: true,
+//   },
+//   {
+//     id: 'nairabet',
+//     label: 'NairaBet',
+//     value: 'nairabet',
+//     logo: require('../asset/betting/nairaBet.jpg'),
+//     requiresUserId: true,
+//   },
+// ];
 
 /**
  * Get provider by value

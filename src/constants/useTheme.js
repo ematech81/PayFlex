@@ -1,17 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Appearance } from 'react-native';
+// constants/useTheme.js - UPDATED VERSION
 
+import { useTheme } from 'context/ThemeContext';
+
+/**
+ * Backward compatible hook
+ * Returns boolean for isDarkMode
+ */
 export const useThem = () => {
-  const [isDarkMode, setIsDarkMode] = useState(
-    Appearance.getColorScheme() === 'dark'
-  );
-
-  useEffect(() => {
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      setIsDarkMode(colorScheme === 'dark');
-    });
-    return () => subscription.remove();
-  }, []);
-
+  const { isDarkMode } = useTheme();
   return isDarkMode;
 };
+

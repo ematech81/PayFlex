@@ -1,5 +1,5 @@
 
-// src/services/PaymentService.js
+// src/AuthFunction/PaymentService.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PaymentApiIPAddress } from 'utility/apiIPAdress';
 import { STORAGE_KEYS } from 'utility/storageKeys';

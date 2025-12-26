@@ -1,41 +1,56 @@
 {
-  "expo": {
-    "name": "fintech-app",
-    "slug": "fintech-app",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/appIcon2.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/main-splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#4a00e0"
-    },
-    "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSPhotoLibraryAddUsageDescription": "Allow fintech-app to save PDFs to your photo library.",
-        "NSPhotoLibraryUsageDescription": "Allow fintech-app to access your photo library for saving receipts."
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+    "expo": {
+      "name": "fintech-app",
+      "slug": "fintech-app",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/appIcon2.png",
+      "userInterfaceStyle": "light",
+      "newArchEnabled": true,
+  
+      "splash": {
+        "image": "./assets/main-splash.png",
+        "resizeMode": "cover",
         "backgroundColor": "#4a00e0"
       },
-      "edgeToEdgeEnabled": true,
-      "permissions": [
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.READ_EXTERNAL_STORAGE"
+  
+      "ios": {
+        "supportsTablet": true,
+        "infoPlist": {
+          "NSPhotoLibraryAddUsageDescription": "Allow PayFlex to save verification slips to your photo library.",
+          "NSPhotoLibraryUsageDescription": "Allow PayFlex to access your photo library."
+        }
+      },
+  
+      "android": {
+        "adaptiveIcon": {
+          "foregroundImage": "./assets/adaptive-icon.png",
+          "backgroundColor": "#4a00e0"
+        },
+        "edgeToEdgeEnabled": true,
+        "permissions": [
+          "WRITE_EXTERNAL_STORAGE",
+          "READ_EXTERNAL_STORAGE",
+          "READ_MEDIA_IMAGES"
+        ]
+      },
+  
+      "web": {
+        "favicon": "./asset/appStoreIcon.jpg"
+      },
+  
+      "plugins": [
+        "expo-secure-store",
+        "expo-web-browser",
+  
+        [
+          "expo-media-library",
+          {
+            "photosPermission": "Allow PayFlex to save verification slips to your photos.",
+            "savePhotosPermission": "Allow PayFlex to save verification slips."
+          }
+        ]
       ]
-    },
-    "web": {
-      "favicon": "./asset/appStoreIcon.jpg"
-    },
-    "plugins": [
-      "expo-secure-store",
-      "expo-web-browser"
-    ]
+    }
   }
-}
+  

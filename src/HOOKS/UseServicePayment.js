@@ -312,42 +312,7 @@ export function useServicePayment({
   }, [serviceName]);
 
 
-  // const submitPayment = useCallback(async (enteredPin) => {
-  //   clearPinError();
-    
-  //   console.log(`💳 [${serviceName}] Processing payment with PIN...`);
-  //   console.log(`🔐 [${serviceName}] Entered PIN:`, enteredPin); // Should have value now
-  //   console.log(`📦 [${serviceName}] Current payment data:`, currentPaymentData);
-    
-  //   if (!currentPaymentData) {
-  //     console.error(`❌ [${serviceName}] No payment data available!`);
-  //     return false;
-  //   }
-    
-  //   if (!enteredPin || enteredPin.length !== 4) {
-  //     console.error(`❌ [${serviceName}] Invalid PIN:`, enteredPin);
-  //     // Set error for display
-  //     return false;
-  //   }
-    
-  //   // ✅ Use enteredPin (from modal) instead of pin (from hook state)
-  //   const success = await processPayment(enteredPin, async (transactionPin) => {
-  //     console.log(`🔐 [${serviceName}] Executing purchase with PIN:`, transactionPin);
-  //     return await executePurchase(transactionPin, currentPaymentData);
-  //   });
-    
-  //   if (success) {
-  //     resetPin();
-  //     setPendingPaymentData(null);
-  //     setCurrentPaymentData(null);
-  //     isReturningFromPinSetup.current = false;
-      
-  //     await refreshWallet();
-  //   }
-    
-  //   return success;
-  // }, [currentPaymentData, executePurchase, processPayment, resetPin, clearPinError, refreshWallet, serviceName]);
-
+ 
   // ========================================
   // PIN SETUP HANDLERS
   // ========================================

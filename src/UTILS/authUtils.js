@@ -99,78 +99,7 @@ export class AuthValidation {
     return { isValid: true, error: null };
   }
 
-  /**
-   * Validate login PIN
-   */
-  // UTILS/authUtils.js - Fixed validateLoginPIN function
-
-  /**
-   * Validate login PIN
-   */
-  // static validateLoginPIN(pin) {
-  //   console.log('=== validateLoginPIN ===');
-  //   console.log('Input PIN:', pin);
-  //   console.log('PIN Type:', typeof pin);
-  //   console.log('PIN Length:', pin ? pin.length : 0);
-    
-  //   if (!pin) {
-  //     return { 
-  //       isValid: false, 
-  //       error: AUTH_CONSTANTS.ERROR_MESSAGES.LOGIN_PIN_REQUIRED 
-  //     };
-  //   }
-    
-  //   // Convert to string if it's not already
-  //   const pinString = String(pin);
-  //   console.log('PIN String:', pinString);
-  //   console.log('PIN String Length:', pinString.length);
-    
-  //   // Check length
-  //   if (pinString.length !== AUTH_CONSTANTS.LOGIN_PIN.LENGTH) {
-  //     console.log('Length check failed:', pinString.length, '!==', AUTH_CONSTANTS.LOGIN_PIN.LENGTH);
-  //     return { 
-  //       isValid: false, 
-  //       error: AUTH_CONSTANTS.ERROR_MESSAGES.LOGIN_PIN_INVALID 
-  //     };
-  //   }
-    
-  //   // Check if all digits
-  //   if (!/^\d{6}$/.test(pinString)) {
-  //     console.log('Regex check failed');
-  //     return { 
-  //       isValid: false, 
-  //       error: AUTH_CONSTANTS.ERROR_MESSAGES.LOGIN_PIN_INVALID 
-  //     };
-  //   }
-    
-  //   console.log('Validation passed!');
-  //   return { isValid: true, error: null };
-  // }
   
-  // // Alternative simpler version if the above doesn't work:
-  // static validateLoginPIN(pin) {
-  //   // Convert to string and trim
-  //   const pinString = String(pin || '').trim();
-    
-  //   // Check if empty
-  //   if (!pinString) {
-  //     return { 
-  //       isValid: false, 
-  //       error: 'Please enter your 6-digit PIN' 
-  //     };
-  //   }
-    
-  //   // Check length and format
-  //   if (pinString.length !== 6 || !/^\d{6}$/.test(pinString)) {
-  //     return { 
-  //       isValid: false, 
-  //       error: 'PIN must be 6 digits' 
-  //     };
-  //   }
-    
-  //   return { isValid: true, error: null };
-  // }
-
   /**
    * Validate PIN match
    */

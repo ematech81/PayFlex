@@ -107,7 +107,7 @@ const services = [
     label: 'NIN',
     icon: 'torso-business',
     iconLib: Foundation,
-    screen: 'Airtime',
+    screen: 'NINScreen',
     color: '#A29BFE',
   },
   {
@@ -134,6 +134,18 @@ const services = [
     iconLib: FontAwesome5,
     screen: 'EducationPurchase',
     color: '#9B59B6',
+  },
+
+
+  
+  // =======to be removed=======
+  {
+    id: 'category',
+    label: 'Categories',
+    icon: 'graduation-cap',
+    iconLib: FontAwesome5,
+    screen: 'Category',
+    color: '#08f13fff',
   },
 ];
 

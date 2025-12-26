@@ -69,6 +69,10 @@ import { AuthProvider } from 'context/AuthContext';
 import PaymentSettings from 'screen/Settings/PaymentSettings';
 import LoginSettingsScreen from 'screen/Settings/LoginSettingsScreen';
 import ChangeLoginScreen from 'screen/Settings/ChangeLoginScreen';
+import NINScreen from 'screen/NINScreen';
+import CategoriesScreen from 'screen/CategoriesScreen';
+import { ThemeProvider } from 'context/ThemeContext';
+import ThemeSettings from 'screen/Settings/ThemeSettings';
 // import MyProfile from 'screen/UserProfile/MyProfile';
 
 // 👇 Keep splash screen visible until resources load
@@ -178,9 +182,6 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState(null);
   const [appIsReady, setAppIsReady] = useState(false);
-  const isDarkMode = useThem(); // your custom hook
-  // const { refreshWallet } = useWallet();
-
  
   const navigationRef = useRef(); 
   const [routeName, setRouteName] = useState(null); // ← Track target route
@@ -293,7 +294,22 @@ export default function App() {
     );
   }
 
+
+
+  // ✅ Wrap everything in ThemeProvider FIRST
   return (
+    <ThemeProvider>
+      <AppContent initialRoute={initialRoute} navigationRef={navigationRef} />
+    </ThemeProvider>
+  );
+}
+
+// ✅ NEW: Separate component that can use theme
+function AppContent({ initialRoute, navigationRef }) {
+  const isDarkMode = useThem(); // ✅ Now safe to use
+
+  return (
+    <ThemeProvider>
     <WalletProvider>
     <AuthProvider>
       <PaperProvider theme={isDarkMode ? DarkTheme : DefaultTheme}>
@@ -349,6 +365,14 @@ export default function App() {
               <Stack.Screen
                 name="Betting"
                 component={BettingScreen}
+              />
+              <Stack.Screen
+                name="NINScreen"
+                component={NINScreen}
+              />
+              <Stack.Screen
+                name="Category"
+                component={CategoriesScreen}
               />
 
 
@@ -417,6 +441,10 @@ export default function App() {
                 name="ChangeLogin"
                 component={ChangeLoginScreen}
               />
+              <Stack.Screen
+                name="ThemeSettings"
+                component={ThemeSettings}
+              />
 
 {/* =====invoice and related screens======= */}
               
@@ -451,6 +479,7 @@ export default function App() {
       </PaperProvider>
     </AuthProvider>
     </WalletProvider>
+    </ThemeProvider>
   );
 }
 

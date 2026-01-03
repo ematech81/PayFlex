@@ -22,7 +22,7 @@ import BackBtn from 'utility/BackBtn';
 import HistoryComponent from 'component/historyComponent';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Entypo from '@expo/vector-icons/Entypo';
-import { MobileProviders, TvProviders, ElectricityProviders } from 'constants/serviceImages';
+import { MobileProviders, TvProviders, ElectricityProviders, customImages } from 'constants/serviceImages';
 import { StatusBarComponent } from 'component/StatusBar';
 
 const BASE_URL = PaymentApiIPAddress;
@@ -117,7 +117,7 @@ export default function TransactionDetailsScreen({ navigation, route }) {
   const getServiceLogo = (serviceID) => {
     const allProviders = [...MobileProviders, ...TvProviders, ...ElectricityProviders];
     const provider = allProviders.find(p => serviceID?.toLowerCase().includes(p.value));
-    return provider ? provider.logo : require('../asset/fallback.jpg');
+    return provider ? provider.logo : customImages.FallBack;
   };
 
   const getServiceName = (type) => {

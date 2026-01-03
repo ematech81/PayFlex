@@ -119,7 +119,7 @@ export default function ShareReceiptScreen({ navigation, route }) {
   const getServiceLogo = (serviceID) => {
     const allProviders = [...MobileProviders, ...TvProviders, ...ElectricityProviders];
     const provider = allProviders.find(p => serviceID?.toLowerCase().includes(p.value));
-    return provider ? provider.logo : require('../asset/fallback.jpg');
+    return provider ? provider.logo : customImages.FallBack;
   };
 
   const getServiceName = (type) => {

@@ -57,4 +57,5 @@ NairaMillion: require('../asset/betting/NairaMillionLogo.jpg'),
 Cloudbet: require('../asset/betting/CloudbetLogo.jpg'), 
 Paripesa: require('../asset/betting/ParipesaLogo.jpg'), 
 MylotoHub: require('../asset/betting/MylotoHubLogo.jpg'), 
+FallBack: require('../asset/fallback.jpg'),
 }

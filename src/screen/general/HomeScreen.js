@@ -84,7 +84,7 @@ const services = [
     id: 'flights',
     label: 'Flights',
     icon: <FontAwesome5 name="plane" size={ICON_SIZE} stokeWidth='20' />,
-    screen: null, // Not implemented yet
+    screen: 'TransportScreen', // Not implemented yet
   },
   {
     id: 'hotels',

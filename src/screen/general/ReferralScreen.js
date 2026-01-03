@@ -20,7 +20,7 @@ import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 import { ScreenHeader } from 'component/SHARED';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
-import referralAPI from 'AuthFunction/referralService';
+// import referralAPI from '../services/referralService';
 
 // ============================================
 // STATS CARD COMPONENT

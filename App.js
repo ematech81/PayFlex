@@ -27,34 +27,34 @@ import * as Font from 'expo-font';
 import { useWallet, WalletProvider } from 'context/WalletContext';
 
 // Screens
-import HomeScreen from './src/screen/HomeScreen';
-import OrdersScreen from './src/screen/OrdersScreen';
+import HomeScreen from './src/screen/general/HomeScreen';
+import OrdersScreen from './src/screen/general/OrdersScreen';
 import WalletsScreen from './src/screen/WalletsScreen';
-import ProfileScreen from './src/screen/ProfileScreen';
-import LoginScreen from './src/screen/LoginScreen';
-import SignUpScreen from './src/screen/SignUpScreen';
-import VerifyCodeScreen from './src/screen/VerifyCodeScreen';
-import DataPurchaseScreen from './src/screen/DataPurchaseScreen';
-import TVSubscriptionScreen from './src/screen/TVSubscriptionScreen';
-import ElectricityPurchaseScreen from './src/screen/ElectricityPurchaseScreen';
-import AirtimeScreen from './src/screen/AirtimeScreen';
-import CustomerTabScreen from './src/screen/CustomerTabScreen';
-import CustomerRegistrationScreen from './src/screen/CustomerRegistrationScreen';
-import InvoiceTabScreen from './src/screen/InvoiceTabScreen';
-import InvoiceCreationScreen from './src/screen/InvoiceCreationScreen';
-import InvoiceProcessingScreen from './src/screen/InvoiceProcessingScreen';
-import InvoiceDetailsScreen from 'screen/InvoiceDetailScreen';
-import TransactionDetailsScreen from 'screen/TransactionDetailsScreen';
-import SetTransactionPinScreen from 'screen/SetTransactionPinScreen';
-import ResetPinScreen from 'screen/ResetPinScreen';
-import SetLoginPINScreen from 'screen/SetLoginPinScreen';
+import ProfileScreen from './src/screen/UserProfile/ProfileScreen';
+import LoginScreen from './src/screen/auth/LoginScreen';
+import SignUpScreen from './src/screen/auth/SignUpScreen';
+import VerifyCodeScreen from './src/screen/auth/VerifyCodeScreen';
+import DataPurchaseScreen from './src/screen/general/DataPurchaseScreen';
+import TVSubscriptionScreen from './src/screen/general/TVSubscriptionScreen';
+import ElectricityPurchaseScreen from './src/screen/general/ElectricityPurchaseScreen';
+import AirtimeScreen from './src/screen/general/AirtimeScreen';
+import CustomerTabScreen from './src/screen/invoice/CustomerTabScreen';
+import CustomerRegistrationScreen from './src/screen/invoice/CustomerRegistrationScreen';
+import InvoiceTabScreen from './src/screen/invoice/InvoiceTabScreen';
+import InvoiceCreationScreen from './src/screen/invoice/InvoiceCreationScreen';
+import InvoiceProcessingScreen from './src/screen/invoice/InvoiceProcessingScreen';
+import InvoiceDetailsScreen from 'screen/invoice/InvoiceDetailScreen';
+import TransactionDetailsScreen from 'screen/general/TransactionDetailsScreen';
+import SetTransactionPinScreen from 'screen/auth/SetTransactionPinScreen';
+import ResetPinScreen from 'screen/auth/ResetPinScreen';
+import SetLoginPINScreen from 'screen/auth/SetLoginPinScreen';
 import { STORAGE_KEYS } from 'utility/storageKeys';
-import ShareReceiptScreen from 'screen/ShareReceiptScreen';
-import OnboardingScreen from 'screen/OnboardingScreen';
-import EducationPurchaseScreen from 'screen/EducationPurchaseScreen';
-import AllServicesScreen from 'screen/AllServicesScreen';
-import AirtimeToCashScreen from 'screen/Airtime-CashScreen';
-import BettingScreen from 'screen/BettingScreen';
+import ShareReceiptScreen from 'screen/general/ShareReceiptScreen';
+import OnboardingScreen from 'screen/auth/OnboardingScreen';
+import EducationPurchaseScreen from 'screen/general/EducationPurchaseScreen';
+import AllServicesScreen from 'screen/general/AllServicesScreen';
+import AirtimeToCashScreen from 'screen/general/Airtime-CashScreen';
+import BettingScreen from 'screen/general/BettingScreen';
 import EditProfileScreen from 'screen/UserProfile/EditProfileScreen';
 import VerifyNINScreen from 'screen/UserProfile/VerifyNINScreen';
 import FundWalletBalance from 'screen/UserProfile/FundWalletBalance';
@@ -69,11 +69,16 @@ import { AuthProvider } from 'context/AuthContext';
 import PaymentSettings from 'screen/Settings/PaymentSettings';
 import LoginSettingsScreen from 'screen/Settings/LoginSettingsScreen';
 import ChangeLoginScreen from 'screen/Settings/ChangeLoginScreen';
-import NINScreen from 'screen/NINScreen';
-import CategoriesScreen from 'screen/CategoriesScreen';
+import NINScreen from 'screen/general/NINScreen';
+// import CategoriesScreen from 'screen/CategoriesScreen';
 import { ThemeProvider } from 'context/ThemeContext';
 import ThemeSettings from 'screen/Settings/ThemeSettings';
-// import MyProfile from 'screen/UserProfile/MyProfile';
+import TransportScreen from 'screen/transport/TransportScreen';
+import TransportResultsScreen from 'screen/transport/TransportResultsScreen';
+import SeatSelectionScreen from 'screen/transport/SeatSellectionScreen';
+import PassengerDetailsScreen from 'screen/transport/PassengerDetailsScreen';
+// import TransportResultsScreen from 'screen/TransportResultsScreen';
+
 
 // 👇 Keep splash screen visible until resources load
 // SplashScreen.preventAutoHideAsync();
@@ -138,8 +143,8 @@ function BottomTabs() {
           let iconName;
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Orders') {
-            iconName = focused ? 'receipt' : 'receipt-outline';
+          } else if (route.name === 'Referral') {
+            iconName = focused ? 'gift' : 'gift-outline';
           } else if (route.name === 'Wallet') {
             iconName = focused ? 'wallet' : 'wallet-outline';
           } else if (route.name === 'Profile') {
@@ -165,7 +170,7 @@ function BottomTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Orders" component={OrdersScreen} />
+      <Tab.Screen name="Referral" component={ReferralScreen} />
       <Tab.Screen name="Wallet" component={WalletsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
       <Tab.Screen name="Invoices" component={InvoiceTabs} />
@@ -370,10 +375,26 @@ function AppContent({ initialRoute, navigationRef }) {
                 name="NINScreen"
                 component={NINScreen}
               />
+            
               <Stack.Screen
-                name="Category"
-                component={CategoriesScreen}
+                name="TransportScreen"
+                component={TransportScreen}
               />
+            
+              <Stack.Screen
+                name="TransportResults"
+                component={TransportResultsScreen}
+              />
+              <Stack.Screen 
+               name="SeatSelection" 
+               component={SeatSelectionScreen}
+                
+               />
+              <Stack.Screen 
+               name="PassengerDetails'" 
+               component={PassengerDetailsScreen}
+
+               />
 
 
 {/* =====user profile and related screens======= */}

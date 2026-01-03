@@ -83,15 +83,15 @@ const services = [
     label: 'Flights',
     icon: 'plane',
     iconLib: FontAwesome5,
-    screen: 'fv[Airtime',
+    screen: 'TransportScreen',
     color: '#FFEAA7',
   },
   {
-    id: 'hotels',
-    label: 'Hotels',
+    id: 'bus',
+    label: 'Bus',
     icon: 'bed',
     iconLib: Ionicons,
-    screen: 'Airtime',
+    screen: 'TransportScreen',
     color: '#DDA0DD',
   },
   {
@@ -136,17 +136,6 @@ const services = [
     color: '#9B59B6',
   },
 
-
-  
-  // =======to be removed=======
-  {
-    id: 'category',
-    label: 'Categories',
-    icon: 'graduation-cap',
-    iconLib: FontAwesome5,
-    screen: 'Category',
-    color: '#08f13fff',
-  },
 ];
 
 const ServiceCard = React.memo(({ service, onPress, index, themeColors }) => {

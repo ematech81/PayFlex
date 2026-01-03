@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useWallet } from '../context/WalletContext';
+import { useWallet } from '../../context/WalletContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import ActionModal from 'constants/ActionModal';
 import { useThem } from 'constants/useTheme';

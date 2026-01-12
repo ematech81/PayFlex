@@ -17,6 +17,8 @@ import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 import { ScreenHeader } from 'component/SHARED';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
+import bookingService from 'AuthFunction/bookingService';
+
 
 // ============================================
 // STEP INDICATOR COMPONENT
@@ -266,9 +268,22 @@ const PassengerForm = ({
 
           {/* Phone */}
           <View style={styles.fieldGroup}>
-            <Text style={[styles.fieldLabel, { color: themeColors.heading }]}>
-              Phone Number <Text style={styles.required}>*</Text>
-            </Text>
+            <View style={styles.fieldLabelRow}>
+              <Text style={[styles.fieldLabel, { color: themeColors.heading }]}>
+                Phone Number <Text style={styles.required}>*</Text>
+              </Text>
+              {data.phone && data.phone.length === 11 && (
+                <TouchableOpacity
+                  style={[styles.searchButton, { backgroundColor: `${themeColors.primary}20` }]}
+                  onPress={() => onChange('searchPhone', true)}
+                >
+                  <Ionicons name="search" size={14} color={themeColors.primary} />
+                  <Text style={[styles.searchButtonText, { color: themeColors.primary }]}>
+                    Auto-fill
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <TextInput
               style={[
                 styles.input,
@@ -395,9 +410,67 @@ export default function PassengerDetailsScreen({ route, navigation }) {
 
   // Handle passenger data change
   const handlePassengerChange = (id, field, value) => {
+    // Handle phone search trigger
+    if (field === 'searchPhone' && value === true) {
+      searchPassengerByPhone(id);
+      return;
+    }
+
+    // Auto-format phone numbers
+    if (field === 'phone' || field === 'nextOfKinPhone') {
+      // Remove non-numeric characters
+      let cleaned = value.replace(/\D/g, '');
+      
+      // If starts with 234, convert to 0 format
+      if (cleaned.startsWith('234')) {
+        cleaned = '0' + cleaned.substring(3);
+      }
+      
+      // Limit to 11 digits
+      cleaned = cleaned.substring(0, 11);
+      
+      value = cleaned;
+    }
+
     setPassengers(passengers.map(p => 
       p.id === id ? { ...p, [field]: value } : p
     ));
+  };
+
+  // Search passenger by phone
+  const searchPassengerByPhone = async (passengerId) => {
+    const passenger = passengers.find(p => p.id === passengerId);
+    
+    if (!passenger || !passenger.phone || passenger.phone.length !== 11) {
+      return;
+    }
+
+    try {
+      const response = await bookingService.searchPassengerByPhone(passenger.phone);
+      
+      if (response && response.success) {
+        const profile = response.data;
+        
+        // Auto-fill passenger data
+        setPassengers(passengers.map(p => 
+          p.id === passengerId ? {
+            ...p,
+            title: profile.title || p.title,
+            fullName: profile.fullName || p.fullName,
+            age: profile.age?.toString() || p.age,
+            gender: profile.gender || p.gender,
+            email: profile.email || p.email,
+            nextOfKin: profile.nextOfKin || p.nextOfKin,
+            nextOfKinPhone: profile.nextOfKinPhone || p.nextOfKinPhone,
+          } : p
+        ));
+
+        Alert.alert('Success', 'Passenger details loaded successfully');
+      }
+    } catch (error) {
+      // Silently fail - profile not found is expected
+      console.log('No saved profile found for:', passenger.phone);
+    }
   };
 
   // Add passenger
@@ -460,14 +533,26 @@ export default function PassengerDetailsScreen({ route, navigation }) {
         return false;
       }
 
-      // Validate phone numbers
-      if (!/^0[789]\d{9}$/.test(p.phone)) {
-        Alert.alert('Invalid Phone', `Invalid phone number for Passenger ${i + 1}`);
+      // Clean phone numbers (remove spaces, dashes, etc.)
+      const cleanPhone = p.phone.replace(/[\s\-\(\)]/g, '');
+      const cleanNextOfKinPhone = p.nextOfKinPhone.replace(/[\s\-\(\)]/g, '');
+
+      // Validate phone numbers (accept with or without +234)
+      const phonePattern = /^(0[789]\d{9}|234[789]\d{9}|\+234[789]\d{9})$/;
+      
+      if (!phonePattern.test(cleanPhone)) {
+        Alert.alert(
+          'Invalid Phone', 
+          `Invalid phone number for Passenger ${i + 1}.\n\nValid formats:\n• 08012345678\n• 07012345678\n• 09012345678\n• +2348012345678`
+        );
         return false;
       }
 
-      if (!/^0[789]\d{9}$/.test(p.nextOfKinPhone)) {
-        Alert.alert('Invalid Phone', `Invalid emergency contact number for Passenger ${i + 1}`);
+      if (!phonePattern.test(cleanNextOfKinPhone)) {
+        Alert.alert(
+          'Invalid Phone', 
+          `Invalid emergency contact number for Passenger ${i + 1}.\n\nValid formats:\n• 08012345678\n• 07012345678\n• 09012345678\n• +2348012345678`
+        );
         return false;
       }
 
@@ -650,6 +735,7 @@ export default function PassengerDetailsScreen({ route, navigation }) {
   );
 }
 
+
 // ============================================
 // STYLES
 // ============================================
@@ -773,9 +859,26 @@ const styles = StyleSheet.create({
   fieldGroup: {
     gap: 8,
   },
+  fieldLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   fieldLabel: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  searchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    gap: 4,
+  },
+  searchButtonText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   required: {
     color: '#FF3B30',
@@ -926,7 +1029,7 @@ const styles = StyleSheet.create({
   // Bottom Bar
   bottomBar: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 36,
     left: 0,
     right: 0,
     borderTopWidth: 1,

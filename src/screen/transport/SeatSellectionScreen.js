@@ -119,7 +119,7 @@ const Seat = ({ seatNumber, status, isSelected, onPress, themeColors }) => {
         };
       default:
         return {
-          backgroundColor: themeColors.card,
+          backgroundColor: themeColors.buttonBackground,
           borderColor: themeColors.border,
         };
     }
@@ -660,20 +660,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   seat: {
-    width: 56,
-    height: 56,
+    width: 36,
+    height: 36,
     borderRadius: 12,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
   seatNumber: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '700',
   },
   aisle: {
-    width: 56,
-    height: 56,
+    width: 36,
+    height: 36,
   },
 
   // Legend
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
   // Bottom Bar
   bottomBar: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 35,
     left: 0,
     right: 0,
     borderTopWidth: 1,

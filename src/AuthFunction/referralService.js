@@ -1,10 +1,10 @@
 // services/referralService.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ReferralApiIPAddress } from 'utility/apiIPAdress';
+import { GeneralApiIPAddress, ReferralApiIPAddress } from 'utility/apiIPAdress';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 
 
-const API_BASE_URL = ReferralApiIPAddress; // Update with your API URL
+const API_BASE_URL = GeneralApiIPAddress; // Update with your API URL
 const REQUEST_TIMEOUT = 30000;
 
 // ============================================

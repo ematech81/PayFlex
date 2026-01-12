@@ -327,11 +327,48 @@ export default function TransportScreen({ navigation }) {
   };
 
   // Quick book from popular routes
-  const handleQuickBook = (route) => {
+  const handleQuickBook = async (route) => {
+    // Set departure and destination
     setDeparture(route.origin);
     setDestination(route.destination);
-    // Auto-search after setting values
-    setTimeout(() => handleSearch(), 100);
+    
+    // Set default date if not set
+    if (!travelDate) {
+      const today = new Date().toISOString().split('T')[0];
+      setTravelDate(today);
+    }
+
+    // Wait a bit for state to update, then search
+    setTimeout(async () => {
+      setLoading(true);
+      try {
+        const results = await travuService.checkTrip({
+          origin: route.origin,
+          destination: route.destination,
+          date: travelDate || new Date().toISOString().split('T')[0],
+          sort: 'date',
+        });
+
+        if (results.error || !results.data || results.data.length === 0) {
+          Alert.alert('No Trips Found', 'No available trips for this route. Try different dates or locations.');
+        } else {
+          // Navigate to results screen
+          navigation.navigate('TransportResults', {
+            trips: results.data,
+            searchParams: { 
+              departure: route.origin, 
+              destination: route.destination, 
+              travelDate: travelDate || new Date().toISOString().split('T')[0]
+            },
+          });
+          setCurrentStep(2);
+        }
+      } catch (error) {
+        Alert.alert('Error', error.message || 'Failed to search trips');
+      } finally {
+        setLoading(false);
+      }
+    }, 100);
   };
 
   return (
@@ -574,7 +611,6 @@ export default function TransportScreen({ navigation }) {
     </SafeAreaView>
   );
 }
-
 // ============================================
 // STYLES
 // ============================================

@@ -77,6 +77,9 @@ import TransportScreen from 'screen/transport/TransportScreen';
 import TransportResultsScreen from 'screen/transport/TransportResultsScreen';
 import SeatSelectionScreen from 'screen/transport/SeatSellectionScreen';
 import PassengerDetailsScreen from 'screen/transport/PassengerDetailsScreen';
+import PaymentScreen from 'screen/transport/Payment';
+import ReceiptScreen from 'screen/transport/ReceiptScreen';
+import BookingHistoryScreen from 'screen/transport/BookingHistoryScreen';
 // import TransportResultsScreen from 'screen/TransportResultsScreen';
 
 
@@ -391,10 +394,24 @@ function AppContent({ initialRoute, navigationRef }) {
                 
                />
               <Stack.Screen 
-               name="PassengerDetails'" 
+               name="PassengerDetails" 
                component={PassengerDetailsScreen}
 
                />
+               <Stack.Screen 
+  name="PaymentScreen" 
+  component={PaymentScreen}
+/>
+<Stack.Screen 
+  name="Receipt" 
+  component={ReceiptScreen}
+  options={{gestureEnabled: false }}
+/>
+<Stack.Screen 
+  name="BookingHistory" 
+  component={BookingHistoryScreen}
+  options={{ headerShown: false }}
+/>
 
 
 {/* =====user profile and related screens======= */}

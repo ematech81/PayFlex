@@ -254,6 +254,9 @@ export const getPassengerProfiles = async () => {
 /**
  * Search passenger by phone
  */
+/**
+ * Search passenger by phone
+ */
 export const searchPassengerByPhone = async (phone) => {
   try {
     const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
@@ -280,15 +283,17 @@ export const searchPassengerByPhone = async (phone) => {
 
     return result;
   } catch (error) {
-    // Don't log error for not found - it's expected
-    if (error.message.includes('not found')) {
-      return null;
-    }
-    console.error('❌ Search Passenger Error:', error.message);
-    throw error;
+    // ✅ UPDATED: Return an object instead of throwing
+    // This way the component can handle it gracefully
+    console.log('ℹ️ No saved profile found for:', phone);
+    
+    return {
+      success: false,
+      message: error.message || 'Passenger not found',
+      data: null,
+    };
   }
 };
-
 export default {
   createBooking,
   getUserBookings,

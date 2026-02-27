@@ -18,25 +18,46 @@ import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 import { ScreenHeader } from 'component/SHARED';
 import travuService from 'SERVICES/travuService';
+import FlightSearchTab from 'component/transport/FlightSearchTab';
 
 
 // ============================================
 // STEP INDICATOR COMPONENT
 // ============================================
-const StepIndicator = ({ currentStep, themeColors }) => {
-  const steps = [
+
+const StepIndicator = ({ currentStep, activeTab, themeColors }) => {
+  // Bus steps
+  const busSteps = [
     { id: 1, label: 'Search', icon: 'search' },
     { id: 2, label: 'Select', icon: 'bus' },
-    { id: 3, label: 'Seats', icon: 'grid' },
-    { id: 4, label: 'Details', icon: 'person' },
+    { id: 3, label: 'Details', icon: 'person' },
+    { id: 4, label: 'Seats', icon: 'grid' },
     { id: 5, label: 'Payment', icon: 'card' },
   ];
+
+  // Flight steps
+  const flightSteps = [
+    { id: 1, label: 'Search', icon: 'search' },
+    { id: 2, label: 'Select', icon: 'airplane' },
+    { id: 3, label: 'Details', icon: 'person' },
+    { id: 4, label: 'Seats', icon: 'grid' },
+    { id: 5, label: 'Payment', icon: 'card' },
+  ];
+
+  // Orders - no steps needed
+  const ordersSteps = [];
+
+  // Choose steps based on active tab
+  const steps = activeTab === 'bus' ? busSteps :
+                activeTab === 'flight' ? flightSteps :
+                ordersSteps;
+
+  if (steps.length === 0) return null; // Hide for Orders tab
 
   return (
     <View style={styles.stepContainer}>
       {steps.map((step, index) => (
         <React.Fragment key={step.id}>
-          {/* Step Circle */}
           <View style={styles.stepItem}>
             <View
               style={[
@@ -77,8 +98,6 @@ const StepIndicator = ({ currentStep, themeColors }) => {
               {step.label}
             </Text>
           </View>
-
-          {/* Connector Line */}
           {index < steps.length - 1 && (
             <View
               style={[
@@ -381,7 +400,12 @@ export default function TransportScreen({ navigation }) {
       />
 
       {/* Step Indicator */}
-      <StepIndicator currentStep={currentStep} themeColors={themeColors} />
+      {/* Step Indicator */}
+    <StepIndicator 
+     currentStep={currentStep} 
+     activeTab={activeTab}
+     themeColors={themeColors} 
+     />
 
       <ScrollView
         style={styles.scrollView}
@@ -584,16 +608,11 @@ export default function TransportScreen({ navigation }) {
 
         {/* Flight Tab Content */}
         {activeTab === 'flight' && (
-          <View style={[styles.comingSoonCard, { backgroundColor: themeColors.card }]}>
-            <Ionicons name="airplane" size={64} color={themeColors.subtext} />
-            <Text style={[styles.comingSoonTitle, { color: themeColors.heading }]}>
-              Flight Booking
-            </Text>
-            <Text style={[styles.comingSoonText, { color: themeColors.subtext }]}>
-              Coming Soon! We're working on bringing you the best flight booking experience.
-            </Text>
-          </View>
-        )}
+         <FlightSearchTab
+        navigation={navigation}
+        themeColors={themeColors}
+         />
+         )}
 
         {/* My Orders Tab Content */}
         {activeTab === 'orders' && (

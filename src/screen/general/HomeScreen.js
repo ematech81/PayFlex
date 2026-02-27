@@ -90,7 +90,7 @@ const services = [
     id: 'hotels',
     label: 'Hotels',
     icon: <Ionicons name="bed" size={ICON_SIZE} stokeWidth='20' />,
-    screen: null, // Not implemented yet
+    screen: 'FlightSearch', // Not implemented yet
   },
   {
     id: 'waec',

@@ -80,7 +80,11 @@ import PassengerDetailsScreen from 'screen/transport/PassengerDetailsScreen';
 import PaymentScreen from 'screen/transport/Payment';
 import ReceiptScreen from 'screen/transport/ReceiptScreen';
 import BookingHistoryScreen from 'screen/transport/BookingHistoryScreen';
-// import TransportResultsScreen from 'screen/TransportResultsScreen';
+import FlightResultsScreen from 'screen/flight/FlightResultScreen';
+import FlightPassengerDetailsScreen from 'screen/flight/flightSearchScreen';
+import FlightSeatSelectionScreen from 'screen/flight/FlightSeatSelectionScreen';
+
+// // import TransportResultsScreen from 'screen/TransportResultsScreen';
 
 
 // 👇 Keep splash screen visible until resources load
@@ -412,6 +416,22 @@ function AppContent({ initialRoute, navigationRef }) {
   component={BookingHistoryScreen}
   options={{ headerShown: false }}
 />
+<Stack.Screen 
+  name="FlightPassengerDetails" 
+  component={FlightPassengerDetailsScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen 
+  name="FlightResults" 
+  component={FlightResultsScreen}
+  options={{ headerShown: false }}
+/>
+<Stack.Screen 
+  name="FlightSeatSelection" 
+  component={FlightSeatSelectionScreen}
+  options={{ headerShown: false }}
+/>
+
 
 
 {/* =====user profile and related screens======= */}

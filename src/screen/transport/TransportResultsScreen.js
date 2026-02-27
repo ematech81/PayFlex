@@ -352,6 +352,7 @@ export default function TransportResultsScreen({ route, navigation }) {
   // Handle trip selection
   const handleSelectTrip = (trip) => {
     navigation.navigate('PassengerDetails', {
+      bookingType: 'transport',  // ← Set type
       trip,
       searchParams,
     });

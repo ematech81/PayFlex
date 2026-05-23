@@ -335,7 +335,7 @@ export default function DataPurchaseScreen({ navigation, route }) {
         title="Data"
         onBackPress={() => navigation.goBack()}
         rightText="History"
-        onRightPress={() => navigation.navigate('MainTabs', {screen: 'Orders'})}
+        onRightPress={() => navigation.navigate('Orders')}
       />
 
       <ScrollView 

@@ -10,48 +10,56 @@ export const colors = {
     subheading: '#666666',
     subtext: '#999999',
     destructive: '#FF3B30',
+    error: '#EF4444',                // Modern error red (new design)
     button: '#5403f5',
     border: '#E5E5EA',
     processing: '#F9FC77',
-    success: '#34C759',
+    success: '#10B981',              // Updated to match new design
     warning: '#FF9500',
     info: '#007AFF',
     neutral: 'rgba(84, 3, 245, 0.08)',
-    
+
+    // New gradient pair (HomeScreen & AirtimeScreen header/buttons)
+    gradientStart: '#667EEA',        // Periwinkle blue
+    gradientEnd: '#764BA2',          // Purple
+
     // Additional UI elements
     divider: '#E5E5EA',
     placeholder: '#C7C7CC',
     shadow: 'rgba(0, 0, 0, 0.1)',
   },
-  
+
   dark: {
-    // Telegram-inspired dark theme
-    primary: '#8B5CF6',              // Softer purple for dark mode
-    background: '#0E1621',           // Deep blue-black (Telegram-like)
+    primary: '#8B5CF6',
+    background: '#0E1621',
     buttonBackground: 'rgba(139, 92, 246, 0.2)',
-    card: '#1A2332',                 // Slightly lighter than background
-    heading: '#FFFFFF',              // Pure white for contrast
-    subheading: '#A8B4C0',           // Soft blue-gray
-    subtext: '#6B7A8C',              // Muted blue-gray
-    destructive: '#FF6B6B',          // Softer red
+    card: '#1A2332',
+    heading: '#FFFFFF',
+    subheading: '#A8B4C0',
+    subtext: '#6B7A8C',
+    destructive: '#FF6B6B',
+    error: '#EF4444',                // Shared with light — same modern red
     button: '#8B5CF6',
-    border: '#2A3441',               // Subtle border
-    processing: '#F59E0B',           // Warm amber
-    success: '#10B981',              // Soft green
-    warning: '#F59E0B',              // Amber
-    info: '#3B82F6',                 // Soft blue
+    border: '#2A3441',
+    processing: '#F59E0B',
+    success: '#10B981',
+    warning: '#F59E0B',
+    info: '#3B82F6',
     neutral: 'rgba(139, 92, 246, 0.1)',
-    
+
+    // New gradient pair (dark mode header)
+    gradientStart: '#1a1a2e',        // Deep navy
+    gradientEnd: '#16213e',          // Darker navy
+
     // Additional UI elements
     divider: '#2A3441',
     placeholder: '#4A5568',
     shadow: 'rgba(0, 0, 0, 0.3)',
-    
-    // Telegram-specific
-    messageOut: '#8B5CF6',           // Sent message bubble
-    messageIn: '#1F2937',            // Received message bubble
-    online: '#10B981',               // Online indicator
-    typing: '#6B7A8C',               // Typing indicator
+
+    messageOut: '#8B5CF6',
+    messageIn: '#1F2937',
+    online: '#10B981',
+    typing: '#6B7A8C',
   },
 };
 

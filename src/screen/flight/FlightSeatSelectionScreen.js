@@ -7,10 +7,15 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
+  Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import flightServices from 'AuthFunction/transport/flightServices';
+import flightService from 'AuthFunction/transport/flightServices';
+import { getFlightSummary } from 'utility/FlightDataHelper';
 
+
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const FlightSeatSelectionScreen = ({ route, navigation }) => {
   const { flight, passengers } = route.params;
@@ -29,16 +34,49 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await flightServices.getFlightSeatmap(flight);
       
-      console.log('🔍 Full API Response:', JSON.stringify(response, null, 2));
+      // ✅ FIX: Ensure flight has travelerPricings (Amadeus requirement)
+      const flightWithTravelers = {
+        ...flight,
+        type: flight.type || 'flight-offer',
+        id: flight.id || `FLIGHT_${Date.now()}`,
+        source: flight.source || 'GDS',
+        instantTicketingRequired: flight.instantTicketingRequired ?? false,
+        nonHomogeneous: flight.nonHomogeneous ?? false,
+        oneWay: flight.oneWay ?? (flight.itineraries?.length === 1),
+        lastTicketingDate: flight.lastTicketingDate || (() => {
+          const date = new Date();
+          date.setDate(date.getDate() + 7);
+          return date.toISOString().split('T')[0];
+        })(),
+        travelerPricings: flight.travelerPricings || passengers.map((passenger, index) => ({
+          travelerId: String(index + 1),
+          fareOption: "STANDARD",
+          travelerType: (passenger.age && passenger.age < 12) ? "CHILD" : "ADULT",
+          price: {
+            currency: flight.price?.currency || "NGN",
+            total: String((parseFloat(flight.price?.total || 0) / passengers.length).toFixed(2)),
+            base: String((parseFloat(flight.price?.base || 0) / passengers.length).toFixed(2))
+          },
+          fareDetailsBySegment: flight.itineraries?.[0]?.segments?.map((segment, segIndex) => ({
+            segmentId: String(segIndex + 1),
+            cabin: segment.cabin || "ECONOMY",
+            fareBasis: segment.fareBasis || "Y",
+            class: segment.bookingClass || "Y",
+            includedCheckedBags: { quantity: 1 }
+          })) || []
+        }))
+      };
+      
+      console.log('📤 Requesting seatmap...');
+      
+      const response = await flightService.getFlightSeatmap(flightWithTravelers);
       
       if (response.data && response.data.length > 0) {
         const seatmapData = response.data[0];
         console.log('✅ Seatmap loaded:', {
           seats: seatmapData.decks?.[0]?.seats?.length || 0,
           deckConfig: seatmapData.decks?.[0]?.deckConfiguration,
-          facilities: seatmapData.decks?.[0]?.facilities?.length || 0
         });
         setSeatmap(seatmapData);
       } else {
@@ -46,7 +84,8 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
       }
     } catch (err) {
       console.error('❌ Seatmap error:', err);
-      setError('Failed to load seat map');
+      console.error('❌ Error response:', err.response?.data);
+      setError(err.response?.data?.message || err.message || 'Failed to load seat map');
     } finally {
       setLoading(false);
     }
@@ -55,7 +94,6 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
   const getSeatStatus = (seat) => {
     const pricing = seat.travelerPricing?.[0];
     if (!pricing) return 'blocked';
-    
     return pricing.seatAvailabilityStatus?.toLowerCase() || 'blocked';
   };
 
@@ -79,7 +117,7 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
       Alert.alert(
         'Seat Unavailable',
         status === 'blocked' 
-          ? 'This seat is not available for selection'
+          ? 'This seat is not available for your booking'
           : 'This seat is already occupied',
         [{ text: 'OK' }]
       );
@@ -88,18 +126,18 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
 
     const currentPassenger = passengers[currentPassengerIndex];
     
-    // Check if seat already selected by another passenger
+    // Check if seat already selected
     const alreadySelected = Object.values(selectedSeats).includes(seat.number);
     if (alreadySelected) {
-      Alert.alert('Seat Already Selected', 'This seat is already chosen by another passenger');
+      Alert.alert('Seat Taken', 'Another passenger has selected this seat');
       return;
     }
 
-    // Assign seat to current passenger
+    // Assign seat
     const newSelectedSeats = { ...selectedSeats, [currentPassenger.id]: seat.number };
     setSelectedSeats(newSelectedSeats);
 
-    // Move to next passenger if not last
+    // Move to next passenger
     if (currentPassengerIndex < passengers.length - 1) {
       setCurrentPassengerIndex(currentPassengerIndex + 1);
     }
@@ -111,76 +149,79 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
     if (!allSelected) {
       Alert.alert(
         'Incomplete Selection',
-        'Please select seats for all passengers or skip seat selection',
+        'Please select seats for all passengers or skip',
         [{ text: 'OK' }]
       );
       return;
     }
 
+    // Create safe flight summary inline
+    const flightSummary = {
+      origin: flight.itineraries?.[0]?.segments?.[0]?.departure?.iataCode || 'DEP',
+      destination: flight.itineraries?.[0]?.segments?.[flight.itineraries?.[0]?.segments?.length - 1]?.arrival?.iataCode || 'ARR',
+      departureDate: flight.itineraries?.[0]?.segments?.[0]?.departure?.at || '',
+      price: parseFloat(flight.price?.total || 0),
+      currency: flight.price?.currency || 'NGN',
+      airline: flight.validatingAirlineCodes?.[0] || '',
+    };
+
     navigation.navigate('PaymentScreen', {
-      flight,
+      flight: flightSummary,
+      rawFlight: flight,
       passengers,
       selectedSeats,
     });
   };
 
   const handleSkipSeats = () => {
-    navigation.navigate('Payment', {
-      flight,
+    // Create safe flight summary inline
+    const flightSummary = {
+      origin: flight.itineraries?.[0]?.segments?.[0]?.departure?.iataCode || 'DEP',
+      destination: flight.itineraries?.[0]?.segments?.[flight.itineraries?.[0]?.segments?.length - 1]?.arrival?.iataCode || 'ARR',
+      departureDate: flight.itineraries?.[0]?.segments?.[0]?.departure?.at || '',
+      price: parseFloat(flight.price?.total || 0),
+      currency: flight.price?.currency || 'NGN',
+      airline: flight.validatingAirlineCodes?.[0] || '',
+    };
+
+    navigation.navigate('PaymentScreen', {
+      flight: flightSummary,
+      rawFlight: flight,
       passengers,
       selectedSeats: {},
     });
   };
 
-  const renderSeat = (seat, gridWidth) => {
-    const status = getSeatStatus(seat);
-    const isSelected = Object.values(selectedSeats).includes(seat.number);
-    const price = getSeatPrice(seat);
-    const isWindow = isSeatWindow(seat);
-    const isAisle = isSeatAisle(seat);
-
-    let backgroundColor = '#E0E0E0'; // Blocked/default
-    let borderColor = '#9E9E9E';
-
-    if (status === 'available') {
-      backgroundColor = isSelected ? '#2196F3' : '#4CAF50';
-      borderColor = isSelected ? '#1976D2' : '#388E3C';
-    } else if (status === 'occupied') {
-      backgroundColor = '#F44336';
-      borderColor = '#C62828';
+  /**
+   * Detects aisle positions based on missing y-coordinates
+   * Uses intelligent gap detection for different aircraft types
+   */
+  const detectAisles = (seats, width) => {
+    const yPositions = [...new Set(seats.map(s => s.coordinates.y))].sort((a, b) => a - b);
+    
+    if (yPositions.length === 0) return [];
+    
+    const aisles = [];
+    const minY = Math.min(...yPositions);
+    const maxY = Math.max(...yPositions);
+    
+    // Find gaps in y-coordinates (these are aisles)
+    for (let y = minY; y <= maxY; y++) {
+      if (!yPositions.includes(y)) {
+        aisles.push(y);
+      }
     }
-
-    return (
-      <TouchableOpacity
-        key={seat.number}
-        style={[
-          styles.seat,
-          { backgroundColor, borderColor }
-        ]}
-        onPress={() => handleSeatPress(seat)}
-        disabled={status !== 'available' || isSelected}
-      >
-        <Text style={styles.seatNumber}>{seat.number}</Text>
-        {isWindow && <Ionicons name="square-outline" size={10} color="#FFF" style={styles.icon} />}
-        {isAisle && <Text style={styles.aisleIcon}>A</Text>}
-        {price && <Text style={styles.priceTag}>€{price}</Text>}
-      </TouchableOpacity>
-    );
+    
+    return aisles;
   };
 
-  const renderFacility = (facility) => {
-    const icons = {
-      'LA': 'water',
-      'G': 'restaurant',
-      'CL': 'file-tray',
-      'SO': 'cube'
-    };
-
-    return (
-      <View key={`${facility.code}-${facility.coordinates.x}-${facility.coordinates.y}`} style={styles.facility}>
-        <Ionicons name={icons[facility.code] || 'square'} size={16} color="#757575" />
-      </View>
-    );
+  /**
+   * Get column letter based on y-coordinate
+   * Skips 'I' as per aviation standard
+   */
+  const getColumnLabel = (y) => {
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'L', 'M'];
+    return letters[y] || String(y);
   };
 
   const renderSeatmap = () => {
@@ -191,13 +232,12 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
     const deck = seatmap.decks[0];
     const deckConfig = deck.deckConfiguration;
     const seats = deck.seats || [];
-    const facilities = deck.facilities || [];
 
     if (seats.length === 0) {
       return (
         <View style={styles.emptyContainer}>
           <Ionicons name="airplane" size={48} color="#9E9E9E" />
-          <Text style={styles.emptyText}>No seats available for this flight</Text>
+          <Text style={styles.emptyText}>No seats available</Text>
           <TouchableOpacity style={styles.skipButton} onPress={handleSkipSeats}>
             <Text style={styles.skipButtonText}>Continue Without Seats</Text>
           </TouchableOpacity>
@@ -205,11 +245,9 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
       );
     }
 
-    // Build grid structure using coordinates
     const gridWidth = deckConfig.width;
-    const gridLength = deckConfig.length;
 
-    // Organize seats by x coordinate (rows)
+    // Organize seats by row (x-coordinate)
     const seatsByRow = {};
     seats.forEach(seat => {
       const x = seat.coordinates.x;
@@ -217,27 +255,62 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
       seatsByRow[x].push(seat);
     });
 
-    // Organize facilities by x coordinate
-    const facilitiesByRow = {};
-    facilities.forEach(facility => {
-      const x = facility.coordinates.x;
-      if (!facilitiesByRow[x]) facilitiesByRow[x] = [];
-      facilitiesByRow[x].push(facility);
-    });
+    // Get all row numbers
+    const allRows = Object.keys(seatsByRow).map(Number).sort((a, b) => a - b);
 
-    // Get all x coordinates (rows)
-    const allX = [...new Set([
-      ...Object.keys(seatsByRow).map(Number),
-      ...Object.keys(facilitiesByRow).map(Number)
-    ])].sort((a, b) => a - b);
+    // Get all unique y-coordinates to build column headers
+    const allYPositions = [...new Set(seats.map(s => s.coordinates.y))].sort((a, b) => a - b);
 
-    // Determine column labels based on width
-    const getColumnLabels = (width) => {
-      const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
-      return labels.slice(0, width);
+    // ============================================
+    // IMPROVED SEAT SIZE CALCULATION
+    // ============================================
+    // Calculate based on actual number of columns (not gridWidth)
+    const actualColumns = allYPositions.length;
+    
+    // More generous sizing - minimum 32px, maximum 45px
+    const calculatedSize = (SCREEN_WIDTH - 70) / (actualColumns + 1);
+    const SEAT_SIZE = Math.max(32, Math.min(45, calculatedSize));
+    const AISLE_WIDTH = SEAT_SIZE * 0.7;
+    
+    // Dynamic font sizes based on seat size
+    const SEAT_NUMBER_FONT = Math.max(9, Math.min(12, SEAT_SIZE * 0.28));
+    const PRICE_FONT = Math.max(7, Math.min(9, SEAT_SIZE * 0.22));
+
+    // ============================================
+    // RENDER SEAT FUNCTION (with dynamic sizing)
+    // ============================================
+    const renderSeat = (seat) => {
+      const status = getSeatStatus(seat);
+      const isSelected = Object.values(selectedSeats).includes(seat.number);
+      const price = getSeatPrice(seat);
+      const isWindow = isSeatWindow(seat);
+      const isAisle = isSeatAisle(seat);
+
+      let backgroundColor = '#E0E0E0';
+      let borderColor = '#9E9E9E';
+
+      if (status === 'available') {
+        backgroundColor = isSelected ? '#2196F3' : '#4CAF50';
+        borderColor = isSelected ? '#1976D2' : '#388E3C';
+      } else if (status === 'occupied') {
+        backgroundColor = '#F44336';
+        borderColor = '#C62828';
+      }
+
+      return (
+        <TouchableOpacity
+          key={seat.number}
+          style={[styles.seat, { backgroundColor, borderColor }]}
+          onPress={() => handleSeatPress(seat)}
+          disabled={status !== 'available' || isSelected}
+        >
+          <Text style={[styles.seatNumber, { fontSize: SEAT_NUMBER_FONT }]}>{seat.number}</Text>
+          {isWindow && <View style={styles.windowIcon} />}
+          {isAisle && <Text style={[styles.aisleIcon, { fontSize: SEAT_NUMBER_FONT - 2 }]}>A</Text>}
+          {price && <Text style={[styles.priceTag, { fontSize: PRICE_FONT }]}>€{price}</Text>}
+        </TouchableOpacity>
+      );
     };
-
-    const columnLabels = getColumnLabels(gridWidth);
 
     return (
       <View style={styles.seatmapContainer}>
@@ -247,73 +320,67 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
         </View>
 
         {/* Column Labels */}
-        <View style={styles.columnLabels}>
-          {columnLabels.map((label, index) => (
-            <Text key={index} style={styles.columnLabel}>{label}</Text>
+        <View style={[styles.columnLabels, { paddingLeft: 40 }]}>
+          {allYPositions.map((y) => (
+            <View key={y} style={{ width: SEAT_SIZE, alignItems: 'center' }}>
+              <Text style={styles.columnLabel}>{getColumnLabel(y)}</Text>
+            </View>
           ))}
         </View>
 
         {/* Rows */}
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {allX.map(x => {
+          {allRows.map(x => {
             const rowSeats = seatsByRow[x] || [];
-            const rowFacilities = facilitiesByRow[x] || [];
             const rowNumber = rowSeats[0]?.number?.match(/^\d+/)?.[0] || x;
+            
+            // Detect aisles for this row
+            const aisles = detectAisles(rowSeats, gridWidth);
 
-            // Create array for all columns
-            const columns = Array(gridWidth).fill(null);
-
-            // Place seats in their y positions
-            rowSeats.forEach(seat => {
-              columns[seat.coordinates.y] = seat;
-            });
-
-            // Place facilities
-            rowFacilities.forEach(facility => {
-              columns[facility.coordinates.y] = { type: 'facility', data: facility };
-            });
-
-            // Detect aisle (missing y values in the middle)
-            const occupiedYs = [...rowSeats.map(s => s.coordinates.y)];
-            const minY = Math.min(...occupiedYs);
-            const maxY = Math.max(...occupiedYs);
-            const aisleY = [];
-            for (let y = minY + 1; y < maxY; y++) {
-              if (!occupiedYs.includes(y)) {
-                aisleY.push(y);
+            // Build columns array
+            const columns = [];
+            allYPositions.forEach(y => {
+              const seat = rowSeats.find(s => s.coordinates.y === y);
+              
+              if (seat) {
+                columns.push({ type: 'seat', data: seat, y });
+              } else if (aisles.includes(y)) {
+                columns.push({ type: 'aisle', y });
+              } else {
+                columns.push({ type: 'empty', y });
               }
-            }
+            });
 
             return (
               <View key={x} style={styles.row}>
-                {/* Row number */}
+                {/* Row Number */}
                 <Text style={styles.rowNumber}>{rowNumber}</Text>
 
-                {/* Seats/Facilities */}
+                {/* Seats */}
                 <View style={styles.rowContent}>
-                  {columns.map((item, y) => {
-                    // Check if this is an aisle position
-                    if (aisleY.includes(y)) {
-                      return <View key={y} style={styles.aisle} />;
+                  {columns.map((col, index) => {
+                    if (col.type === 'aisle') {
+                      return <View key={`${x}-${col.y}`} style={[styles.aisle, { width: AISLE_WIDTH }]} />;
+                    }
+                    
+                    if (col.type === 'empty') {
+                      return <View key={`${x}-${col.y}`} style={[styles.emptySeat, { width: SEAT_SIZE }]} />;
                     }
 
-                    if (!item) {
-                      return <View key={y} style={styles.emptySeat} />;
-                    }
-
-                    if (item.type === 'facility') {
-                      return renderFacility(item.data);
-                    }
-
-                    return renderSeat(item, gridWidth);
+                    return (
+                      <View key={`${x}-${col.y}`} style={{ width: SEAT_SIZE }}>
+                        {renderSeat(col.data)}
+                      </View>
+                    );
                   })}
                 </View>
               </View>
             );
           })}
 
-          {/* Galley/Lavatory at rear */}
+          {/* Rear Galley/Lavatory */}
           <View style={styles.rearFacilities}>
+            <Ionicons name="restaurant" size={20} color="#757575" />
             <Text style={styles.facilityLabel}>Galley / Lavatory</Text>
           </View>
         </ScrollView>
@@ -358,7 +425,7 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
         </Text>
       </View>
 
-      {/* Current Passenger Indicator */}
+      {/* Current Passenger */}
       <View style={styles.passengerIndicator}>
         <Text style={styles.passengerText}>
           Selecting for: {currentPassenger?.firstName} {currentPassenger?.lastName}
@@ -391,32 +458,24 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
       {/* Seatmap */}
       {renderSeatmap()}
 
-      {/* Bottom Action Bar */}
+      {/* Bottom Bar */}
       <View style={styles.bottomBar}>
-        {/* Selected Seats Summary */}
         <View style={styles.selectedSeatsContainer}>
-          <Text style={styles.selectedSeatsTitle}>Selected Seats:</Text>
+          <Text style={styles.selectedSeatsTitle}>Selected:</Text>
           {passengers.map(passenger => (
             <Text key={passenger.id} style={styles.selectedSeatItem}>
-              {passenger.firstName}: {selectedSeats[passenger.id] || 'None'}
+              {passenger.firstName}: {selectedSeats[passenger.id] || '-'}
             </Text>
           ))}
         </View>
 
-        {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.skipButtonBottom}
-            onPress={handleSkipSeats}
-          >
+          <TouchableOpacity style={styles.skipButtonBottom} onPress={handleSkipSeats}>
             <Text style={styles.skipButtonBottomText}>Skip</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.continueButton,
-              !allSeatsSelected && styles.continueButtonDisabled
-            ]}
+            style={[styles.continueButton, !allSeatsSelected && styles.continueButtonDisabled]}
             onPress={handleContinue}
             disabled={!allSeatsSelected}
           >
@@ -475,7 +534,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#FFF',
     marginTop: 4,
   },
@@ -484,14 +543,12 @@ const styles = StyleSheet.create({
     padding: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
   passengerText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#212121',
   },
   progressText: {
     fontSize: 14,
@@ -533,14 +590,10 @@ const styles = StyleSheet.create({
   },
   columnLabels: {
     flexDirection: 'row',
-    justifyContent: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 40,
   },
   columnLabel: {
-    width: 40,
-    textAlign: 'center',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#757575',
   },
@@ -550,12 +603,12 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 3,
     paddingHorizontal: 8,
   },
   rowNumber: {
     width: 32,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#757575',
     textAlign: 'center',
@@ -563,56 +616,52 @@ const styles = StyleSheet.create({
   rowContent: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: 'center',
   },
   seat: {
-    width: 36,
-    height: 36,
+    width: '100%',
+    aspectRatio: 1,
     borderRadius: 6,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 2,
+    marginHorizontal: 1,
   },
   seatNumber: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#FFF',
   },
-  icon: {
+  windowIcon: {
     position: 'absolute',
     top: 2,
     left: 2,
+    width: 8,
+    height: 8,
+    borderWidth: 1,
+    borderColor: '#FFF',
+    borderRadius: 2,
   },
   aisleIcon: {
     position: 'absolute',
-    top: 2,
+    top: 1,
     right: 2,
-    fontSize: 8,
+    fontSize: 7,
     color: '#FFF',
   },
   priceTag: {
     position: 'absolute',
     bottom: 1,
-    fontSize: 8,
+    fontSize: 7,
     color: '#FFF',
     fontWeight: 'bold',
   },
   emptySeat: {
-    width: 36,
-    height: 36,
-    marginHorizontal: 2,
+    aspectRatio: 1,
+    marginHorizontal: 1,
   },
   aisle: {
-    width: 20,
-    height: 36,
-  },
-  facility: {
-    width: 36,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 2,
+    height: 38,
   },
   rearFacilities: {
     backgroundColor: '#E0E0E0',
@@ -621,11 +670,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   facilityLabel: {
     fontSize: 12,
     color: '#757575',
-    fontWeight: '600',
+    marginLeft: 8,
   },
   emptyContainer: {
     flex: 1,
@@ -637,7 +688,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#757575',
-    textAlign: 'center',
   },
   bottomBar: {
     backgroundColor: '#FFF',
@@ -651,7 +701,6 @@ const styles = StyleSheet.create({
   selectedSeatsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#212121',
     marginBottom: 8,
   },
   selectedSeatItem: {

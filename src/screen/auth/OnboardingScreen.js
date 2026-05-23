@@ -126,13 +126,13 @@ overflow: 'hidden',
 
     },
     wellcomeText: {
-        fontSize: 25,
+        fontSize: 30,
         fontWeight: '700',
         marginVertical: 12,
 
     },
     normalText: {
-        fontSize: 17,
+        fontSize: 20,
         fontWeight: 500,
         // fontStyle: 'italic',
     },

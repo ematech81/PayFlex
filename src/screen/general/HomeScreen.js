@@ -1,3 +1,5 @@
+
+
 // src/screen/HomeScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -24,7 +26,7 @@ import {
   Entypo,
   Feather,
 } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 
@@ -35,15 +37,11 @@ import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { useWallet } from 'context/WalletContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AddWalletFund from 'component/AddWalletFund';
-
-
-
-
-
+import { StatusBarComponent } from 'component/StatusBar';
 
 const { width, height } = Dimensions.get('window');
-const CARD_PADDING = 13;
-const ICON_SIZE = 22;
+const CARD_PADDING = 16;
+const ICON_SIZE = 24;
 
 // Detect if device is tablet
 const isTablet = () => {
@@ -60,49 +58,57 @@ const services = [
     id: 'betting',
     label: 'Betting',
     icon: <FontAwesome name="soccer-ball-o" size={ICON_SIZE} />,
-    screen: 'Betting', 
+    screen: 'Betting',
+    gradient: ['#FF6B6B', '#FF8E53'],
   },
   {
     id: 'jamb',
     label: 'JAMB',
-    icon: <FontAwesome6 name="credit-card" size={ICON_SIZE} stokeWidth='20' />,
-    screen: 'EducationPurchase', 
+    icon: <FontAwesome6 name="credit-card" size={ICON_SIZE} />,
+    screen: 'EducationPurchase',
+    gradient: ['#4E54C8', '#8F94FB'],
   },
   {
     id: 'airtim-cash',
     label: 'Airtime to Cash',
-   icon: <FontAwesome5 name="exchange-alt" size={ICON_SIZE}  stokeWidth='20'/>,
-    screen: 'Airtime-Cash', 
+    icon: <FontAwesome5 name="exchange-alt" size={ICON_SIZE} />,
+    screen: 'Airtime-Cash',
+    gradient: ['#11998E', '#38EF7D'],
   },
   {
     id: 'tv',
     label: 'TV Subs',
-    icon: <MaterialCommunityIcons name="television" size={ICON_SIZE}  stokeWidth='20'/>,
+    icon: <MaterialCommunityIcons name="television" size={ICON_SIZE} />,
     screen: 'TVSubscription',
+    gradient: ['#F857A6', '#FF5858'],
   },
   {
     id: 'flights',
-    label: 'Flights',
-    icon: <FontAwesome5 name="plane" size={ICON_SIZE} stokeWidth='20' />,
-    screen: 'TransportScreen', // Not implemented yet
+    label: 'Transport',
+    icon: <FontAwesome5 name="plane" size={ICON_SIZE} />,
+    screen: 'TransportScreen',
+    gradient: ['#A8EDEA', '#FED6E3'],
   },
   {
     id: 'hotels',
     label: 'Hotels',
-    icon: <Ionicons name="bed" size={ICON_SIZE} stokeWidth='20' />,
-    screen: 'FlightSearch', // Not implemented yet
+    icon: <Ionicons name="bed" size={ICON_SIZE} />,
+    screen: 'FlightSearch',
+    gradient: ['#FFA751', '#FFE259'],
   },
   {
     id: 'waec',
     label: 'WAEC',
-    icon: <MaterialCommunityIcons name="card-account-details" size={ICON_SIZE} stokeWidth='20' />,
-    screen: 'EducationPurchase', // Not implemented yet
+    icon: <MaterialCommunityIcons name="card-account-details" size={ICON_SIZE} />,
+    screen: 'EducationPurchase',
+    gradient: ['#667EEA', '#764BA2'],
   },
   {
     id: 'more',
     label: 'More',
-    icon: <Feather name="more-horizontal" size={ICON_SIZE} stokeWidth='20' />,
-    screen: 'AllServices', 
+    icon: <Feather name="more-horizontal" size={ICON_SIZE} />,
+    screen: 'AllServices',
+    gradient: ['#5F72BD', '#9B23EA'],
   },
 ];
 
@@ -111,25 +117,25 @@ const quickActions = [
   { 
     label: 'Airtime', 
     icon: 'call', 
-    bg: '#2563eb', 
+    gradient: ['#667EEA', '#764BA2'], 
     screen: 'Airtime' 
   },
   { 
     label: 'Data', 
     icon: 'wifi', 
-    bg: '#f97316', 
+    gradient: ['#F093FB', '#F5576C'], 
     screen: 'Data' 
   },
   {
     label: 'Electricity',
     icon: 'flash',
-    bg: '#16a34a',
+    gradient: ['#4FACFE', '#00F2FE'],
     screen: 'ElectricityPurchase',
   },
   {
     label: 'Invoice',
     icon: 'document-text',
-    bg: '#64748b',
+    gradient: ['#43E97B', '#38F9D7'],
     screen: 'Invoices',
   },
 ];
@@ -155,34 +161,30 @@ const ServiceCard = React.memo(({ service, onPress, themeColors }) => {
       }
       accessibilityState={{ disabled: isDisabled }}
     >
-      <View style={styles.serviceIconWrap}>
-        <View
-          style={[
-            styles.iconCircle,
-            { 
-              backgroundColor: `${themeColors.buttonBackground}15`,
-              opacity: isDisabled ? 0.5 : 1,
-            },
-          ]}
-        >
-          {React.cloneElement(service.icon, { 
-            color: themeColors.primary 
-          })}
-        </View>
+      <LinearGradient
+        colors={service.gradient}
+        style={[
+          styles.iconCircle,
+          { opacity: isDisabled ? 0.5 : 1 },
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {React.cloneElement(service.icon, { 
+          color: '#FFFFFF' 
+        })}
         {isDisabled && (
-          <View style={[
-            styles.comingSoonBadge, 
-            { backgroundColor: themeColors.primary }
-          ]}>
+          <View style={styles.comingSoonBadge}>
             <Text style={styles.comingSoonText}>Soon</Text>
           </View>
         )}
-      </View>
+      </LinearGradient>
       <Text 
         style={[
           styles.serviceLabel, 
           { color: themeColors.heading }
         ]}
+        numberOfLines={2}
       >
         {service.label}
       </Text>
@@ -202,15 +204,17 @@ const QuickActionItem = React.memo(({ action, onPress }) => (
     accessibilityRole="button"
     accessibilityHint={`Navigate to ${action.label} screen`}
   >
-    <View
-      style={[
-        styles.quickActionIcon,
-        { backgroundColor: action.bg },
-      ]}
+    <LinearGradient
+      colors={action.gradient}
+      style={styles.quickActionIcon}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
     >
-      <Ionicons name={action.icon} size={19} color="#fff" />
-    </View>
-    <Text style={styles.quickActionText}>{action.label}</Text>
+      <Ionicons name={action.icon} size={22} color="#fff" />
+    </LinearGradient>
+    <Text style={[styles.quickActionText, { color: '#1e293b' }]}>
+      {action.label}
+    </Text>
   </TouchableOpacity>
 ));
 
@@ -221,15 +225,13 @@ export default function HomeScreen({route}) {
   const navigation = useNavigation();
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
-  const { wallet,refreshWallet } = useWallet();
+  const { wallet, refreshWallet, transactions, fetchTransactions } = useWallet();
   const [user, setUser] = useState(null);
   
   // State
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  
 
   // Custom Hook for wallet balance management
   const {
@@ -239,19 +241,31 @@ export default function HomeScreen({route}) {
     toggleVisibility,
   } = useWalletBalance();
 
-useEffect(() => {
+  // Both light-mode and dark-mode gradients are dark — status bar icons must
+  // always be white. useFocusEffect re-applies on every tab focus so returning
+  // from other screens (which may set dark-content) doesn't break it.
+  useFocusEffect(
+    useCallback(() => {
+      StatusBar.setBarStyle('light-content');
+      if (Platform.OS === 'android') {
+        StatusBar.setBackgroundColor('transparent');
+        StatusBar.setTranslucent(true);
+      }
+    }, [])
+  );
+
+  useEffect(() => {
     refreshWallet();
   }, []);
 
-
-
+  useEffect(() => {
+    fetchTransactions({ limit: 5, page: 1 }).catch(() => {});
+  }, []);
 
   useEffect(() => {
-    // 1️⃣ If user was passed from navigation, use it
     if (route.params?.user) {
       setUser(route.params.user);
     } else {
-      // 2️⃣ Otherwise, load from AsyncStorage
       loadUserFromStorage();
     }
   }, []);
@@ -275,7 +289,6 @@ useEffect(() => {
     setError(null);
     
     try {
-      // TODO: Refresh wallet balance from API
       await new Promise(resolve => setTimeout(resolve, 1000));
     } catch (err) {
       setError('Failed to refresh. Please try again.');
@@ -313,38 +326,64 @@ useEffect(() => {
   // Get user's first name
   const userName = wallet?.user?.name?.split(' ')[0] || 'User';
 
+  const formatTxDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  };
+
+  const getTxName = (type) => {
+    const names = {
+      airtime: 'Airtime Recharge',
+      data: 'Data Bundle',
+      electricity: 'Electricity Payment',
+      tv: 'TV Subscription',
+      education: 'Exam Pin',
+      wallet_topup: 'Wallet Top-up',
+      referral_bonus: 'Referral Bonus',
+      transport_booking: 'Bus Booking',
+      flight_booking: 'Flight Booking',
+    };
+    return names[type] || type;
+  };
+
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: themeColors.primary }]}
+      style={[styles.container, { backgroundColor: themeColors.background }]}
     >
-      <StatusBar
-        barStyle= "light-content"
-        backgroundColor="transparent"
-        translucent
-      />
 
-      {/* Header Section */}
-      <View style={styles.headerWrapper}>
+      {/* Header Section with Gradient */}
+      <LinearGradient
+        colors={isDarkMode ? ['#1a1a2e', '#16213e'] : ['#667EEA', '#764BA2']}
+        style={styles.headerWrapper}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
         {/* Top Bar */}
         <View style={styles.header}>
           <View style={styles.user}>
             <View>
-              <Text style={[styles.greetingTime, { color: themeColors.card }]}>
+              <Text style={styles.greetingTime}>
                 {getGreeting()}
               </Text>
-              <Text style={[styles.greeting, { color: themeColors.card }]}>
-              {user ? user.firstName : ''}
+              <Text style={styles.greeting}>
+                {user ? user.firstName : 'Welcome'}
               </Text>
             </View>
             <TouchableOpacity 
-              style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+              style={styles.avatar}
               accessibilityLabel="Notifications"
               accessibilityRole="button"
+              onPress={() => navigation.navigate('Notifications')}
             >
-              <Ionicons name="notifications-outline" size={20} color="#ffffff" />
-              {/* Notification Badge */}
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>3</Text>
+              <View style={styles.notificationIconContainer}>
+                <Ionicons name="notifications-outline" size={24} color="#ffffff" />
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>3</Text>
+                </View>
               </View>
             </TouchableOpacity>
           </View>
@@ -352,84 +391,121 @@ useEffect(() => {
 
         {/* Enhanced Wallet Card with Glassmorphism */}
         <View style={styles.walletWrapper}>
-           
-            <View style={styles.walletInner}>
-              {/* Top Section */}
-              <View style={styles.walletTop}>
-                <View style={styles.historyContainer}>
-                  <View style={styles.balanceContainer}>
-                    <Text style={styles.walletLabel}>
-                      Wallet Balance
-                    </Text>
+          <BlurView intensity={20} tint={isDarkMode ? "dark" : "light"} style={styles.walletBlur}>
+            <LinearGradient
+              colors={isDarkMode 
+                ? ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)'] 
+                : ['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
+              style={styles.walletGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.walletInner}>
+                {/* Top Section */}
+                <View style={styles.walletTop}>
+                  <View style={styles.balanceHeader}>
+                    <View style={styles.balanceContainer}>
+                      <Text style={[
+                        styles.walletLabel,
+                        { color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.6)' }
+                      ]}>
+                        Wallet Balance
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.balanceToggle}
+                        onPress={toggleVisibility}
+                        accessibilityLabel={
+                          balanceVisible ? 'Hide balance' : 'Show balance'
+                        }
+                        accessibilityRole="button"
+                      >
+                        <Entypo
+                          name={balanceVisible ? 'eye' : 'eye-with-line'}
+                          size={18}
+                          color={isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.6)'}
+                        />
+                      </TouchableOpacity>
+                    </View>
+
                     <TouchableOpacity
-                      style={styles.balanceToggle}
-                      onPress={toggleVisibility}
-                      accessibilityLabel={
-                        balanceVisible ? 'Hide balance' : 'Show balance'
-                      }
+                      style={styles.historyBtn}
+                      onPress={() => navigation.navigate('Orders')}
+                      accessibilityLabel="View transaction history"
                       accessibilityRole="button"
                     >
-                      <Entypo
-                        name={balanceVisible ? 'eye' : 'eye-with-line'}
-                        size={20}
-                        color="rgba(255,255,255,0.9)"
+                      <Ionicons 
+                        name="time-outline" 
+                        size={16} 
+                        color={isDarkMode ? 'rgba(255,255,255,0.9)' : '#667EEA'} 
                       />
+                      <Text style={[
+                        styles.historyText,
+                        { color: isDarkMode ? 'rgba(255,255,255,0.9)' : '#667EEA' }
+                      ]}>
+                        History
+                      </Text>
                     </TouchableOpacity>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.historyBtn}
-                    onPress={() => navigation.navigate('Orders')}
-                    accessibilityLabel="View transaction history"
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.historyText}>History</Text>
-                  </TouchableOpacity>
-                </View>
+                  {/* Balance Display */}
+                  <View style={styles.balanceWrapper}>
+                    {isLoading ? (
+                      <ActivityIndicator size="large" color="#667EEA" />
+                    ) : (
+                      <Text style={[
+                        styles.walletAmount,
+                        { color: isDarkMode ? '#ffffff' : '#1a1a2e' }
+                      ]}>
+                        {formattedBalance}
+                      </Text>
+                    )}
+                  </View>
 
-                {/* Balance Display */}
-                <View style={styles.balanceWrapper}>
-                  {isLoading ? (
-                    <ActivityIndicator size="large" color="#471c1cff" />
-                  ) : (
-                    <Text style={styles.walletAmount}>
-                      {/* {walletBalance} */}
-                      {formattedBalance}
-                    </Text>
-                  )}
-                </View>
+                  {/* Actions */}
+                  <View style={styles.walletActions}>
+                    <TouchableOpacity
+                      style={styles.actionBtn}
+                      onPress={() => navigation.navigate('Wallet')}
+                      activeOpacity={0.8}
+                      accessibilityLabel="Top up wallet"
+                      accessibilityRole="button"
+                    >
+                      <LinearGradient
+                        colors={['#667EEA', '#764BA2']}
+                        style={styles.actionBtnGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                      >
+                        <Ionicons name="add-circle-outline" size={20} color="#ffffff" />
+                        <Text style={styles.topText}>Top up</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
 
-                {/* Actions */}
-                <View style={styles.walletActions}>
-                  <TouchableOpacity
-                    style={styles.actionBtn}
-                    onPress={() => navigation.navigate('Wallet')}
-                    activeOpacity={0.8}
-                    accessibilityLabel="Top up wallet"
-                    accessibilityRole="button"
-                  >
-                    <Ionicons name="add-circle" size={18} color="#ffffff" />
-                    <Text style={styles.topText}>Top up</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.cardDetails}
-                    onPress={() => navigation.navigate('Wallet')}
-                    accessibilityLabel="View linked card details"
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.actionText}>
-                      Linked Card *****78903
-                    </Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.cardDetails}
+                      onPress={() => navigation.navigate('Wallet')}
+                      accessibilityLabel="View linked card details"
+                      accessibilityRole="button"
+                    >
+                      <Ionicons 
+                        name="card-outline" 
+                        size={16} 
+                        color={isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)'} 
+                      />
+                      <Text style={[
+                        styles.actionText,
+                        { color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)' }
+                      ]}>
+                        •••• 7890
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
+            </LinearGradient>
+          </BlurView>
         </View>
-        {/* <TouchableOpacity
-        onPress={navigation.navigate('TransactionDetails')}
-        ><Text style={{fontSize: 22, paddingLeft: 20, color: '#ffffff'}}>Go to transaction details</Text></TouchableOpacity> */}
-      </View>
+      </LinearGradient>
 
       {/* Main Content */}
       <View
@@ -452,45 +528,33 @@ useEffect(() => {
         >
           {/* Error Banner */}
           {error && (
-            <View
-              style={[
-                styles.errorBanner,
-                { backgroundColor: `${themeColors.destructive}20` },
-              ]}
-            >
+            <View style={styles.errorBanner}>
               <Ionicons
                 name="alert-circle"
-                size={16}
-                color={themeColors.destructive}
+                size={20}
+                color="#EF4444"
               />
-              <Text
-                style={[styles.errorText, { color: themeColors.destructive }]}
-              >
+              <Text style={styles.errorText}>
                 {error}
               </Text>
               <TouchableOpacity onPress={() => setError(null)}>
                 <Ionicons
                   name="close"
-                  size={16}
-                  color={themeColors.destructive}
+                  size={20}
+                  color="#EF4444"
                 />
               </TouchableOpacity>
             </View>
           )}
 
           {/* Quick Actions */}
-          <View>
+          <View style={styles.quickActionsContainer}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-                Quick Action
+                Quick Actions
               </Text>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={[styles.quickActions, { backgroundColor: themeColors.card }]}
-              contentContainerStyle={styles.quickActionsContent}
-            >
+            <View style={[styles.quickActions, { backgroundColor: themeColors.card }]}>
               {quickActions.map((action, index) => (
                 <QuickActionItem
                   key={index}
@@ -498,20 +562,20 @@ useEffect(() => {
                   onPress={() => handleQuickActionPress(action.screen)}
                 />
               ))}
-            </ScrollView>
+            </View>
           </View>
 
           {/* Services Grid */}
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-              Services
+              Our Services
             </Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('AllServices')}
               accessibilityLabel="View all services"
             >
-              <Text style={[styles.viewAll, { color: themeColors.subheading }]}>
-                View All
+              <Text style={styles.viewAll}>
+                View All →
               </Text>
             </TouchableOpacity>
           </View>
@@ -533,12 +597,12 @@ useEffect(() => {
           <PromoCard
             title="🎉 Refer And Win"
             subtitle="Invite your Friends and earn up to ₦10,000"
-            buttonText="Refer"
+            buttonText="Refer Now"
             onPress={() => navigation.navigate('Referral')}
-            gradientColors={['#FFD98E', '#FFB800']}
+            gradientColors={['#FA8BFF', '#2BD2FF', '#2BFF88']}
           />
 
-          {/* Recent Transactions Preview (Optional) */}
+          {/* Recent Transactions Preview */}
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
               Recent Transactions
@@ -547,17 +611,17 @@ useEffect(() => {
               onPress={() => navigation.navigate('Orders')}
               accessibilityLabel="View all transactions"
             >
-              <Text style={[styles.viewAll, { color: themeColors.subheading }]}>
-                View All
+              <Text style={styles.viewAll}>
+                View All →
               </Text>
             </TouchableOpacity>
           </View>
 
           <View style={[styles.section, { backgroundColor: themeColors.card }]}>
-            {wallet?.recentTransactions?.length > 0 ? (
-              wallet.recentTransactions.slice(0, 3).map((tx, index) => (
+            {transactions.length > 0 ? (
+              transactions.slice(0, 3).map((tx, index) => (
                 <TouchableOpacity
-                  key={index}
+                  key={tx._id || index}
                   style={[
                     styles.txRow,
                     { borderBottomColor: themeColors.border },
@@ -569,23 +633,23 @@ useEffect(() => {
                   }
                 >
                   <View style={styles.txLeft}>
-                    <View
-                      style={[
-                        styles.txIcon,
-                        { backgroundColor: `${themeColors.primary}15` },
-                      ]}
+                    <LinearGradient
+                      colors={[themeColors.gradientStart, themeColors.gradientEnd]}
+                      style={styles.txIcon}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
                     >
                       <Ionicons
                         name="receipt-outline"
-                        size={20}
-                        color={themeColors.primary}
+                        size={22}
+                        color="#FFFFFF"
                       />
-                    </View>
+                    </LinearGradient>
                     <View>
                       <Text
                         style={[styles.txTitle, { color: themeColors.heading }]}
                       >
-                        {tx.type}
+                        {getTxName(tx.type)}
                       </Text>
                       <Text
                         style={[
@@ -593,32 +657,57 @@ useEffect(() => {
                           { color: themeColors.subheading },
                         ]}
                       >
-                        {tx.date}
+                        {formatTxDate(tx.createdAt)}
                       </Text>
                     </View>
                   </View>
-                  <Text
-                    style={[
-                      styles.txAmount,
+                  <View style={styles.txRight}>
+                    <Text
+                      style={[
+                        styles.txAmount,
+                        {
+                          color: tx.status === 'success' || tx.status === 'completed'
+                            ? themeColors.success
+                            : themeColors.error,
+                        },
+                      ]}
+                    >
+                      {formatCurrency(tx.amount, 'NGN')}
+                    </Text>
+                    <View style={[
+                      styles.statusBadge,
                       {
-                        color:
-                          tx.status === 'success'
-                            ? '#16a34a'
-                            : themeColors.destructive,
-                      },
-                    ]}
-                  >
-                    {formatCurrency(tx.amount, 'NGN')}
-                  </Text>
+                        backgroundColor: tx.status === 'success' || tx.status === 'completed'
+                          ? `${themeColors.success}20`
+                          : `${themeColors.error}20`,
+                      }
+                    ]}>
+                      <Text style={[
+                        styles.statusText,
+                        {
+                          color: tx.status === 'success' || tx.status === 'completed'
+                            ? themeColors.success
+                            : themeColors.error,
+                        }
+                      ]}>
+                        {tx.status}
+                      </Text>
+                    </View>
+                  </View>
                 </TouchableOpacity>
               ))
             ) : (
               <View style={styles.emptyTransactions}>
-                <Ionicons
-                  name="receipt-outline"
-                  size={48}
-                  color={themeColors.subtext}
-                />
+                <LinearGradient
+                  colors={['#F3F4F6', '#E5E7EB']}
+                  style={styles.emptyIcon}
+                >
+                  <Ionicons
+                    name="receipt-outline"
+                    size={40}
+                    color="#9CA3AF"
+                  />
+                </LinearGradient>
                 <Text
                   style={[
                     styles.emptyText,
@@ -627,11 +716,19 @@ useEffect(() => {
                 >
                   No recent transactions
                 </Text>
+                <Text
+                  style={[
+                    styles.emptySubtext,
+                    { color: themeColors.subtext },
+                  ]}
+                >
+                  Your transaction history will appear here
+                </Text>
               </View>
             )}
           </View>
 
-           {__DEV__ && <AddWalletFund />}
+          {__DEV__ && <AddWalletFund />}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -647,315 +744,364 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   headerWrapper: {
-    height: isTablet() ? height * 0.33 : height * 0.45,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 10,
+    paddingBottom: 24,
   },
   header: {
-    marginTop: 30,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: CARD_PADDING,
+    marginBottom: 20,
   },
   user: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    flexDirection: 'row',
-    width: '100%',
   },
   greetingTime: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '500',
+    color: 'rgba(255,255,255,0.8)',
     marginBottom: 4,
-    opacity: 0.9,
   },
   greeting: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    position: 'relative',
+  },
+  notificationIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   notificationBadge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#ef4444',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    top: 2,
+    right: 2,
+    backgroundColor: '#EF4444',
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 4,
     borderWidth: 2,
     borderColor: '#fff',
   },
   notificationBadgeText: {
     color: '#fff',
-    fontSize: 9,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '700',
   },
   walletWrapper: {
-    marginTop: 16,
-    marginHorizontal: 16,
+    marginHorizontal: CARD_PADDING,
+  },
+  walletBlur: {
+    borderRadius: 24,
+    overflow: 'hidden',
   },
   walletGradient: {
-    borderRadius: 20,
-    overflow: 'hidden',
+    borderRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowRadius: 16,
+    elevation: 10,
   },
   walletInner: {
-    padding: 20,
+    padding: 24,
   },
-  balanceWrapper: {
-    marginVertical: 20,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  historyContainer: {
+  balanceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
+    marginBottom: 8,
   },
   balanceContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   balanceToggle: {
     padding: 4,
   },
   walletTop: {
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    width: '100%',
   },
   walletLabel: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  balanceWrapper: {
+    marginVertical: 16,
+    alignItems: 'center',
   },
   walletAmount: {
-    fontSize: 36,
+    fontSize: 42,
     fontWeight: '800',
-    color: '#ffffff',
     letterSpacing: 0.5,
   },
   walletActions: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 10,
+    marginTop: 16,
+    gap: 12,
   },
   actionBtn: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  actionBtnGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#ccc',
-    // backgroundColor: 'rgba(255,255,255,0.15)',
-    gap: 6,
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 8,
   },
   topText: {
     color: '#ffffff',
-    fontWeight: '600',
-    fontSize: 12,
+    fontWeight: '700',
+    fontSize: 15,
   },
   historyBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   cardDetails: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   historyText: {
-    color: 'rgba(255,255,255,0.9)',
     fontWeight: '600',
-    fontSize: 13,
+    fontSize: 14,
   },
   actionText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 1,
   },
   mainContent: {
     flex: 1,
-    paddingTop: 10,
-    borderTopRightRadius: 24,
-    borderTopLeftRadius: 24,
-    marginTop: -7,
+    paddingTop: 20,
+    borderTopRightRadius: 28,
+    borderTopLeftRadius: 28,
+    marginTop: -8,
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 16,
     marginBottom: 16,
-    gap: 8,
+    gap: 12,
+    backgroundColor: '#FEE2E2',
   },
   errorText: {
     flex: 1,
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
   },
   section: {
-    marginTop: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    borderRadius: 20,
+    marginBottom: 20,
+    borderRadius: 24,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '700',
+    letterSpacing: 0.3,
   },
   viewAll: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
+    color: '#667EEA', // matches gradientStart — update via themeColors.gradientStart if dynamic
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: CARD_PADDING,
-    paddingVertical: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 20,
   },
   serviceCard: {
-    width: (width - CARD_PADDING * 2 - 28) / 4,
+    width: (width - CARD_PADDING * 2 - 24) / 4,
     alignItems: 'center',
-    marginBottom: 35,
-  },
-  serviceIconWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    position: 'relative',
-    // backgroundColor: 'red'
+    marginBottom: 24,
   },
   iconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    // backgroundColor: '#000'
+    marginBottom: 10,
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   comingSoonBadge: {
     position: 'absolute',
-    bottom: -4,
-    right: -4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
+    bottom: -6,
+    right: -6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: '#EF4444',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   comingSoonText: {
     color: '#ffffff',
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '700',
   },
   serviceLabel: {
     fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
+    lineHeight: 16,
+  },
+  quickActionsContainer: {
+    marginBottom: 8,
   },
   quickActions: {
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    borderRadius: 20,
-    paddingVertical: 16,
-  },
-  quickActionsContent: {
-    paddingHorizontal: CARD_PADDING,
+    borderRadius: 24,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: width - CARD_PADDING * 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   quickActionItem: {
     alignItems: 'center',
     width: '23%',
   },
   quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   quickActionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1e293b',
+    textAlign: 'center',
   },
   txRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: CARD_PADDING,
     borderBottomWidth: 1,
   },
   txLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   txIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   txTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
+    marginBottom: 4,
   },
   txDate: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 13,
+  },
+  txRight: {
+    alignItems: 'flex-end',
   },
   txAmount: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
+    marginBottom: 6,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'capitalize',
   },
   emptyTransactions: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
+    paddingVertical: 56,
+  },
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   emptyText: {
-    fontSize: 14,
-    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  emptySubtext: {
+    fontSize: 13,
   },
 });

@@ -1,13 +1,14 @@
-
 // components/shared/modals/PinModal.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
-  Dimensions,
+  ScrollView,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThem } from 'constants/useTheme';
@@ -15,12 +16,13 @@ import { colors } from 'constants/colors';
 import PinInput from '../INPUT/pinInput';
 import PayButton from '../BUTTONS/payButton';
 
-
-const { height } = Dimensions.get('window');
-
 /**
  * PIN Modal Component
  * Reusable modal for PIN entry
+ *
+ * Keyboard avoidance: KeyboardAvoidingView is broken inside Modal on Android
+ * (it measures against the main window, not the modal window). We listen to
+ * Keyboard events directly and lift the sheet via marginBottom instead.
  */
 
 export default function PinModal({
@@ -37,6 +39,29 @@ export default function PinModal({
   const themeColors = isDarkMode ? colors.dark : colors.light;
   const [pin, setPin] = useState('');
   const [localError, setLocalError] = useState(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // Clear stale keyboard offset whenever the modal is hidden
+  useEffect(() => {
+    if (!visible) setKeyboardHeight(0);
+  }, [visible]);
 
   const handleSubmit = () => {
     if (pin.length !== 4) {
@@ -59,7 +84,7 @@ export default function PinModal({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={handleClose}
       statusBarTranslucent
     >
@@ -67,7 +92,10 @@ export default function PinModal({
         <View
           style={[
             styles.container,
-            { backgroundColor: themeColors.background },
+            {
+              backgroundColor: themeColors.background,
+              marginBottom: keyboardHeight,
+            },
           ]}
         >
           {/* Close Button */}
@@ -80,8 +108,13 @@ export default function PinModal({
             <Ionicons name="close-circle" size={28} color={themeColors.primary} />
           </TouchableOpacity>
 
-          {/* Content */}
-          <View style={styles.content}>
+          {/* Scrollable content so nothing clips on small screens */}
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
             <Ionicons
               name="shield-checkmark"
               size={48}
@@ -126,7 +159,7 @@ export default function PinModal({
                 </Text>
               </TouchableOpacity>
             )}
-          </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -138,22 +171,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
-    alignItems: 'center',
   },
   container: {
     width: '100%',
-    minHeight: height * 0.45,
-    // borderRadius: 24,
-    padding: 24,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-
+    padding: 24,
+    paddingBottom: 32,
   },
   closeButton: {
     alignSelf: 'flex-end',
+    marginBottom: 4,
   },
   content: {
     alignItems: 'center',
+    paddingBottom: 8,
   },
   icon: {
     marginBottom: 16,
@@ -175,7 +207,8 @@ const styles = StyleSheet.create({
   },
   forgotButton: {
     marginTop: 16,
-    padding: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   forgotText: {
     fontSize: 14,

@@ -26,7 +26,7 @@ import { MobileProviders, TvProviders, ElectricityProviders, customImages } from
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import AppImage from 'component/allImage';
 import { StatusBarComponent } from 'component/StatusBar';
 
@@ -216,7 +216,7 @@ export default function ShareReceiptScreen({ navigation, route }) {
       
       // Read the image as base64
       const base64 = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
       
       // Create HTML with embedded image
@@ -420,11 +420,10 @@ export default function ShareReceiptScreen({ navigation, route }) {
           }}
         >
         {/* Receipt Card with Background Image */}
-        <ImageBackground 
-          ref={receiptRef}
+        <ImageBackground
           style={styles.receiptContainer}
-          source={customImages.ReceiptBackground} //  Canva background here
-            resizeMode="cover"
+          source={customImages.ReceiptBackground}
+          resizeMode="cover"
         >
           
           {/* Receipt Content Overlay */}
@@ -526,7 +525,7 @@ export default function ShareReceiptScreen({ navigation, route }) {
               <ActivityIndicator size="small" color={themeColors.primary} />
             ) : (
               <>
-                <AntDesign name="pdffile1" size={24} color={themeColors.primary} />
+                <Ionicons name="document-text-outline" size={24} color={themeColors.primary} />
                 <Text style={[styles.shareButtonText, { color: themeColors.primary }]}>
                   Share as PDF
                 </Text>

@@ -207,7 +207,7 @@ const MeterNumberInput = ({
             </View>
           )}
           
-          {customerInfo.outstandingBalance && (
+          {customerInfo.outstandingBalance > 0 && (
             <View style={styles.customerDetailRow}>
               <Text style={[styles.detailLabel, { color: themeColors.subheading }]}>
                 Outstanding:
@@ -542,7 +542,7 @@ const validateElectricityPayment = useCallback((paymentData) => {
         title="Electricity"
         onBackPress={() => navigation.goBack()}
         rightText="History"
-        onRightPress={() => navigation.navigate('MainTabs', {screen: 'Orders'})}
+        onRightPress={() => navigation.navigate('Orders')}
       />
 
       <ScrollView 

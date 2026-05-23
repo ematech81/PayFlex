@@ -351,6 +351,7 @@ function AppContent({ initialRoute, navigationRef }) {
                {/* =====home and service screens======= */}
 
               <Stack.Screen name="MainTabs" component={BottomTabs} />
+              <Stack.Screen name="Orders" component={OrdersScreen} />
               <Stack.Screen name="Data" component={DataPurchaseScreen} />
               <Stack.Screen name="Airtime" component={AirtimeScreen} />
              

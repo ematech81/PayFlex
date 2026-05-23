@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,8 @@ import {
   Modal,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThem } from 'constants/useTheme';
@@ -16,12 +17,12 @@ import { colors } from 'constants/colors';
 import { FormatUtils } from 'UTILS/formatUtils';
 import PayButton from '../BUTTONS/payButton';
 
-
-const { height } = Dimensions.get('window');
-
 /**
  * Confirmation Modal Component
  * Reusable modal for transaction confirmation
+ *
+ * Keyboard avoidance: uses Keyboard listeners + marginBottom instead of
+ * KeyboardAvoidingView, which is unreliable inside Modal on Android.
  */
 
 export default function ConfirmationModal({
@@ -40,6 +41,28 @@ export default function ConfirmationModal({
 }) {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!visible) setKeyboardHeight(0);
+  }, [visible]);
 
   return (
     <Modal
@@ -53,7 +76,10 @@ export default function ConfirmationModal({
         <View
           style={[
             styles.container,
-            { backgroundColor: themeColors.background },
+            {
+              backgroundColor: themeColors.background,
+              marginBottom: keyboardHeight,
+            },
           ]}
         >
           {/* Header */}
@@ -73,6 +99,8 @@ export default function ConfirmationModal({
           <ScrollView
             style={styles.content}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
           >
             {/* Amount */}
             <View style={styles.amountContainer}>
@@ -223,8 +251,7 @@ const styles = StyleSheet.create({
   container: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    minHeight: height * 0.55,
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
@@ -282,7 +309,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    width: '200'
   },
   providerLogo: {
     width: 20,
@@ -307,6 +333,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 20,
     paddingTop: 16,
+    paddingBottom: 24,
     gap: 12,
   },
   cancelButton: {

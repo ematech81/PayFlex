@@ -311,7 +311,7 @@ const renderServiceDetails = (txn, colors) => {
           Transaction Details
         </Text>
         <HistoryComponent
-  onPress={() => navigation.navigate('MainTabs', { screen: 'Orders' })}
+  onPress={() => navigation.navigate('Orders')}
 />
 
       </View>
@@ -356,7 +356,7 @@ const renderServiceDetails = (txn, colors) => {
           {renderServiceDetails(transaction, themeColors)}
           
           {/* Commission & Discount */}
-          {(transaction.commission || transaction.discount) && (
+          {(transaction.commission > 0 || transaction.discount > 0) && (
             <>
               {transaction.commission > 0 && (
                 <DetailRow

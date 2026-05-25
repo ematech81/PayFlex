@@ -30,11 +30,10 @@ const InvoiceDetailsComponent = ({
     }
   };
 
-  // Set default due date to today (September 04, 2025, 01:52 PM WAT)
-  const today = new Date('2025-09-04T13:52:00Z'); // 01:52 PM WAT
+  const today = new Date();
   useEffect(() => {
     if (!dueDate) setDueDate(today);
-  }, [dueDate]);
+  }, []);
 
   return (
     <View style={[styles.section, { backgroundColor: themeColors.card }]}>
@@ -67,7 +66,7 @@ const InvoiceDetailsComponent = ({
       </TouchableOpacity>
       {showDatePicker && (
         <DateTimePicker
-          value={dueDate || today}
+          value={dueDate || new Date()}
           mode="date"
           display="default"
           onChange={handleDateChange}

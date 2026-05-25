@@ -41,7 +41,7 @@ const InvoiceDetailsScreen = ({ route }) => {
   const handleConfirmPin = () => {
     if (pin.length === 4) {
       // Example: Assume 4-digit PIN
-      setInvoicePaid(invoice.id);
+      setInvoicePaid(invoice._id || invoice.id);
       setPin('');
       setIsPinModalVisible(false);
       Alert.alert('Success', 'Invoice marked as Paid');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,6 +10,7 @@ import {
   Text,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useWallet } from 'context/WalletContext';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
@@ -28,6 +29,19 @@ const InvoiceCreationScreen = ({ route }) => {
   const navigation = useNavigation();
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
+  const isEditMode = !!invoice?.id;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: true,
+      title: isEditMode ? 'Edit Invoice' : 'New Invoice',
+      headerLeft: () => (
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 8, padding: 4 }}>
+          <Ionicons name="arrow-back" size={24} color={themeColors.heading} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, themeColors, isEditMode]);
   const [selectedCustomer, setSelectedCustomer] = useState(
     invoice?.customer || null
   );
@@ -92,7 +106,7 @@ const InvoiceCreationScreen = ({ route }) => {
         invoice?.id ||
         `INV-${String((invoice?.id?.split('-')[1] || 0) + 1).padStart(2, '0')}`,
     };
-    navigation.navigate('InvoiceProcessing', { invoice: newInvoice });
+    navigation.navigate('InvoiceDetails', { invoice: newInvoice });
   };
 
   const handleEditCustomer = (customer) => {
@@ -178,7 +192,7 @@ const InvoiceCreationScreen = ({ route }) => {
               ]}
               onPress={handleCreateInvoice}
             >
-              <Text style={styles.buttonText}>Create Invoice</Text>
+              <Text style={styles.buttonText}>{isEditMode ? 'Update Invoice' : 'Create Invoice'}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[

@@ -1,4 +1,6 @@
 
+
+// src/screen/DataPurchaseScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -8,20 +10,22 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Image,
-  ActivityIndicator
+  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 // Shared Components
 import {
   ScreenHeader,
   TabSelector,
-  ProviderSelector,
   PayButton,
   ConfirmationModal,
   PinModal,
   ResultModal,
-  LoadingOverlay, 
+  LoadingOverlay,
   EmptyState,
 } from 'component/SHARED';
 
@@ -39,6 +43,7 @@ import { useThem } from 'constants/useTheme';
 import { StatusBarComponent } from 'component/StatusBar';
 import { getDataPlans, purchaseData } from 'AuthFunction/paymentService';
 
+const { width } = Dimensions.get('window');
 
 /**
  * Utility: Remove amount prefix from plan name
@@ -46,81 +51,108 @@ import { getDataPlans, purchaseData } from 'AuthFunction/paymentService';
  */
 const cleanPlanName = (name) => {
   if (!name) return '';
-  // Remove patterns like "N1000 ", "₦2000 ", etc.
   return name.replace(/^[N₦]\d+(?:\.\d{2})?\s+/, '').trim();
 };
 
 /**
- * Data Plan Card Component (Memoized)
+ * Enhanced Data Plan Card Component (Memoized)
  */
 const DataPlanCard = React.memo(({ plan, onPress, themeColors, isSelected, providerLogo }) => (
   <TouchableOpacity
     style={[
       styles.planCard,
-      { 
-        backgroundColor: themeColors.card,
-        borderColor: isSelected ? themeColors.primary : themeColors.border,
-        borderWidth: isSelected ? 2 : 1,
-      },
+      { backgroundColor: themeColors.card },
+      isSelected && styles.planCardSelected,
     ]}
     onPress={onPress}
     activeOpacity={0.7}
     accessibilityLabel={`${plan.name} data plan`}
     accessibilityRole="button"
   >
+    {/* Selection Indicator */}
+    {isSelected && (
+      <LinearGradient
+        colors={['#667EEA', '#764BA2']}
+        style={styles.selectionIndicator}
+      />
+    )}
+
     {/* Header with logo + plan name */}
     <View style={styles.planHeader}>
       <View style={styles.headerLeft}>
         {providerLogo && (
-          <Image source={providerLogo} style={styles.providerLogo} />
+          <View style={styles.logoContainer}>
+            <Image source={providerLogo} style={styles.providerLogo} />
+          </View>
         )}
-        <Text style={[styles.planName, { color: themeColors.heading }]}>
-          {cleanPlanName(plan.name)}
-        </Text>
+        <View style={styles.planNameContainer}>
+          <Text 
+            style={[styles.planName, { color: themeColors.heading }]}
+            numberOfLines={1}
+          >
+            {cleanPlanName(plan.name)}
+          </Text>
+          {plan.validity && (
+            <View style={styles.validityRow}>
+              <Ionicons name="time-outline" size={14} color={themeColors.subtext} />
+              <Text style={[styles.planValidity, { color: themeColors.subtext }]}>
+                {plan.validity}
+              </Text>
+            </View>
+          )}
+        </View>
       </View>
+
+      {isSelected && (
+        <View style={styles.selectedIconContainer}>
+          <LinearGradient
+            colors={['#667EEA', '#764BA2']}
+            style={styles.selectedIcon}
+          >
+            <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+          </LinearGradient>
+        </View>
+      )}
     </View>
 
     {/* Plan details */}
     <View style={styles.planDetails}>
       <View style={styles.planInfo}>
         <View style={styles.priceRow}>
-          <Text style={[styles.planPrice, { color: themeColors.primary }]}>
+          <Text style={[styles.planPrice, { color: '#667EEA' }]}>
             {formatCurrency(Number(plan.variation_amount), 'NGN')}
           </Text>
 
           {plan.name.toLowerCase().includes('oneoff') && (
-            <View style={[styles.inlineBadge, { backgroundColor: `${themeColors.primary}20` }]}>
-              <Text style={[styles.inlineBadgeText, { color: themeColors.primary }]}>
-                One-Time
-              </Text>
+            <View style={styles.inlineBadge}>
+              <LinearGradient
+                colors={['#F093FB', '#F5576C']}
+                style={styles.badgeGradient}
+              >
+                <Text style={styles.inlineBadgeText}>One-Time</Text>
+              </LinearGradient>
             </View>
           )}
         </View>
 
         {plan.allowance && (
-          <Text style={[styles.planData, { color: themeColors.subheading }]}>
-            {plan.allowance}
-          </Text>
-        )}
-        
-        {plan.validity && (
-          <Text style={[styles.planValidity, { color: themeColors.subtext }]}>
-            Valid for {plan.validity}
-          </Text>
+          <View style={styles.allowanceRow}>
+            <Ionicons name="download-outline" size={16} color={themeColors.subheading} />
+            <Text style={[styles.planData, { color: themeColors.subheading }]}>
+              {plan.allowance}
+            </Text>
+          </View>
         )}
       </View>
-
-      {isSelected && (
-        <View style={[styles.selectedIcon, { backgroundColor: themeColors.primary }]}>
-          <Text style={styles.checkmark}>✓</Text>
-        </View>
-      )}
     </View>
 
     {plan.name.toLowerCase().includes('oneoff') && (
-      <Text style={[styles.planNote, { color: themeColors.destructive }]}>
-        No auto renewal. To be renewed manually.
-      </Text>
+      <View style={styles.noteContainer}>
+        <Ionicons name="information-circle-outline" size={14} color="#F5576C" />
+        <Text style={styles.planNote}>
+          No auto renewal. To be renewed manually.
+        </Text>
+      </View>
     )}
   </TouchableOpacity>
 ));
@@ -151,10 +183,8 @@ export default function DataPurchaseScreen({ navigation, route }) {
     
     const errors = {};
 
-    // Validate phone number with RegEx (remove whitespace first)
     const cleanPhone = (paymentData.phoneNumber || '').replace(/\s/g, '');
     const phoneRegex = /^0\d{10}$/;
-    // const phoneRegex = /^0[7-9][0-1]\d{8}$/; // Nigerian phone number format 
     
     if (!cleanPhone) {
       errors.phoneNumber = 'Phone number is required';
@@ -172,7 +202,6 @@ export default function DataPurchaseScreen({ navigation, route }) {
       errors.planId = 'Please select a data plan';
     }
 
-    // Check both planAmount and amount (for compatibility with usePaymentFlow)
     const amountToValidate = paymentData.planAmount || paymentData.amount;
     if (!amountToValidate || amountToValidate < 50) {
       errors.amount = 'Invalid plan amount';
@@ -182,22 +211,18 @@ export default function DataPurchaseScreen({ navigation, route }) {
     console.log('✅ Validation result:', { isValid, errors });
     setValidationErrors(errors);
 
-    // ✅ Return object with 'isValid' property (not 'valid')
     return {
       isValid,
       errors,
     };
   }, []);
 
- 
-
   // UNIFIED PAYMENT HOOK
-
   const payment = useServicePayment({
     serviceName: 'Data',
     validatePayment: validateDataPayment,
     executePurchase: async (pin, paymentData) => {
-      return await purchaseData(pin, paymentData); // ✅ Correct
+      return await purchaseData(pin, paymentData);
     },
     navigation,
     route,
@@ -215,7 +240,6 @@ export default function DataPurchaseScreen({ navigation, route }) {
     });
   }, [payment.pendingPaymentData]);
 
-  
   useEffect(() => {
     if (provider) {
       loadDataPlans();
@@ -264,22 +288,17 @@ export default function DataPurchaseScreen({ navigation, route }) {
       return;
     }
 
-    // Clear errors
     setValidationErrors({});
-
-    // Clean phone number (remove whitespace)
     const cleanPhone = phoneNumber.replace(/\s/g, '');
 
-    // Prepare payment data including the full plan object for restoration
     const paymentData = {
-      phoneNumber: cleanPhone, // ✅ Clean phone number
+      phoneNumber: cleanPhone,
       network: provider, 
       planId: selectedPlan.variation_code,
-      planAmount: parseFloat(selectedPlan.variation_amount), // ✅ Use planAmount instead of amount
-      selectedPlan, // ✅ Store full plan for restoration
+      planAmount: parseFloat(selectedPlan.variation_amount),
+      selectedPlan,
     };
 
-    // Initiate payment (handles PIN check automatically)
     payment.initiatePayment(paymentData);
   }, [phoneNumber, provider, selectedPlan, payment]);
 
@@ -314,7 +333,7 @@ export default function DataPurchaseScreen({ navigation, route }) {
       <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
         <ScreenHeader title="Data" onBackPress={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={themeColors.primary} />
+          <ActivityIndicator size="large" color="#667EEA" />
           <Text style={[styles.loadingText, { color: themeColors.heading }]}>
             Loading...
           </Text>
@@ -330,65 +349,167 @@ export default function DataPurchaseScreen({ navigation, route }) {
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <StatusBarComponent />
       
-      {/* Header */}
-      <ScreenHeader
-        title="Data"
-        onBackPress={() => navigation.goBack()}
-        rightText="History"
-        onRightPress={() => navigation.navigate('Orders')}
-      />
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={isDarkMode ? ['#1a1a2e', '#16213e'] : ['#667EEA', '#764BA2']}
+        style={styles.headerGradient}
+      >
+        <ScreenHeader
+          title="Data Bundle"
+          onBackPress={() => navigation.goBack()}
+          rightText="History"
+          onRightPress={() => navigation.navigate('Orders')}
+          textColor="#FFFFFF"
+          iconColor="#FFFFFF"
+        />
+      </LinearGradient>
 
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: selectedPlan ? 300 : 100 }
+        ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Wallet Balance Card */}
+        <LinearGradient
+          colors={['#667EEA', '#764BA2']}
+          style={styles.balanceCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.balanceContent}>
+            <View style={styles.balanceLeft}>
+              <Text style={styles.balanceLabel}>Wallet Balance</Text>
+              <Text style={styles.balanceAmount}>
+                {formatCurrency(wallet?.user?.walletBalance || 0, 'NGN')}
+              </Text>
+            </View>
+            <View style={styles.balanceIcon}>
+              <Ionicons name="wallet" size={32} color="rgba(255,255,255,0.9)" />
+            </View>
+          </View>
+        </LinearGradient>
+
         {/* Tabs */}
-        <TabSelector
-          tabs={tabs}
-          selectedTab={selectedTab}
-          onTabChange={setSelectedTab}
-        />
+        <View style={styles.section}>
+          <TabSelector
+            tabs={tabs}
+            selectedTab={selectedTab}
+            onTabChange={setSelectedTab}
+          />
+        </View>
 
-        {/* Provider Selection */}
-        <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-          Select Network Provider
-        </Text>
-        <ProviderSelector
-          providers={NETWORK_PROVIDERS}
-          value={provider}
-          onChange={setProvider}
-          placeholder="Select Network"
-          error={validationErrors.provider}
-        />
+        {/* Provider Selection Card */}
+        <View style={[styles.card, { backgroundColor: themeColors.card }]}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleContainer}>
+              <LinearGradient
+                colors={['#667EEA', '#764BA2']}
+                style={styles.cardIcon}
+              >
+                <Ionicons name="business" size={20} color="#FFFFFF" />
+              </LinearGradient>
+              <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
+                Network Provider
+              </Text>
+            </View>
+            {validationErrors.provider && (
+              <View style={styles.errorBadge}>
+                <Ionicons name="alert-circle" size={14} color="#EF4444" />
+              </View>
+            )}
+          </View>
+          
+          <View style={styles.providerGrid}>
+            {NETWORK_PROVIDERS.map((p) => {
+              const isSelected = provider === p.value;
+              return (
+                <TouchableOpacity
+                  key={p.value}
+                  style={[
+                    styles.providerCell,
+                    { backgroundColor: isSelected ? p.color + '22' : (isDarkMode ? '#2a2a3e' : '#F3F4F6') },
+                    isSelected && { borderColor: p.color },
+                  ]}
+                  onPress={() => setProvider(p.value)}
+                  activeOpacity={0.75}
+                >
+                  <Image source={p.logo} style={styles.providerCellLogo} resizeMode="contain" />
+                  <Text style={[styles.providerCellLabel, { color: isSelected ? p.color : themeColors.subheading }]}>
+                    {p.label}
+                  </Text>
+                  {isSelected && (
+                    <View style={[styles.providerCheck, { backgroundColor: p.color }]}>
+                      <Ionicons name="checkmark" size={10} color="#fff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {validationErrors.provider && (
+            <Text style={styles.providerError}>{validationErrors.provider}</Text>
+          )}
+        </View>
 
-        {/* Phone Number Input */}
-        <PhoneInput
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          onNetworkDetected={setProvider}
-          placeholder="08XX-XXX-XXXX"
-          label="Recipient Phone Number"
-          error={validationErrors.phoneNumber}
-        />
+        {/* Phone Number Input Card */}
+        <View style={[styles.card, { backgroundColor: themeColors.card }]}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleContainer}>
+              <LinearGradient
+                colors={['#F093FB', '#F5576C']}
+                style={styles.cardIcon}
+              >
+                <Ionicons name="call" size={20} color="#FFFFFF" />
+              </LinearGradient>
+              <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
+                Phone Number
+              </Text>
+            </View>
+            {validationErrors.phoneNumber && (
+              <View style={styles.errorBadge}>
+                <Ionicons name="alert-circle" size={14} color="#EF4444" />
+              </View>
+            )}
+          </View>
+
+          <PhoneInput
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
+            onNetworkDetected={setProvider}
+            placeholder="08XX-XXX-XXXX"
+            label=""
+            error={validationErrors.phoneNumber}
+          />
+        </View>
 
         {/* Data Plans */}
         {provider && (
           <>
-            <View style={styles.plansHeader}>
-              <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-                Available Plans
-              </Text>
-              {plans.length > 0 && (
-                <Text style={[styles.planCount, { color: themeColors.subheading }]}>
-                  {plans.length} plans
+            <View style={styles.plansHeaderContainer}>
+              <View style={styles.cardTitleContainer}>
+                <LinearGradient
+                  colors={['#4FACFE', '#00F2FE']}
+                  style={styles.cardIcon}
+                >
+                  <Ionicons name="grid" size={20} color="#FFFFFF" />
+                </LinearGradient>
+                <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
+                  Available Plans
                 </Text>
+              </View>
+              {plans.length > 0 && (
+                <View style={styles.planCountBadge}>
+                  <Text style={styles.planCountText}>{plans.length}</Text>
+                </View>
               )}
             </View>
 
             {loadingPlans ? (
               <View style={styles.loadingPlans}>
-                <ActivityIndicator size="large" color={themeColors.primary} />
+                <ActivityIndicator size="large" color="#667EEA" />
                 <Text style={[styles.loadingText, { color: themeColors.heading }]}>
                   Loading plans...
                 </Text>
@@ -407,64 +528,118 @@ export default function DataPurchaseScreen({ navigation, route }) {
                 ))}
               </View>
             ) : (
-              <EmptyState
-                icon="file-tray-outline"
-                title="No Data Plans"
-                message="No data plans available for this provider"
-              />
+              <View style={[styles.card, { backgroundColor: themeColors.card }]}>
+                <EmptyState
+                  icon="file-tray-outline"
+                  title="No Data Plans"
+                  message="No data plans available for this provider"
+                />
+              </View>
             )}
           </>
         )}
 
         {/* Error Display */}
         {validationErrors.planId && (
-          <View style={[styles.errorContainer, { backgroundColor: `${themeColors.destructive}20` }]}>
-            <Text style={[styles.errorText, { color: themeColors.destructive }]}>
-              {validationErrors.planId}
-            </Text>
+          <View style={styles.errorContainer}>
+            <LinearGradient
+              colors={['#FEE2E2', '#FECACA']}
+              style={styles.errorGradient}
+            >
+              <Ionicons name="alert-circle" size={20} color="#EF4444" />
+              <Text style={styles.errorText}>
+                {validationErrors.planId}
+              </Text>
+            </LinearGradient>
           </View>
         )}
 
         {payment.flowError && (
-          <View style={[styles.errorContainer, { backgroundColor: `${themeColors.destructive}20` }]}>
-            <Text style={[styles.errorText, { color: themeColors.destructive }]}>
-              {payment.flowError}
-            </Text>
+          <View style={styles.errorContainer}>
+            <LinearGradient
+              colors={['#FEE2E2', '#FECACA']}
+              style={styles.errorGradient}
+            >
+              <Ionicons name="alert-circle" size={20} color="#EF4444" />
+              <Text style={styles.errorText}>
+                {payment.flowError}
+              </Text>
+            </LinearGradient>
           </View>
         )}
       </ScrollView>
 
-      {/* Sticky Buy Button */}
+      {/* Sticky Buy Button with Enhanced Design */}
       {selectedPlan && (
         <View 
           style={[
             styles.stickyFooter,
-            {
-              marginBottom: insets.bottom + 8,
-              borderColor: themeColors.border,
-            },
+            { bottom: insets.bottom + 16 },
           ]}
         >
-          <View style={styles.footerContent}>
-            <View>
-              <Text style={[styles.footerLabel, { color: themeColors.subheading }]}>
-                Selected Plan
-              </Text>
-              <Text style={[styles.footerPlan, { color: themeColors.heading }]}>
-                {cleanPlanName(selectedPlan.name)}
-              </Text>
-              <Text style={[styles.footerPrice, { color: themeColors.primary }]}>
-                {formatCurrency(Number(selectedPlan.variation_amount), 'NGN')}
-              </Text>
+          <LinearGradient
+            colors={isDarkMode 
+              ? ['rgba(26, 26, 46, 0.98)', 'rgba(22, 33, 62, 0.98)']
+              : ['rgba(255, 255, 255, 0.98)', 'rgba(249, 250, 251, 0.98)']}
+            style={styles.footerGradient}
+          >
+            <View style={styles.footerContent}>
+              <View style={styles.selectedPlanInfo}>
+                <Text style={[styles.footerLabel, { color: themeColors.subheading }]}>
+                  Selected Plan
+                </Text>
+                <Text 
+                  style={[styles.footerPlan, { color: themeColors.heading }]}
+                  numberOfLines={1}
+                >
+                  {cleanPlanName(selectedPlan.name)}
+                </Text>
+                <View style={styles.footerPriceRow}>
+                  <Text style={styles.footerPrice}>
+                    {formatCurrency(Number(selectedPlan.variation_amount), 'NGN')}
+                  </Text>
+                  {selectedPlan.validity && (
+                    <View style={styles.footerValidityBadge}>
+                      <Ionicons name="time-outline" size={12} color="#667EEA" />
+                      <Text style={styles.footerValidityText}>
+                        {selectedPlan.validity}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
             </View>
-          </View>
-          <PayButton
-            title="Buy Now"
-            onPress={handleBuyData}
-            disabled={ payment.step === 'processing'}
-            loading={payment.step === 'processing'}
-            style={styles.buyButton}
-          />
+
+            <TouchableOpacity
+              style={[
+                styles.buyButtonContainer,
+                payment.step === 'processing' && styles.buyButtonDisabled
+              ]}
+              onPress={handleBuyData}
+              disabled={payment.step === 'processing'}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={
+                  payment.step === 'processing'
+                    ? ['#9CA3AF', '#6B7280']
+                    : ['#667EEA', '#764BA2']
+                }
+                style={styles.buyButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {payment.step === 'processing' ? (
+                  <Text style={styles.buyButtonText}>Processing...</Text>
+                ) : (
+                  <>
+                    <Ionicons name="cart" size={22} color="#FFFFFF" />
+                    <Text style={styles.buyButtonText}>Buy Now</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </LinearGradient>
         </View>
       )}
 
@@ -472,7 +647,7 @@ export default function DataPurchaseScreen({ navigation, route }) {
           MODALS - Using Unified System
           ======================================== */}
 
-      {/* PIN Setup Modal - NEW! */}
+      {/* PIN Setup Modal */}
       <PinSetupModal
         visible={payment.showPinSetupModal}
         serviceName="Data Bundle"
@@ -491,7 +666,7 @@ export default function DataPurchaseScreen({ navigation, route }) {
         serviceName={`Data - ${cleanPlanName(selectedPlan?.name || '')}`}
         providerLogo={getProviderLogo()}
         providerName={getProviderName()}
-        recipient={phoneNumber.replace(/\s/g, '')} // ✅ Clean display
+        recipient={phoneNumber.replace(/\s/g, '')}
         recipientLabel="Phone Number"
         walletBalance={wallet?.user?.walletBalance}
         additionalDetails={[
@@ -550,12 +725,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerGradient: {
+    paddingBottom: 16,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 120,
   },
   loadingContainer: {
     flex: 1,
@@ -565,69 +742,201 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 14,
-    fontWeight: '500',
-  },
-  sectionTitle: {
-    fontSize: 16,
     fontWeight: '600',
-    marginTop: 20,
-    marginBottom: 12,
   },
-  plansHeader: {
+  balanceCard: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  balanceContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 12,
   },
-  planCount: {
+  balanceLeft: {
+    flex: 1,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
+    marginBottom: 8,
+  },
+  balanceAmount: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  balanceIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  section: {
+    marginBottom: 16,
+  },
+  card: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  errorBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  plansHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  planCountBadge: {
+    backgroundColor: '#667EEA15',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  planCountText: {
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '700',
+    color: '#667EEA',
   },
   loadingPlans: {
-    paddingVertical: 48,
+    paddingVertical: 60,
     alignItems: 'center',
   },
   plansContainer: {
     marginBottom: 20,
   },
   planCard: {
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 18,
+    padding: 18,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  planCardSelected: {
+    shadowColor: '#667EEA',
+    shadowOpacity: 0.3,
+    elevation: 6,
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 5,
   },
   planHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 14,
   },
   headerLeft: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+    marginRight: 12,
+  },
+  logoContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    marginRight: 12,
   },
   providerLogo: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     resizeMode: 'contain',
-    borderRadius: 5,
+  },
+  planNameContainer: {
+    flex: 1,
   },
   planName: {
     fontSize: 15,
-    fontWeight: '600',
-    flex: 1,
-    marginRight: 8,
+    fontWeight: '700',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  validityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  planValidity: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  selectedIconContainer: {
+    marginLeft: 8,
+  },
+  selectedIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#667EEA',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   planDetails: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   planInfo: {
     flex: 1,
@@ -635,94 +944,184 @@ const styles = StyleSheet.create({
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    marginBottom: 8,
   },
   planPrice: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   inlineBadge: {
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  badgeGradient: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
   },
   inlineBadgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  allowanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   planData: {
     fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 2,
+    fontWeight: '600',
   },
-  planValidity: {
-    fontSize: 12,
-  },
-  selectedIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  noteContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
   planNote: {
     fontSize: 11,
-    marginTop: 8,
     fontWeight: '500',
+    color: '#F5576C',
+    flex: 1,
   },
   errorContainer: {
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 16,
+    marginBottom: 16,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  errorGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
   },
   errorText: {
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
   },
   stickyFooter: {
     position: 'absolute',
-    bottom: 10,
-    left: 12,
-    right: 12,
-    height: 250,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    left: 16,
+    right: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 10,
-    backgroundColor: '#f3f6faff'
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  footerGradient: {
+    padding: 20,
   },
   footerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 16,
+  },
+  selectedPlanInfo: {
+    flex: 1,
   },
   footerLabel: {
-    fontSize: 14,
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 6,
   },
   footerPlan: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 2,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  footerPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   footerPrice: {
-    fontSize: 25,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#667EEA',
+    letterSpacing: 0.5,
+  },
+  footerValidityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#667EEA15',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  footerValidityText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#667EEA',
+  },
+  buyButtonContainer: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  buyButtonDisabled: {
+    opacity: 0.6,
+  },
+  buyButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 10,
+  },
+  buyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '700',
   },
-  buyButton: {
-    minWidth: 120,
-    marginTop: 20,
+  providerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  providerCell: {
+    width: (width - 32 - 40 - 10) / 2,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  providerCellLogo: {
+    width: 34,
+    height: 34,
+    marginBottom: 6,
+  },
+  providerCellLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  providerCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  providerError: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginTop: 8,
   },
 });

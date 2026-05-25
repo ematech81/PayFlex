@@ -12,7 +12,7 @@ import Collapsible from 'react-native-collapsible';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import Separator from 'component/Separator';
-import AntDesign from '@expo/vector-icons/AntDesign';
+import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 
 const AccountInfoComponent = ({
@@ -124,16 +124,32 @@ const AccountInfoComponent = ({
     <View style={[styles.section, { backgroundColor: themeColors.card }]}>
       <TouchableOpacity
         onPress={() => setIsAccountCollapsed(!isAccountCollapsed)}
-        style={styles.accountWrapper}
+        style={[
+          styles.accountHeader,
+          { backgroundColor: isAccountCollapsed ? '#4a00e0' : '#6d28d9' },
+        ]}
+        activeOpacity={0.82}
       >
-        <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-          Account Info
-        </Text>
-        <AntDesign
-          name={isAccountCollapsed ? 'downcircleo' : 'upcircleo'}
-          size={24}
-          color={themeColors.heading}
-        />
+        <View style={styles.accountHeaderLeft}>
+          <View style={styles.accountHeaderIcon}>
+            <Ionicons name="settings-outline" size={18} color="#fff" />
+          </View>
+          <View>
+            <Text style={styles.accountHeaderTitle}>Account Info</Text>
+            <Text style={styles.accountHeaderSub}>
+              {isAccountCollapsed
+                ? 'Tap to set discount, tax & bank details'
+                : 'Hide settings'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.accountChevronBox}>
+          <Ionicons
+            name={isAccountCollapsed ? 'chevron-down' : 'chevron-up'}
+            size={22}
+            color="#fff"
+          />
+        </View>
       </TouchableOpacity>
       <Collapsible collapsed={isAccountCollapsed}>
         <Text
@@ -535,6 +551,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 8,
+  },
+  accountHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    marginHorizontal: -16,
+    marginTop: -16,
+  },
+  accountHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  accountHeaderIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  accountHeaderTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  accountHeaderSub: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  accountChevronBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
   bankSuggestion: {
     borderBottomWidth: 1,

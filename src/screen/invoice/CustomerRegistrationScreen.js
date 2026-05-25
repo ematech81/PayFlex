@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useWallet } from 'context/WalletContext';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
@@ -26,6 +27,18 @@ const CustomerRegistrationScreen = ({ route }) => {
   const [name, setName] = useState(customer?.name || '');
   const [email, setEmail] = useState(customer?.email || '');
   const [phone, setPhone] = useState(customer?.phone || '');
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: true,
+      title: customer ? 'Edit Customer' : 'New Customer',
+      headerLeft: () => (
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 8, padding: 4 }}>
+          <Ionicons name="arrow-back" size={24} color={themeColors.heading} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, themeColors, customer]);
 
   const handleSave = () => {
     if (!walletContext || !addCustomer || !updateCustomer) {

@@ -1,4 +1,6 @@
 
+
+// src/screen/TVSubscriptionScreen.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -10,14 +12,15 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
-  FlatList,
-  StatusBar
+  Dimensions,
+  Image,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Imports
 import {
   ScreenHeader,
-  ProviderSelector,
   PayButton,
   ConfirmationModal,
   PinModal,
@@ -25,7 +28,6 @@ import {
   PromoCard,
   LoadingOverlay,
 } from 'component/SHARED';
-import { Ionicons } from '@expo/vector-icons';
 
 import PinSetupModal from 'component/PinSetUpModal';
 import { useServicePayment } from 'HOOKS/UseServicePayment';
@@ -35,51 +37,51 @@ import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
 import { getTVBouquets, purchaseTVSubscription, renewTVSubscription, verifySmartcard } from 'AuthFunction/paymentService';
 import { customImages } from 'constants/serviceImages';
+import { StatusBarComponent } from 'component/StatusBar';
 
+const { width } = Dimensions.get('window');
 
+// Constants
+const TV_CONSTANTS = {
+  LIMITS: {
+    MIN_AMOUNT: 1000,
+    MAX_AMOUNT: 100000,
+  },
+};
 
-//   // Constants
-  const TV_CONSTANTS = {
-    LIMITS: {
-      MIN_AMOUNT: 1000,
-      MAX_AMOUNT: 100000,
-    },
-  };
-
-  const TV_PROVIDERS = [
-    { 
-      label: 'DSTV', 
-      value: 'dstv', 
-      logo: customImages.Dstv,
-      requiresSmartcard: true
-    },
-    { 
-      label: 'GOTV', 
-      value: 'gotv', 
-      logo: customImages.Gotv,
-      requiresSmartcard: true 
-    },
-    { 
-      label: 'Startimes', 
-      value: 'startimes', 
-      logo: customImages.Startimes,
-      requiresSmartcard: true 
-    },
-    { 
-      label: 'Showmax', 
-      value: 'showmax', 
-      logo: customImages.Showmax,
-      requiresSmartcard: false // Showmax doesn't need smartcard
-    },
-  ];
-
-
-
-
-
+const TV_PROVIDERS = [
+  { 
+    label: 'DSTV', 
+    value: 'dstv', 
+    logo: customImages.Dstv,
+    requiresSmartcard: true,
+    gradient: ['#FF6B6B', '#FF8E53']
+  },
+  { 
+    label: 'GOTV', 
+    value: 'gotv', 
+    logo: customImages.Gotv,
+    requiresSmartcard: true,
+    gradient: ['#4E54C8', '#8F94FB']
+  },
+  { 
+    label: 'Startimes', 
+    value: 'startimes', 
+    logo: customImages.Startimes,
+    requiresSmartcard: true,
+    gradient: ['#11998E', '#38EF7D']
+  },
+  { 
+    label: 'Showmax', 
+    value: 'showmax', 
+    logo: customImages.Showmax,
+    requiresSmartcard: false,
+    gradient: ['#F857A6', '#FF5858']
+  },
+];
 
 /**
- * TV Subscription Screen - Optimized Structure
+ * TV Subscription Screen - Modern & Professional Design
  */
 export default function TVSubscriptionScreen({ navigation, route }) {
   const isDarkMode = useThem();
@@ -92,8 +94,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   const [bouquets, setBouquets] = useState([]);
   const [selectedBouquet, setSelectedBouquet] = useState(null);
   const [customerData, setCustomerData] = useState(null);
-  //  const [phoneNumber, setPhoneNumber] = useState('');
-  const [subscriptionType, setSubscriptionType] = useState('change'); // 'change' or 'renew'
+  const [subscriptionType, setSubscriptionType] = useState('change');
   
   // Loading States
   const [isVerifying, setIsVerifying] = useState(false);
@@ -135,68 +136,12 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     }
   };
 
-
-  // Helper function to normalize VTpass response
-  const normalizeVTpassResponse = (response) => {
-    // Check for error in different possible locations
-    const error = 
-      response.error ||
-      response.content?.error ||
-      response.data?.error ||
-      response.data?.content?.error;
-    
-    // Extract customer data from different possible locations
-    const customerData = {
-      customerName: 
-        response.customerName ||
-        response.Customer_Name ||
-        response.data?.customerName ||
-        response.data?.Customer_Name ||
-        response.content?.Customer_Name,
-      
-      currentBouquet: 
-        response.currentBouquet ||
-        response.Current_Bouquet ||
-        response.data?.currentBouquet ||
-        response.data?.Current_Bouquet ||
-        response.content?.Current_Bouquet,
-      
-      renewalAmount: 
-        response.renewalAmount ||
-        response.Renewal_Amount ||
-        response.data?.renewalAmount ||
-        response.data?.Renewal_Amount ||
-        response.content?.Renewal_Amount,
-      
-      dueDate: 
-        response.dueDate ||
-        response.Due_Date ||
-        response.data?.dueDate ||
-        response.data?.Due_Date ||
-        response.content?.Due_Date,
-      
-      status: 
-        response.status ||
-        response.Status ||
-        response.data?.status ||
-        response.data?.Status ||
-        response.content?.Status,
-    };
-    
-    return { error, customerData };
-  };
-
-
-
   const handleVerifySmartcard = async () => {
-    // Get provider info
     const providerInfo = TV_PROVIDERS.find(p => p.value === provider);
     
-    // ✅ CHECK: Does this provider require smartcard verification?
     if (providerInfo && !providerInfo.requiresSmartcard) {
       console.log('⏭️ Skipping smartcard verification for', provider);
       
-      // For non-smartcard providers (like Showmax), set dummy customer data
       setCustomerData({
         customerName: 'Showmax Customer',
         smartcardNumber: smartcardNumber || 'N/A',
@@ -206,19 +151,16 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         status: 'ACTIVE',
       });
       
-      // Show success alert (but mention it's Showmax)
       Alert.alert(
         '✅ Ready for Showmax',
         'Proceed to select your Showmax package.\n\nNote: Showmax subscriptions are activated via email/phone.',
         [{ text: 'OK' }]
       );
       
-      // Fetch packages for Showmax
       fetchBouquets();
       return;
     }
   
-    // ✅ Rest of your existing verification logic for smartcard providers
     if (!smartcardNumber || smartcardNumber.length < 10) {
       setValidationErrors({ smartcard: 'Enter a valid smartcard number (10-11 digits)' });
       return;
@@ -230,25 +172,21 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     }
   
     try {
+      setIsVerifying(true);
       const response = await verifySmartcard(smartcardNumber, provider);
       
       console.log('📡 Verification response:', response);
       
-      // ✅ Now backend returns success: false for invalid cards
       if (response.success) {
         setCustomerData(response.data);
-  
-        console.log('✅ Meter verified:', response.data);
-        console.log('🔍 Full customer data:', JSON.stringify(response.data, null, 2)); 
+        console.log('✅ Smartcard verified:', response.data);
         
-        // Show success alert with customer info
         Alert.alert(
           '✅ Verification Successful',
           `Customer: ${response.data.customerName || 'N/A'}\nCurrent Package: ${response.data.currentBouquet || 'N/A'}`,
           [{ text: 'OK' }]
         );
       } else {
-        // This will now trigger for invalid smartcards
         throw new Error(response.message || 'Verification failed');
       }
     } catch (error) {
@@ -260,9 +198,6 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     }
   };
 
-
-
-// };
   // ========================================
   // Validation Function
   // ========================================
@@ -271,7 +206,6 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     
     const errors = {};
 
-    // Validate smartcard
     const cleanSmartCard = (paymentData.smartcardNumber || '').replace(/\s/g, '');
     if (!cleanSmartCard || cleanSmartCard.length < 10) {
       errors.smartcard = 'Invalid smartcard number';
@@ -305,24 +239,19 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     return { isValid, errors };
   }, []);
 
-
-
   // ========================================
   // Execute Purchase
   // ========================================
-
   const executeTVPurchase = useCallback(async (pin, paymentData) => {
     console.log('💳 Executing TV purchase:', paymentData);
 
     const userPhone = wallet?.user?.phone || wallet?.user?.phoneNumber || '';
-  
-  console.log('📱 Using phone number:', userPhone);
+    console.log('📱 Using phone number:', userPhone);
     
     try {
       let response;
       
       if (paymentData.subscriptionType === 'renew') {
-        // Renew current bouquet
         response = await renewTVSubscription(pin, {
           smartcardNumber: paymentData.smartcardNumber,
           provider: paymentData.provider,
@@ -330,7 +259,6 @@ export default function TVSubscriptionScreen({ navigation, route }) {
           phone: userPhone,
         });
       } else {
-        // Change/subscribe to new bouquet
         response = await purchaseTVSubscription(pin, {
           smartcardNumber: paymentData.smartcardNumber,
           provider: paymentData.provider,
@@ -387,11 +315,8 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     setValidationErrors({});
 
     const cleanSmartCard = smartcardNumber.replace(/\s/g, '');
-    
-    // Calculate amount
     const amount = getAmount();
 
-    // Prepare payment data
     const paymentData = {
       smartcardNumber: cleanSmartCard,
       provider,
@@ -407,7 +332,6 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   }, [smartcardNumber, provider, selectedBouquet, subscriptionType, customerData, payment]);
 
   const handleTransactionComplete = useCallback(() => {
-    // Reset form
     setSmartcardNumber('');
     setProvider('');
     setSelectedBouquet(null);
@@ -418,7 +342,6 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     payment.handleTransactionComplete(payment.result?.reference);
   }, [payment]);
 
-  
   // ========================================
   // Helper Functions
   // ========================================
@@ -426,7 +349,6 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     let rawAmount = 0;
     
     if (subscriptionType === 'renew') {
-      // ✅ Handle multiple possible field names from VTPass
       rawAmount = parseFloat(
         customerData?.renewalAmount || 
         customerData?.Renewal_Amount || 
@@ -434,7 +356,6 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         0
       );
     } else {
-      // ✅ For change package
       rawAmount = parseFloat(
         selectedBouquet?.variation_amount || 
         selectedBouquet?.fixedPrice || 
@@ -445,54 +366,38 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     return isNaN(rawAmount) ? 0 : rawAmount;
   };
 
-
   const canProceed = () => {
     const providerInfo = TV_PROVIDERS.find(p => p.value === provider);
-    
-    // Basic requirements
     const hasBasicData = provider && customerData;
     
-    // For smartcard providers, need smartcard number
-    // For Showmax, we just need some identifier (email/phone)
     if (providerInfo?.requiresSmartcard) {
       if (!smartcardNumber || smartcardNumber.length < 10) {
         return false;
       }
     } else {
-      // Showmax - just need some input
       if (!smartcardNumber || smartcardNumber.trim().length === 0) {
         return false;
       }
     }
     
     const isNotProcessing = payment.step !== 'processing';
-    
-    // Development mode check
     const isDevelopmentMode = __DEV__;
     const hasValidAmount = isDevelopmentMode ? true : getAmount() > 0;
     
-    // Type-specific requirements
     let hasTypeRequirement = false;
     
     if (subscriptionType === 'renew') {
-      // Only allow renewal for smartcard providers that have renewal amounts
       if (providerInfo?.requiresSmartcard) {
-        if (isDevelopmentMode) {
-          hasTypeRequirement = true;
-        } else {
-          hasTypeRequirement = getAmount() > 0;
-        }
+        hasTypeRequirement = isDevelopmentMode ? true : getAmount() > 0;
       } else {
-        // Showmax doesn't have renewal concept
         hasTypeRequirement = false;
       }
     } else if (subscriptionType === 'change') {
-      // For change package, need selected bouquet
       hasTypeRequirement = !!selectedBouquet;
     }
     
     return hasBasicData && isNotProcessing && hasValidAmount && hasTypeRequirement;
-  }; 
+  };
   
   const cleanBouquetName = (bouquet) => {
     if (!bouquet) return '';
@@ -523,44 +428,85 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     if (!customerData) return null;
 
     return (
-      <View style={[styles.customerCard, { backgroundColor: `${themeColors.success}20` }]}>
-        <Text style={[styles.customerCardTitle, { color: themeColors.success }]}>
-          ✓ Customer Verified
-        </Text>
-        <View style={styles.customerRow}>
-          <Text style={[styles.customerLabel, { color: themeColors.mutedText }]}>Name:</Text>
-          <Text style={[styles.customerValue, { color: themeColors.text }]}>
-            {customerData.customerName}
-          </Text>
-        </View>
-        {customerData.currentBouquet && (
-          <View style={styles.customerRow}>
-            <Text style={[styles.customerLabel, { color: themeColors.mutedText }]}>
-              Current Package:
-            </Text>
-            <Text style={[styles.customerValue, { color: themeColors.text }]}>
-              {customerData.currentBouquet}
-            </Text>
+      <View style={styles.customerInfoCard}>
+        <LinearGradient
+          colors={['#10B98115', '#05966915']}
+          style={styles.customerInfoGradient}
+        >
+          <View style={styles.verifiedHeader}>
+            <LinearGradient
+              colors={['#10B981', '#059669']}
+              style={styles.verifiedBadge}
+            >
+              <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+              <Text style={styles.verifiedBadgeText}>Customer Verified</Text>
+            </LinearGradient>
           </View>
-        )}
-        {customerData.renewalAmount && (
-          <View style={styles.customerRow}>
-            <Text style={[styles.customerLabel, { color: themeColors.mutedText }]}>
-              Renewal Amount:
-            </Text>
-            <Text style={[styles.customerValue, { color: themeColors.text }]}>
-              {formatCurrency(parseFloat(customerData.renewalAmount), 'NGN')}
-            </Text>
+          
+          <View style={styles.customerDetails}>
+            <View style={styles.customerDetailRow}>
+              <View style={styles.detailIconContainer}>
+                <Ionicons name="person" size={16} color="#10B981" />
+              </View>
+              <View style={styles.detailContent}>
+                <Text style={[styles.detailLabel, { color: themeColors.subheading }]}>
+                  Customer Name
+                </Text>
+                <Text style={[styles.detailValue, { color: themeColors.heading }]}>
+                  {customerData.customerName}
+                </Text>
+              </View>
+            </View>
+            
+            {customerData.currentBouquet && (
+              <View style={styles.customerDetailRow}>
+                <View style={styles.detailIconContainer}>
+                  <Ionicons name="tv" size={16} color="#10B981" />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={[styles.detailLabel, { color: themeColors.subheading }]}>
+                    Current Package
+                  </Text>
+                  <Text style={[styles.detailValue, { color: themeColors.heading }]}>
+                    {customerData.currentBouquet}
+                  </Text>
+                </View>
+              </View>
+            )}
+            
+            {customerData.renewalAmount && (
+              <View style={styles.customerDetailRow}>
+                <View style={styles.detailIconContainer}>
+                  <Ionicons name="cash" size={16} color="#10B981" />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={[styles.detailLabel, { color: themeColors.subheading }]}>
+                    Renewal Amount
+                  </Text>
+                  <Text style={[styles.detailValue, { color: themeColors.heading }]}>
+                    {formatCurrency(parseFloat(customerData.renewalAmount), 'NGN')}
+                  </Text>
+                </View>
+              </View>
+            )}
+            
+            {customerData.dueDate && (
+              <View style={styles.customerDetailRow}>
+                <View style={styles.detailIconContainer}>
+                  <Ionicons name="calendar" size={16} color="#10B981" />
+                </View>
+                <View style={styles.detailContent}>
+                  <Text style={[styles.detailLabel, { color: themeColors.subheading }]}>
+                    Due Date
+                  </Text>
+                  <Text style={[styles.detailValue, { color: themeColors.heading }]}>
+                    {customerData.dueDate}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
-        )}
-        {customerData.dueDate && (
-          <View style={styles.customerRow}>
-            <Text style={[styles.customerLabel, { color: themeColors.mutedText }]}>Due Date:</Text>
-            <Text style={[styles.customerValue, { color: themeColors.text }]}>
-              {customerData.dueDate}
-            </Text>
-          </View>
-        )}
+        </LinearGradient>
       </View>
     );
   };
@@ -575,24 +521,45 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         key={bouquet.variation_code}
         style={[
           styles.bouquetCard,
-          { 
-            backgroundColor: isSelected ? `${themeColors.primary}20` : themeColors.card,
-            borderColor: isSelected ? themeColors.primary : themeColors.border,
-          },
+          { backgroundColor: themeColors.card },
+          isSelected && styles.bouquetCardSelected,
         ]}
         onPress={() => setSelectedBouquet(bouquet)}
+        activeOpacity={0.7}
       >
-        <View style={styles.bouquetInfo}>
-          <Text style={[styles.bouquetName, { color: themeColors.text }]}>
-            {cleanName}
-          </Text>
-          <Text style={[styles.bouquetPrice, { color: themeColors.primary }]}>
-            {formatCurrency(price, 'NGN')}
-          </Text>
-        </View>
         {isSelected && (
-          <Text style={[styles.checkmark, { color: themeColors.primary }]}>✓</Text>
+          <LinearGradient
+            colors={['#667EEA', '#764BA2']}
+            style={styles.selectionIndicator}
+          />
         )}
+        
+        <View style={styles.bouquetContent}>
+          <View style={styles.bouquetInfo}>
+            <Text 
+              style={[styles.bouquetName, { color: themeColors.heading }]}
+              numberOfLines={2}
+            >
+              {cleanName}
+            </Text>
+            <View style={styles.bouquetPriceRow}>
+              <Text style={styles.bouquetPrice}>
+                {formatCurrency(price, 'NGN')}
+              </Text>
+            </View>
+          </View>
+          
+          {isSelected && (
+            <View style={styles.selectedIconContainer}>
+              <LinearGradient
+                colors={['#667EEA', '#764BA2']}
+                style={styles.selectedIcon}
+              >
+                <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+              </LinearGradient>
+            </View>
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -602,249 +569,392 @@ export default function TVSubscriptionScreen({ navigation, route }) {
   // ========================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <StatusBarComponent />
+
+      {/* Header with Gradient */}
+      <LinearGradient
+        colors={isDarkMode ? ['#1a1a2e', '#16213e'] : ['#667EEA', '#764BA2']}
+        style={styles.headerGradient}
+      >
+        <ScreenHeader
+          title="TV Subscription"
+          onBackPress={() => navigation.goBack()}
+          rightText="History"
+          onRightPress={() => navigation.navigate('Orders')}
+          textColor="#FFFFFF"
+          iconColor="#FFFFFF"
+        />
+      </LinearGradient>
+
       <View style={styles.mainContainer}>
         <ScrollView 
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <ScreenHeader
-            title="TV Sub"
-            onBackPress={() => navigation.goBack()}
-            rightText="History"
-            onRightPress={() => navigation.navigate('History')}
-          />
+          {/* Wallet Balance Card */}
+          <LinearGradient
+            colors={['#667EEA', '#764BA2']}
+            style={styles.balanceCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.balanceContent}>
+              <View style={styles.balanceLeft}>
+                <Text style={styles.balanceLabel}>Wallet Balance</Text>
+                <Text style={styles.balanceAmount}>
+                  {formatCurrency(wallet?.user?.walletBalance || 0, 'NGN')}
+                </Text>
+              </View>
+              <View style={styles.balanceIcon}>
+                <Ionicons name="wallet" size={32} color="rgba(255,255,255,0.9)" />
+              </View>
+            </View>
+          </LinearGradient>
 
-          {/* Provider Selection */}
-          <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-            Select TV Provider
-          </Text>
-          <ProviderSelector
-            providers={TV_PROVIDERS}
-            value={provider}
-            onChange={(value) => {
-              setProvider(value);
-              setCustomerData(null);
-              setSmartcardNumber('');
-              setSelectedBouquet(null);
-            }}
-            placeholder="Select TV Provider"
-            error={validationErrors.provider}
-          />
+          {/* Provider Selection Card */}
+          <View style={[styles.card, { backgroundColor: themeColors.card }]}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleContainer}>
+                <LinearGradient
+                  colors={['#667EEA', '#764BA2']}
+                  style={styles.cardIcon}
+                >
+                  <Ionicons name="tv" size={20} color="#FFFFFF" />
+                </LinearGradient>
+                <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
+                  TV Provider
+                </Text>
+              </View>
+              {validationErrors.provider && (
+                <View style={styles.errorBadge}>
+                  <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                </View>
+              )}
+            </View>
+            
+            <View style={styles.providerGrid}>
+              {TV_PROVIDERS.map((p) => {
+                const isSelected = provider === p.value;
+                return (
+                  <TouchableOpacity
+                    key={p.value}
+                    style={[
+                      styles.providerCell,
+                      { backgroundColor: isDarkMode ? '#2a2a3e' : '#F3F4F6' },
+                      isSelected && styles.providerCellSelected,
+                    ]}
+                    onPress={() => {
+                      setProvider(p.value);
+                      setCustomerData(null);
+                      setSmartcardNumber('');
+                      setSelectedBouquet(null);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    {isSelected && (
+                      <LinearGradient colors={p.gradient} style={StyleSheet.absoluteFill} borderRadius={14} />
+                    )}
+                    <Image source={p.logo} style={styles.providerCellLogo} resizeMode="contain" />
+                    <Text style={[styles.providerCellLabel, { color: isSelected ? '#fff' : themeColors.subheading }]}>
+                      {p.label}
+                    </Text>
+                    {isSelected && (
+                      <View style={styles.providerCheck}>
+                        <Ionicons name="checkmark" size={10} color="#fff" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {validationErrors.provider && (
+              <Text style={styles.providerError}>{validationErrors.provider}</Text>
+            )}
+          </View>
 
+          {/* Smartcard/Email Input Card */}
+          {provider && (
+            <View style={[styles.card, { backgroundColor: themeColors.card }]}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardTitleContainer}>
+                  <LinearGradient
+                    colors={['#F093FB', '#F5576C']}
+                    style={styles.cardIcon}
+                  >
+                    <Ionicons 
+                      name={TV_PROVIDERS.find(p => p.value === provider)?.requiresSmartcard ? 'keypad' : 'mail'} 
+                      size={20} 
+                      color="#FFFFFF" 
+                    />
+                  </LinearGradient>
+                  <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
+                    {TV_PROVIDERS.find(p => p.value === provider)?.requiresSmartcard 
+                      ? 'Smartcard Number' 
+                      : 'Email/Phone'}
+                  </Text>
+                </View>
+                {validationErrors.smartcard && (
+                  <View style={styles.errorBadge}>
+                    <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                  </View>
+                )}
+              </View>
 
-{/* Smartcard Number Input - Only show for smartcard providers */}
-{provider && TV_PROVIDERS.find(p => p.value === provider)?.requiresSmartcard && (
-  <>
-    <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-      Smartcard / IUC Number
-    </Text>
-    <View style={styles.inputContainer}>
-      <TextInput
-        style={[
-          styles.input,
-          { 
-            color: themeColors.text, 
-            borderColor: validationErrors.smartcard ? themeColors.destructive : themeColors.border,
-            backgroundColor: themeColors.card,
-          },
-        ]}
-        value={smartcardNumber}
-        onChangeText={(text) => {
-          setSmartcardNumber(text.replace(/\D/g, ''));
-          setValidationErrors({ ...validationErrors, smartcard: undefined });
-          setCustomerData(null);
-        }}
-        placeholder="Enter 10-11 digit number"
-        placeholderTextColor={themeColors.mutedText}
-        keyboardType="numeric"
-        maxLength={11}
-        editable={!isVerifying}
-      />
-      <TouchableOpacity
-        style={[
-          styles.verifyButton,
-          { backgroundColor: (!provider || !smartcardNumber || isVerifying) 
-              ? themeColors.subheading 
-              : themeColors.primary 
-          },
-        ]}
-        onPress={handleVerifySmartcard}
-        disabled={isVerifying || !provider || !smartcardNumber}
-      >
-        {isVerifying ? (
-          <ActivityIndicator size="small" color="#ffffff" />
-        ) : (
-          <Text style={styles.verifyButtonText}>Verify</Text>
-        )}
-      </TouchableOpacity>
-    </View>
-    {validationErrors.smartcard && (
-      <Text style={[styles.errorText, { color: themeColors.destructive }]}>
-        {validationErrors.smartcard}
-      </Text>
-    )}
-  </>
-)}
+              <View style={styles.inputWrapper}>
+                <View
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: isDarkMode ? '#2a2a3e' : '#F9FAFB',
+                      borderColor: validationErrors.smartcard ? '#EF4444' : themeColors.border,
+                    },
+                  ]}
+                >
+                  <View style={styles.inputIconContainer}>
+                    <Ionicons 
+                      name={TV_PROVIDERS.find(p => p.value === provider)?.requiresSmartcard ? 'keypad-outline' : 'mail-outline'} 
+                      size={20} 
+                      color={themeColors.subtext} 
+                    />
+                  </View>
+                  <TextInput
+                    style={[styles.textInput, { color: themeColors.heading }]}
+                    value={smartcardNumber}
+                    onChangeText={(text) => {
+                      if (TV_PROVIDERS.find(p => p.value === provider)?.requiresSmartcard) {
+                        setSmartcardNumber(text.replace(/\D/g, ''));
+                      } else {
+                        setSmartcardNumber(text);
+                      }
+                      setValidationErrors({ ...validationErrors, smartcard: undefined });
+                      setCustomerData(null);
+                    }}
+                    placeholder={
+                      TV_PROVIDERS.find(p => p.value === provider)?.requiresSmartcard 
+                        ? 'Enter 10-11 digit number' 
+                        : 'Enter email or phone'
+                    }
+                    placeholderTextColor={themeColors.subtext}
+                    keyboardType={TV_PROVIDERS.find(p => p.value === provider)?.requiresSmartcard ? 'numeric' : 'email-address'}
+                    maxLength={TV_PROVIDERS.find(p => p.value === provider)?.requiresSmartcard ? 11 : undefined}
+                    editable={!isVerifying}
+                    autoCapitalize="none"
+                  />
+                </View>
 
-{/* Showmax-specific input */}
-{provider === 'showmax' && (
-  <>
-    <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-      Email or Phone Number
-    </Text>
-    <View style={styles.inputContainer}>
-      <TextInput
-        style={[
-          styles.input,
-          { 
-            color: themeColors.text, 
-            borderColor: themeColors.border,
-            backgroundColor: themeColors.card,
-          },
-        ]}
-        value={smartcardNumber}
-        onChangeText={(text) => {
-          setSmartcardNumber(text);
-          // Auto-fetch packages for Showmax
-          if (text.length > 3) {
-            fetchBouquets();
-          }
-        }}
-        placeholder="Enter email or phone for activation"
-        placeholderTextColor={themeColors.mutedText}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TouchableOpacity
-        style={[
-          styles.verifyButton,
-          { backgroundColor: themeColors.primary }
-        ]}
-        onPress={() => {
-          // For Showmax, we don't verify, just fetch packages
-          fetchBouquets();
-          setCustomerData({
-            customerName: 'Showmax Customer',
-            smartcardNumber: smartcardNumber || 'N/A',
-            currentBouquet: null,
-            renewalAmount: null,
-            dueDate: null,
-            status: 'ACTIVE',
-          });
-        }}
-        disabled={!smartcardNumber}
-      >
-        <Text style={styles.verifyButtonText}>Continue</Text>
-      </TouchableOpacity>
-    </View>
-    <Text style={[styles.helpText, { color: themeColors.mutedText }]}>
-      Showmax will be activated on the provided email/phone
-    </Text>
-  </>
-)}
+                <TouchableOpacity
+                  style={[
+                    styles.verifyButtonContainer,
+                    (!provider || !smartcardNumber || isVerifying) && styles.verifyButtonDisabled,
+                  ]}
+                  onPress={handleVerifySmartcard}
+                  disabled={isVerifying || !provider || !smartcardNumber}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={
+                      !provider || !smartcardNumber || isVerifying
+                        ? ['#9CA3AF', '#6B7280']
+                        : ['#667EEA', '#764BA2']
+                    }
+                    style={styles.verifyButtonGradient}
+                  >
+                    {isVerifying ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" />
+                        <Text style={styles.verifyButtonText}>Verify</Text>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+
+              {validationErrors.smartcard && (
+                <Text style={[styles.errorText, { color: '#EF4444' }]}>
+                  {validationErrors.smartcard}
+                </Text>
+              )}
+
+              {provider === 'showmax' && (
+                <Text style={[styles.helpText, { color: themeColors.subtext }]}>
+                  Showmax will be activated on the provided email/phone
+                </Text>
+              )}
+            </View>
+          )}
 
           {/* Customer Info */}
           {renderCustomerInfo()}
 
-          {/* Subscription Type Selection */}
-          {customerData && (
-            <>
-              <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-                Subscription Type
-              </Text>
+          {/* Subscription Type Card */}
+          {customerData && TV_PROVIDERS.find(p => p.value === provider)?.requiresSmartcard && (
+            <View style={[styles.card, { backgroundColor: themeColors.card }]}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardTitleContainer}>
+                  <LinearGradient
+                    colors={['#4FACFE', '#00F2FE']}
+                    style={styles.cardIcon}
+                  >
+                    <Ionicons name="options" size={20} color="#FFFFFF" />
+                  </LinearGradient>
+                  <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
+                    Subscription Type
+                  </Text>
+                </View>
+              </View>
+
               <View style={styles.typeSelector}>
                 <TouchableOpacity
                   style={[
                     styles.typeButton,
-                    {
-                      backgroundColor: subscriptionType === 'renew' 
-                        ? themeColors.primary 
-                        : themeColors.card,
-                      borderColor: subscriptionType === 'renew'
-                        ? themeColors.primary
-                        : themeColors.border,
-                    },
+                    { backgroundColor: themeColors.card }
                   ]}
                   onPress={() => {
                     setSubscriptionType('renew');
                     setSelectedBouquet(null);
                   }}
+                  activeOpacity={0.7}
                 >
-                  <Text
-                    style={[
-                      styles.typeButtonText,
-                      { color: subscriptionType === 'renew' ? '#fff' : themeColors.text },
-                    ]}
+                  <LinearGradient
+                    colors={
+                      subscriptionType === 'renew'
+                        ? ['#667EEA', '#764BA2']
+                        : ['transparent', 'transparent']
+                    }
+                    style={styles.typeButtonGradient}
                   >
-                    Renew Current
-                  </Text>
+                    <View style={styles.radioContainer}>
+                      <View
+                        style={[
+                          styles.radioOuter,
+                          {
+                            borderColor: subscriptionType === 'renew' ? '#FFFFFF' : themeColors.border,
+                          },
+                        ]}
+                      >
+                        {subscriptionType === 'renew' && (
+                          <View style={styles.radioInner} />
+                        )}
+                      </View>
+                    </View>
+                    <Text
+                      style={[
+                        styles.typeButtonText,
+                        {
+                          color: subscriptionType === 'renew' ? '#FFFFFF' : themeColors.heading,
+                        },
+                      ]}
+                    >
+                      Renew Current
+                    </Text>
+                  </LinearGradient>
                 </TouchableOpacity>
+
                 <TouchableOpacity
                   style={[
                     styles.typeButton,
-                    {
-                      backgroundColor: subscriptionType === 'change' 
-                        ? themeColors.primary 
-                        : themeColors.card,
-                      borderColor: subscriptionType === 'change'
-                        ? themeColors.primary
-                        : themeColors.border,
-                    },
+                    { backgroundColor: themeColors.card }
                   ]}
                   onPress={() => setSubscriptionType('change')}
+                  activeOpacity={0.7}
                 >
-                  <Text
-                    style={[
-                      styles.typeButtonText,
-                      { color: subscriptionType === 'change' ? '#fff' : themeColors.text },
-                    ]}
+                  <LinearGradient
+                    colors={
+                      subscriptionType === 'change'
+                        ? ['#667EEA', '#764BA2']
+                        : ['transparent', 'transparent']
+                    }
+                    style={styles.typeButtonGradient}
                   >
-                    Change Package
-                  </Text>
+                    <View style={styles.radioContainer}>
+                      <View
+                        style={[
+                          styles.radioOuter,
+                          {
+                            borderColor: subscriptionType === 'change' ? '#FFFFFF' : themeColors.border,
+                          },
+                        ]}
+                      >
+                        {subscriptionType === 'change' && (
+                          <View style={styles.radioInner} />
+                        )}
+                      </View>
+                    </View>
+                    <Text
+                      style={[
+                        styles.typeButtonText,
+                        {
+                          color: subscriptionType === 'change' ? '#FFFFFF' : themeColors.heading,
+                        },
+                      ]}
+                    >
+                      Change Package
+                    </Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
-            </>
-          )}
-
-         
-          {/* Bouquet Selection (Only for Change) */}
-{customerData && subscriptionType === 'change' && (
-  <>
-    <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-      Select Bouquet
-    </Text>
-    {isLoadingBouquets ? (
-      <ActivityIndicator 
-        size="large" 
-        color={themeColors.primary} 
-        style={styles.loader} 
-      />
-    ) : (
-      <View style={styles.bouquetsContainer}>
-        {bouquets.map((bouquet) => renderBouquetCard({ item: bouquet }))}
-      </View>
-    )}
-    {validationErrors.bouquet && (
-      <Text style={[styles.errorText, { color: themeColors.destructive }]}>
-        {validationErrors.bouquet}
-      </Text>
-    )}
-  </>
-)}
-
-          {/* Error Display */}
-          {payment.flowError && (
-            <View style={[styles.errorContainer, { backgroundColor: `${themeColors.destructive}20` }]}>
-              <Text style={[styles.errorText, { color: themeColors.destructive }]}>
-                {payment.flowError}
-              </Text>
             </View>
           )}
 
-       
-        <View style={styles.bottomSpacer} />
- 
+          {/* Bouquet Selection */}
+          {customerData && subscriptionType === 'change' && (
+            <View style={[styles.card, { backgroundColor: themeColors.card }]}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardTitleContainer}>
+                  <LinearGradient
+                    colors={['#43E97B', '#38F9D7']}
+                    style={styles.cardIcon}
+                  >
+                    <Ionicons name="grid" size={20} color="#FFFFFF" />
+                  </LinearGradient>
+                  <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
+                    Select Package
+                  </Text>
+                </View>
+                {bouquets.length > 0 && (
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countBadgeText}>{bouquets.length}</Text>
+                  </View>
+                )}
+              </View>
+
+              {isLoadingBouquets ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#667EEA" />
+                  <Text style={[styles.loadingText, { color: themeColors.heading }]}>
+                    Loading packages...
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.bouquetsContainer}>
+                  {bouquets.map((bouquet) => renderBouquetCard({ item: bouquet }))}
+                </View>
+              )}
+
+              {validationErrors.bouquet && (
+                <Text style={[styles.errorText, { color: '#EF4444' }]}>
+                  {validationErrors.bouquet}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* Error Display */}
+          {payment.flowError && (
+            <View style={styles.errorContainer}>
+              <LinearGradient
+                colors={['#FEE2E2', '#FECACA']}
+                style={styles.errorGradient}
+              >
+                <Ionicons name="alert-circle" size={20} color="#EF4444" />
+                <Text style={styles.errorText}>
+                  {payment.flowError}
+                </Text>
+              </LinearGradient>
+            </View>
+          )}
 
           {/* Promo Card */}
           <PromoCard
@@ -852,27 +962,68 @@ export default function TVSubscriptionScreen({ navigation, route }) {
             subtitle="Earn cashback on every TV subscription"
             buttonText="Learn More"
             onPress={() => navigation.navigate('Rewards')}
+            gradientColors={['#FA8BFF', '#2BD2FF', '#2BFF88']}
           />
+
           <View style={styles.bottomSpacer} />
         </ScrollView>
 
         {/* Sticky Pay Button */}
-{customerData && canProceed() && (
-  <View style={[styles.stickyFooter, { backgroundColor: themeColors.background }]}>
-    {__DEV__ && getAmount() === 0 && (
-      <View style={styles.testingBanner}>
-        <Text style={styles.testingText}>🛠️ TESTING MODE: Amount is 0</Text>
-      </View>
-    )}
-    <PayButton
-      title={`Pay ${formatCurrency(getAmount(), 'NGN')}`}
-      onPress={handlePayment}
-      disabled={payment.step === 'processing'}
-      loading={payment.step === 'processing'}
-      style={styles.payButton}
-    />
-  </View>
-)}
+        {customerData && canProceed() && (
+          <View style={styles.stickyFooter}>
+            <LinearGradient
+              colors={isDarkMode 
+                ? ['rgba(26, 26, 46, 0.98)', 'rgba(22, 33, 62, 0.98)']
+                : ['rgba(255, 255, 255, 0.98)', 'rgba(249, 250, 251, 0.98)']}
+              style={styles.footerGradient}
+            >
+              {__DEV__ && getAmount() === 0 && (
+                <View style={styles.testingBanner}>
+                  <Text style={styles.testingText}>🛠️ TESTING MODE: Amount is 0</Text>
+                </View>
+              )}
+
+              <View style={styles.paymentSummary}>
+                <Text style={[styles.summaryLabel, { color: themeColors.subheading }]}>
+                  {subscriptionType === 'renew' ? 'Renewal Amount' : 'Package Price'}
+                </Text>
+                <Text style={styles.summaryAmount}>
+                  {formatCurrency(getAmount(), 'NGN')}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.payButtonContainer,
+                  payment.step === 'processing' && styles.payButtonDisabled
+                ]}
+                onPress={handlePayment}
+                disabled={payment.step === 'processing'}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={
+                    payment.step === 'processing'
+                      ? ['#9CA3AF', '#6B7280']
+                      : ['#667EEA', '#764BA2']
+                  }
+                  style={styles.payButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {payment.step === 'processing' ? (
+                    <Text style={styles.payButtonText}>Processing...</Text>
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+                      <Text style={styles.payButtonText}>Subscribe Now</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
       </View>
 
       {/* ========================================
@@ -961,6 +1112,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     </SafeAreaView>
   );
 }
+
 // ========================================
 // Styles
 // ========================================
@@ -968,159 +1120,450 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerGradient: {
+    paddingBottom: 16,
+  },
   mainContainer: {
     flex: 1,
-    position: 'relative', // Important for sticky footer positioning
+    position: 'relative',
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 200,
   },
   bottomSpacer: {
-    height: 80, // Space for the sticky button
+    height: 40,
   },
-  stickyFooter: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    paddingBottom: 20,
-    borderTopWidth: 3,
-    borderTopColor: '#5403f5ff',
+  balanceCard: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 5,
-    height: 200
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 20,
-    marginBottom: 12,
-  },
-  inputContainer: {
+  balanceContent: {
     flexDirection: 'row',
-    gap: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  balanceLeft: {
+    flex: 1,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.9)',
     marginBottom: 8,
+  },
+  balanceAmount: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  balanceIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  card: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  errorBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countBadge: {
+    backgroundColor: '#667EEA15',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  countBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#667EEA',
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    gap: 12,
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-  },
-  verifyButton: {
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    justifyContent: 'center',
-    minWidth: 90,
-  },
-  verifyButtonText: {
-    color: '#FFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  customerCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-  },
-  customerCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  customerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  customerLabel: {
-    fontSize: 14,
-  },
-  customerValue: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  typeSelector: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  typeButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 8,
-    borderWidth: 1,
     alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
   },
-  typeButtonText: {
-    fontSize: 14,
+  inputIconContainer: {
+    marginRight: 10,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 14,
     fontWeight: '500',
   },
-  bouquetsContainer: {
-    gap: 10,
+  verifyButtonContainer: {
+    minWidth: 110,
+    borderRadius: 14,
+    overflow: 'hidden',
   },
-  bouquetCard: {
+  verifyButtonDisabled: {
+    opacity: 0.6,
+  },
+  verifyButtonGradient: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 6,
   },
-  bouquetInfo: {
-    flex: 1,
-  },
-  bouquetName: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  bouquetPrice: {
-    fontSize: 16,
-    marginTop: 4,
-    fontWeight: 'bold',
-    marginTop: 10
-  },
-  checkmark: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  payButton: {
-    marginTop: 24,
-  },
-  errorContainer: {
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 16,
+  verifyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   errorText: {
     fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
+    fontWeight: '600',
+    marginTop: 8,
   },
-  loader: {
-    marginVertical: 20,
+  helpText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  customerInfoCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  customerInfoGradient: {
+    padding: 16,
+  },
+  verifiedHeader: {
+    marginBottom: 14,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    gap: 6,
+    alignSelf: 'flex-start',
+  },
+  verifiedBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  customerDetails: {
+    gap: 14,
+  },
+  customerDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  detailIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#10B98120',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailContent: {
+    flex: 1,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  typeSelector: {
+    gap: 12,
+  },
+  typeButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  typeButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  radioContainer: {
+    marginRight: 4,
+  },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+  },
+  typeButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  loadingContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bouquetsContainer: {
+    gap: 12,
+  },
+  bouquetCard: {
+    borderRadius: 18,
+    padding: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  bouquetCardSelected: {
+    shadowColor: '#667EEA',
+    shadowOpacity: 0.3,
+    elevation: 6,
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 5,
+  },
+  bouquetContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bouquetInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  bouquetName: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  bouquetPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bouquetPrice: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#667EEA',
+    letterSpacing: 0.3,
+  },
+  selectedIconContainer: {
+    marginLeft: 8,
+  },
+  selectedIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#667EEA',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  errorContainer: {
+    marginBottom: 16,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  errorGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  stickyFooter: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  footerGradient: {
+    padding: 20,
   },
   testingBanner: {
     backgroundColor: '#FFA500',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 12,
     alignItems: 'center',
   },
   testingText: {
     color: '#FFF',
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
-  helpText: {
+  paymentSummary: {
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  summaryAmount: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#667EEA',
+    letterSpacing: 0.5,
+  },
+  payButtonContainer: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  payButtonDisabled: {
+    opacity: 0.6,
+  },
+  payButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 10,
+  },
+  payButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  providerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  providerCell: {
+    width: (width - 32 - 40 - 10) / 2,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  providerCellSelected: {
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  providerCellLogo: {
+    width: 34,
+    height: 34,
+    marginBottom: 6,
+  },
+  providerCellLabel: {
     fontSize: 12,
-    marginTop: 4,
-    marginBottom: 12,
-    fontStyle: 'italic',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  providerCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  providerError: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginTop: 8,
   },
 });

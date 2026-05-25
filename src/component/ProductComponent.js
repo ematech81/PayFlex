@@ -140,7 +140,7 @@ const ProductComponent = ({ products, setProducts, currency }) => {
       <FlatList
         data={products}
         renderItem={renderProduct}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => item.id?.toString() || item._id?.toString() || index.toString()}
         contentContainerStyle={styles.productList}
         ListEmptyComponent={
           <Text style={[styles.emptyText, { color: themeColors.subheading }]}>
@@ -150,20 +150,11 @@ const ProductComponent = ({ products, setProducts, currency }) => {
       />
 
       {products.length > 0 && (
-        <View
-          style={{
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: 20,
-            flexDirection: 'row',
-          }}
-        >
-          <Text style={[styles.subTotal, { color: themeColors.subheading }]}>
-            Sub-Total:
-          </Text>
-          <Text style={[styles.subTotal, { color: themeColors.heading }]}>
-            {formatCurrency(subTotal, currency)}
-          </Text>
+        <View style={styles.subtotalCard}>
+          <View style={styles.subtotalInner}>
+            <Text style={styles.subtotalLabel}>Sub-Total</Text>
+            <Text style={styles.subtotalAmount}>{formatCurrency(subTotal, currency)}</Text>
+          </View>
         </View>
       )}
 
@@ -222,10 +213,10 @@ const ProductComponent = ({ products, setProducts, currency }) => {
           <View style={styles.formButtonContainer}>
             <TouchableOpacity
               style={[
-                styles.addButton,
+                styles.formAddButton,
                 {
                   backgroundColor: themeColors.button,
-                  opacity: isAddButtonActive ? 1 : 0.5,
+                  opacity: isAddButtonActive ? 1 : 0.45,
                 },
               ]}
               onPress={
@@ -237,18 +228,12 @@ const ProductComponent = ({ products, setProducts, currency }) => {
               }
               disabled={!isAddButtonActive}
             >
-              <Text style={styles.addButtonText}>
-                {isEditMode ? 'Save' : 'Add'}
+              <Text style={styles.formAddButtonText}>
+                {isEditMode ? '✓  Save Product' : '+  Add Product'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                styles.cancelButton,
-                {
-                  backgroundColor: themeColors.destructive,
-                  opacity: isAddButtonActive ? 1 : 0.5,
-                },
-              ]}
+              style={[styles.cancelButton, { backgroundColor: themeColors.destructive }]}
               onPress={() => {
                 setProductName('');
                 setQuantity('');
@@ -265,11 +250,11 @@ const ProductComponent = ({ products, setProducts, currency }) => {
       )}
       {isCollapsed && (
         <TouchableOpacity
-          style={[styles.addButton]}
+          style={[styles.addButton, styles.addButtonVisible]}
           onPress={() => setIsCollapsed(false)}
         >
-          <Text style={styles.addButtonText}>
-            {products.length > 0 ? 'Add More Product' : 'Add Product'}
+          <Text style={styles.addButtonVisibleText}>
+            {products.length > 0 ? '+ Add More Product' : '+ Add Product'}
           </Text>
         </TouchableOpacity>
       )}
@@ -345,17 +330,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
+  addButtonVisible: {
+    backgroundColor: '#4a00e0',
+    borderRadius: 8,
+  },
   addButtonText: {
-    color: '#4a00e0',
-    fontSize: 17,
-    fontWeight: 'bold',
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  addButtonVisibleText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  formAddButton: {
+    flex: 2,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
+  formAddButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   cancelButton: {
-    flex: 0.7,
-    padding: 12,
-    borderRadius: 8,
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: 'center',
-    marginLeft: 8,
+    justifyContent: 'center',
   },
   buttonText: {
     color: '#fff',
@@ -383,6 +392,33 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 8,
     marginBottom: 8,
+  },
+  subtotalCard: {
+    backgroundColor: '#4a00e0',
+    borderRadius: 12,
+    marginTop: 8,
+    marginHorizontal: 2,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  subtotalInner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  subtotalLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: 0.5,
+  },
+  subtotalAmount: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: -0.5,
   },
   toggleContainer: {
     flexDirection: 'row',

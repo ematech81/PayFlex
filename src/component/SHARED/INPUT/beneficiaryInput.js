@@ -5,7 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
+  ScrollView,
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -304,13 +304,16 @@ export default function BeneficiaryInput({
               },
             ]}
           >
-            <FlatList
-              data={beneficiaries}
-              renderItem={renderBeneficiary}
-              keyExtractor={(item, index) => `${item[identifierField]}-${index}`}
+            <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.dropdownContent}
-            />
+            >
+              {beneficiaries.map((item, index) => (
+                <React.Fragment key={`${item[identifierField]}-${index}`}>
+                  {renderBeneficiary({ item, index })}
+                </React.Fragment>
+              ))}
+            </ScrollView>
           </Animated.View>
         )}
       </View>

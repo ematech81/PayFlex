@@ -2,457 +2,379 @@ import React, {
   createContext,
   useContext,
   useState,
-  useReducer,
   useCallback,
   useEffect,
+  useRef,
 } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { ApiIPAddress } from 'utility/apiIPAdress';
+import { ApiIPAddress, InvoiceApiIPAddress } from 'utility/apiIPAdress';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 import { getTransactionHistory } from 'AuthFunction/paymentService';
-
 
 const WalletContext = createContext();
 const BASE_URL = ApiIPAddress;
 
-const initialInvoiceState = {
-  invoices: [], // { id, customer, title, dueDate, currency, products, discount, tax, total, notes, paymentDetails, status }
-  customers: [], // { id, name, phone, email, extraDetails }
-  currentInvoice: null, // For creation/editing
-};
-
-const invoiceReducer = (state, action) => {
-  switch (action.type) {
-    case 'ADD_INVOICE':
-      return {
-        ...state,
-        invoices: [...state.invoices, { ...action.payload, id: uuidv4() }],
-        currentInvoice: null,
-      };
-    case 'UPDATE_INVOICE':
-      return {
-        ...state,
-        invoices: state.invoices.map((inv) =>
-          inv.id === action.payload.id ? action.payload : inv
-        ),
-        currentInvoice: null,
-      };
-    case 'DELETE_INVOICE':
-      return {
-        ...state,
-        invoices: state.invoices.filter((inv) => inv.id !== action.payload),
-      };
-    case 'SET_CURRENT_INVOICE':
-      return { ...state, currentInvoice: action.payload };
-    case 'ADD_CUSTOMER':
-      return {
-        ...state,
-        customers: [...state.customers, { ...action.payload, id: uuidv4() }],
-      };
-    case 'UPDATE_CUSTOMER':
-      return {
-        ...state,
-        customers: state.customers.map((cust) =>
-          cust.id === action.payload.id ? action.payload : cust
-        ),
-      };
-    case 'DELETE_CUSTOMER':
-      return {
-        ...state,
-        customers: state.customers.filter((cust) => cust.id !== action.payload),
-      };
-    case 'SET_PAID':
-      return {
-        ...state,
-        invoices: state.invoices.map((inv) =>
-          inv.id === action.payload ? { ...inv, status: 'Paid' } : inv
-        ),
-      };
-    default:
-      return state;
-  }
-};
+// ─── axios instance for invoice API (token injected per-call) ─────────────────
+const invoiceApi = axios.create({ baseURL: InvoiceApiIPAddress, timeout: 15000 });
 
 export const WalletProvider = ({ children }) => {
-  const [invoiceState, invoiceDispatch] = useReducer(
-    invoiceReducer,
-    initialInvoiceState
-  );
- 
-
-//wallet section
-const [walletBalance, setWalletBalance] = useState(0); 
-const [wallet, setWallet] = useState({
-  token: null,
-  user: null,
-  transactionPinSet: false,
-  isLoading: true,
-});
-const [transactions, setTransactions] = useState([]);
-const [transactionStats, setTransactionStats] = useState(null);
-const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
-
-const normalizeUserData = (user) => {
-  if (!user) return null;
-  return {
-    ...user,
-    walletBalance: Number(user.walletBalance) || 0,
-  };
-};
-
-// Load stored data on mount
-useEffect(() => {
-  loadStoredData();
-}, []);
-
-const loadStoredData = async () => {
-  try {
-    const [token, userStr, pinSetStr] = await Promise.all([
-      AsyncStorage.getItem(STORAGE_KEYS.TOKEN),
-      AsyncStorage.getItem(STORAGE_KEYS.USER),
-      AsyncStorage.getItem('transactionPinSet'),
-    ]);
-
-    if (token && userStr) {
-      const user = normalizeUserData(JSON.parse(userStr));
-      const transactionPinSet = pinSetStr === 'true';
-
-      setWallet({
-        token,
-        user,
-        transactionPinSet,
-        isLoading: false,
-      });
-
-      // Background verify (non-blocking)
-      verifyUserSession(token, user);
-    } else {
-      setWallet(prev => ({ ...prev, isLoading: false }));
-    }
-  } catch (error) {
-    console.error('Error loading wallet data:', error);
-    setWallet(prev => ({ ...prev, isLoading: false }));
-  }
-};
-
-const verifyUserSession = async (token, localUser) => {
-  try {
-    const { data } = await axios.get(`${BASE_URL}/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      timeout: 10000,
-    });
-
-    const serverUser = normalizeUserData(data.user || localUser);
-    const serverPinSet = !!data.transactionPinSet;
-
-    // Sync PIN if different
-    if (serverPinSet !== wallet.transactionPinSet) {
-      await AsyncStorage.setItem('transactionPinSet', String(serverPinSet));
-      setWallet(prev => ({ ...prev, transactionPinSet: serverPinSet }));
-    }
-
-    // Sync user data if changed
-    if (JSON.stringify(serverUser) !== JSON.stringify(localUser)) {
-      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(serverUser));
-      setWallet(prev => ({ ...prev, user: serverUser }));
-    }
-  } catch (error) {
-    if (error.response?.status === 401) {
-      logout();
-    }
-  }
-};
-
-// ✅ FIX: Enhanced wallet refresh with retry logic
-const refreshWallet = async (options = {}) => {
-  const { maxRetries = 3, retryDelay = 1000 } = options;
-  
-  if (!wallet.token) {
-    console.log('❌ No token available for wallet refresh');
-    return { success: false };
-  }
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`🔄 Refreshing wallet (attempt ${attempt}/${maxRetries})...`);
-      
-      const { data } = await axios.get(`${BASE_URL}/me`, {
-        headers: { Authorization: `Bearer ${wallet.token}` },
-        timeout: 10000,
-      });
-
-      // ✅ FIX: Handle both possible response structures
-      const user = normalizeUserData(data.user);
-      const transactionPinSet = data.transactionPinSet === true || data.transactionPinSet === 'true';
-
-      console.log('📡 Server response:', {
-        success: data.success,
-        transactionPinSet,
-        walletBalance: user?.walletBalance,
-        rawPinStatus: data.transactionPinSet,
-      });
-
-      // Validate we got proper data
-      if (!user) {
-        throw new Error('Invalid user data received from server');
-      }
-
-      // ✅ FIX: Save to AsyncStorage first, then update state
-      await Promise.all([
-        AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user)),
-        AsyncStorage.setItem('transactionPinSet', String(transactionPinSet)),
-      ]);
-
-      // Update state after storage is confirmed
-      setWallet(prev => ({
-        ...prev,
-        user,
-        transactionPinSet,
-        isLoading: false,
-      }));
-
-      console.log('✅ Wallet refreshed successfully:', { transactionPinSet });
-      return { success: true, data: { user, transactionPinSet } };
-      
-    } catch (error) {
-      console.error(`❌ Wallet refresh attempt ${attempt} failed:`, error.message);
-      
-      // If this isn't the last attempt, wait and retry
-      if (attempt < maxRetries) {
-        console.log(`⏳ Retrying in ${retryDelay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
-        continue;
-      }
-      
-      // Last attempt failed
-      console.error('❌ All wallet refresh attempts failed');
-      return { success: false, error };
-    }
-  }
-  
-  return { success: false };
-};
-
-const login = async (token, userData) => {
-  try {
-    const { data } = await axios.get(`${BASE_URL}/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    const user = normalizeUserData(data.user || userData);
-    const transactionPinSet = !!data.transactionPinSet;
-
-    await Promise.all([
-      AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token),
-      AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user)),
-      AsyncStorage.setItem('transactionPinSet', String(transactionPinSet)),
-    ]);
-
-    setWallet({
-      token,
-      user,
-      transactionPinSet,
-      isLoading: false,
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error('Login server check failed:', error);
-    // Fallback to local
-    const user = normalizeUserData(userData);
-    await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
-    await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-    setWallet({ token, user, transactionPinSet: false, isLoading: false });
-    return { success: true };
-  }
-};
-
-const logout = async () => {
-  await AsyncStorage.multiRemove([
-    STORAGE_KEYS.TOKEN,
-    STORAGE_KEYS.USER,
-    'transactionPinSet',
-  ]);
-  setWallet({
+  // ─── wallet / auth state ────────────────────────────────────────────────────
+  const [wallet, setWallet] = useState({
     token: null,
     user: null,
     transactionPinSet: false,
-    isLoading: false,
+    isLoading: true,
   });
-};
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [transactions, setTransactions] = useState([]);
+  const [transactionStats, setTransactionStats] = useState(null);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
 
-// ✅ FIX: Updated PIN status handler - no background refresh
-const updateTransactionPinStatus = async (pinSet = true) => {
-  try {
-    console.log('🔐 Updating transaction PIN status locally:', pinSet);
-    
-    // Update AsyncStorage
-    await AsyncStorage.setItem('transactionPinSet', String(pinSet));
-    
-    // Update state
-    setWallet(prev => ({ 
-      ...prev, 
-      transactionPinSet: pinSet 
-    }));
-    
-    console.log('✅ Transaction PIN status updated locally:', pinSet);
-    
-    // ✅ FIX: Do NOT call refreshWallet here
-    // Let the calling screen handle the refresh with proper timing
-    
-    return { success: true };
-  } catch (error) {
-    console.error('❌ Failed to update PIN status:', error);
-    throw error;
-  }
-};
+  // ─── invoice state ──────────────────────────────────────────────────────────
+  const [invoices, setInvoices] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [currentInvoice, setCurrentInvoiceState] = useState(null);
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(false);
 
-const updateWalletBalance = async (newBalance) => {
-  const balance = Number(newBalance) || 0;
-  setWallet(prev => ({
-    ...prev,
-    user: prev.user ? { ...prev.user, walletBalance: balance } : null,
-  }));
+  // Keep a ref so API helpers always see the latest token without stale closure
+  const tokenRef = useRef(null);
 
-  if (wallet.user) {
-    const updatedUser = { ...wallet.user, walletBalance: balance };
-    await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
-  }
-};
+  const authHeader = () => ({ Authorization: `Bearer ${tokenRef.current}` });
 
+  // ─── wallet helpers ─────────────────────────────────────────────────────────
+  const normalizeUserData = (user) => {
+    if (!user) return null;
+    return { ...user, walletBalance: Number(user.walletBalance) || 0 };
+  };
 
-
-
-/**
- * Fetch Transaction History
- */
-
-
-const fetchTransactions = async (filters = {}) => {
-  setIsLoadingTransactions(true);
-  try {
-    console.log('🔵 WalletContext: Fetching with filters:', filters);
-    
-    const response = await getTransactionHistory(filters);
-    
-    console.log('🔵 WalletContext: Response received:', response); // ✅ Add this
-    
-    if (response.success) {
-      console.log('🔵 WalletContext: Transactions count:', response.data.transactions.length); // ✅ Add this
-      
-      setTransactions(response.data.transactions);
-      setTransactionStats(response.data.stats);
-      return response.data;
-    }
-    
-    throw new Error(response.message || 'Failed to fetch transactions');
-  } catch (error) {
-    console.error('❌ WalletContext: Fetch Transactions Error:', error);
-    setTransactions([]); // ✅ Add this - clear transactions on error
-    throw error;
-  } finally {
-    setIsLoadingTransactions(false);
-  }
-};
-
-  const calculateInvoice = useCallback((products, discount, tax) => {
-    const subtotal = products.reduce(
-      (sum, item) => sum + item.quantity * item.price,
-      0
-    );
-    let discountAmount = 0;
-    if (discount.value > 0) {
-      discountAmount =
-        discount.type === 'Fixed'
-          ? discount.value
-          : (subtotal * discount.value) / 100;
-    }
-    let taxAmount = 0;
-    if (tax.value > 0) {
-      taxAmount =
-        tax.type === 'Fixed' ? tax.value : (subtotal * tax.value) / 100;
-    }
-    const total = subtotal - discountAmount + taxAmount;
-    return { subtotal, discountAmount, taxAmount, total };
+  useEffect(() => {
+    loadStoredData();
   }, []);
 
-  const addInvoice = useCallback(
-    (invoice) => {
-      const {
-        products,
-        discount = { type: 'Fixed', value: 0 },
-        tax = { type: 'Fixed', value: 0 },
-      } = invoice;
-      const { subtotal, discountAmount, taxAmount, total } = calculateInvoice(
-        products,
-        discount,
-        tax
-      );
-      invoiceDispatch({
-        type: 'ADD_INVOICE',
-        payload: {
-          ...invoice,
-          subtotal,
-          discountAmount,
-          taxAmount,
-          total,
-          status: invoice.status || 'Draft',
-        },
-      });
-    },
-    [calculateInvoice]
-  );
+  // Sync ref whenever token changes
+  useEffect(() => {
+    tokenRef.current = wallet.token;
+  }, [wallet.token]);
 
-  const updateInvoice = useCallback(
-    (invoice) => {
-      const {
-        products,
-        discount = { type: 'Fixed', value: 0 },
-        tax = { type: 'Fixed', value: 0 },
-      } = invoice;
-      const { subtotal, discountAmount, taxAmount, total } = calculateInvoice(
-        products,
-        discount,
-        tax
-      );
-      invoiceDispatch({
-        type: 'UPDATE_INVOICE',
-        payload: { ...invoice, subtotal, discountAmount, taxAmount, total },
-      });
-    },
-    [calculateInvoice]
-  );
+  const loadStoredData = async () => {
+    try {
+      const [token, userStr, pinSetStr] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.TOKEN),
+        AsyncStorage.getItem(STORAGE_KEYS.USER),
+        AsyncStorage.getItem('transactionPinSet'),
+      ]);
 
-  const deleteInvoice = useCallback((id) => {
-    invoiceDispatch({ type: 'DELETE_INVOICE', payload: id });
+      if (token && userStr) {
+        tokenRef.current = token;
+        const user = normalizeUserData(JSON.parse(userStr));
+        setWallet({ token, user, transactionPinSet: pinSetStr === 'true', isLoading: false });
+        verifyUserSession(token, user);
+      } else {
+        setWallet((prev) => ({ ...prev, isLoading: false }));
+      }
+    } catch (error) {
+      console.error('Error loading wallet data:', error);
+      setWallet((prev) => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const verifyUserSession = async (token, localUser) => {
+    try {
+      const { data } = await axios.get(`${BASE_URL}/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000,
+      });
+      const serverUser = normalizeUserData(data.user || localUser);
+      const serverPinSet = !!data.transactionPinSet;
+      if (serverPinSet !== wallet.transactionPinSet) {
+        await AsyncStorage.setItem('transactionPinSet', String(serverPinSet));
+        setWallet((prev) => ({ ...prev, transactionPinSet: serverPinSet }));
+      }
+      if (JSON.stringify(serverUser) !== JSON.stringify(localUser)) {
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(serverUser));
+        setWallet((prev) => ({ ...prev, user: serverUser }));
+      }
+    } catch (error) {
+      if (error.response?.status === 401) logout();
+    }
+  };
+
+  const refreshWallet = async (options = {}) => {
+    const { maxRetries = 3, retryDelay = 1000 } = options;
+    if (!wallet.token) return { success: false };
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const { data } = await axios.get(`${BASE_URL}/me`, {
+          headers: { Authorization: `Bearer ${wallet.token}` },
+          timeout: 10000,
+        });
+        const user = normalizeUserData(data.user);
+        const transactionPinSet =
+          data.transactionPinSet === true || data.transactionPinSet === 'true';
+        if (!user) throw new Error('Invalid user data received');
+        await Promise.all([
+          AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user)),
+          AsyncStorage.setItem('transactionPinSet', String(transactionPinSet)),
+        ]);
+        setWallet((prev) => ({ ...prev, user, transactionPinSet, isLoading: false }));
+        return { success: true, data: { user, transactionPinSet } };
+      } catch (error) {
+        if (attempt < maxRetries) {
+          await new Promise((r) => setTimeout(r, retryDelay));
+          continue;
+        }
+        return { success: false, error };
+      }
+    }
+    return { success: false };
+  };
+
+  const login = async (token, userData) => {
+    try {
+      tokenRef.current = token;
+      const { data } = await axios.get(`${BASE_URL}/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const user = normalizeUserData(data.user || userData);
+      const transactionPinSet = !!data.transactionPinSet;
+      await Promise.all([
+        AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token),
+        AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user)),
+        AsyncStorage.setItem('transactionPinSet', String(transactionPinSet)),
+      ]);
+      setWallet({ token, user, transactionPinSet, isLoading: false });
+      return { success: true };
+    } catch (error) {
+      console.error('Login server check failed:', error);
+      tokenRef.current = token;
+      const user = normalizeUserData(userData);
+      await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, token);
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+      setWallet({ token, user, transactionPinSet: false, isLoading: false });
+      return { success: true };
+    }
+  };
+
+  const logout = async () => {
+    tokenRef.current = null;
+    await AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.USER, 'transactionPinSet']);
+    setWallet({ token: null, user: null, transactionPinSet: false, isLoading: false });
+  };
+
+  const updateTransactionPinStatus = async (pinSet = true) => {
+    await AsyncStorage.setItem('transactionPinSet', String(pinSet));
+    setWallet((prev) => ({ ...prev, transactionPinSet: pinSet }));
+    return { success: true };
+  };
+
+  const updateWalletBalance = async (newBalance) => {
+    const balance = Number(newBalance) || 0;
+    setWallet((prev) => ({
+      ...prev,
+      user: prev.user ? { ...prev.user, walletBalance: balance } : null,
+    }));
+    if (wallet.user) {
+      const updatedUser = { ...wallet.user, walletBalance: balance };
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+    }
+  };
+
+  // ─── transactions ───────────────────────────────────────────────────────────
+  const fetchTransactions = async (filters = {}) => {
+    setIsLoadingTransactions(true);
+    try {
+      const response = await getTransactionHistory(filters);
+      if (response.success) {
+        setTransactions(response.data.transactions);
+        setTransactionStats(response.data.stats);
+        return response.data;
+      }
+      throw new Error(response.message || 'Failed to fetch transactions');
+    } catch (error) {
+      console.error('❌ WalletContext: Fetch Transactions Error:', error);
+      setTransactions([]);
+      throw error;
+    } finally {
+      setIsLoadingTransactions(false);
+    }
+  };
+
+  // ─── invoice calculations (replicated from original, kept for offline use) ──
+  const calculateInvoice = useCallback((products, discount, tax) => {
+    const subtotal = products.reduce((sum, item) => sum + item.quantity * item.price, 0);
+    const discountAmount =
+      discount.value > 0
+        ? discount.type === 'Fixed'
+          ? discount.value
+          : (subtotal * discount.value) / 100
+        : 0;
+    const taxAmount =
+      tax.value > 0
+        ? tax.type === 'Fixed'
+          ? tax.value
+          : (subtotal * tax.value) / 100
+        : 0;
+    return { subtotal, discountAmount, taxAmount, total: subtotal - discountAmount + taxAmount };
+  }, []);
+
+  // ─── customer API functions ─────────────────────────────────────────────────
+  const fetchCustomers = useCallback(async () => {
+    try {
+      const { data } = await invoiceApi.get('/customers', { headers: authHeader() });
+      setCustomers(data.data || []);
+      return data.data;
+    } catch (error) {
+      console.error('❌ Fetch Customers Error:', error.message);
+      throw error;
+    }
+  }, []);
+
+  const addCustomer = useCallback(async (customer) => {
+    try {
+      const { data } = await invoiceApi.post('/customers', customer, {
+        headers: authHeader(),
+      });
+      setCustomers((prev) => [data.data, ...prev]);
+      return data.data;
+    } catch (error) {
+      console.error('❌ Add Customer Error:', error.message);
+      throw error;
+    }
+  }, []);
+
+  const updateCustomer = useCallback(async (customer) => {
+    try {
+      const { data } = await invoiceApi.put(`/customers/${customer._id || customer.id}`, customer, {
+        headers: authHeader(),
+      });
+      setCustomers((prev) =>
+        prev.map((c) => (c._id === data.data._id ? data.data : c))
+      );
+      return data.data;
+    } catch (error) {
+      console.error('❌ Update Customer Error:', error.message);
+      throw error;
+    }
+  }, []);
+
+  const deleteCustomer = useCallback(async (id) => {
+    try {
+      await invoiceApi.delete(`/customers/${id}`, { headers: authHeader() });
+      setCustomers((prev) => prev.filter((c) => c._id !== id && c.id !== id));
+    } catch (error) {
+      console.error('❌ Delete Customer Error:', error.message);
+      throw error;
+    }
+  }, []);
+
+  // ─── invoice API functions ──────────────────────────────────────────────────
+  const fetchInvoices = useCallback(async (filters = {}) => {
+    setIsLoadingInvoices(true);
+    try {
+      const { data } = await invoiceApi.get('/', {
+        params: filters,
+        headers: authHeader(),
+      });
+      setInvoices(data.data || []);
+      return data.data;
+    } catch (error) {
+      console.error('❌ Fetch Invoices Error:', error.message);
+      throw error;
+    } finally {
+      setIsLoadingInvoices(false);
+    }
+  }, []);
+
+  const addInvoice = useCallback(async (invoice) => {
+    try {
+      const { data } = await invoiceApi.post('/', invoice, { headers: authHeader() });
+      setInvoices((prev) => [data.data, ...prev]);
+      return data.data;
+    } catch (error) {
+      console.error('❌ Add Invoice Error:', error.message);
+      throw error;
+    }
+  }, []);
+
+  const updateInvoice = useCallback(async (invoice) => {
+    try {
+      // _id is only present on invoices that already exist in the database.
+      // Screens (InvoiceProcessingScreen) call updateInvoice for both new and
+      // existing invoices, so route accordingly.
+      const mongoId = invoice._id;
+      if (!mongoId) {
+        // No _id → this is a brand-new invoice coming from the creation flow
+        const { data } = await invoiceApi.post('/', invoice, { headers: authHeader() });
+        setInvoices((prev) => [data.data, ...prev]);
+        return data.data;
+      }
+      const { data } = await invoiceApi.put(`/${mongoId}`, invoice, { headers: authHeader() });
+      setInvoices((prev) => prev.map((inv) => (inv._id === data.data._id ? data.data : inv)));
+      return data.data;
+    } catch (error) {
+      console.error('❌ Update Invoice Error:', error.message);
+      throw error;
+    }
+  }, []);
+
+  const deleteInvoice = useCallback(async (id) => {
+    try {
+      await invoiceApi.delete(`/${id}`, { headers: authHeader() });
+      setInvoices((prev) => prev.filter((inv) => inv._id !== id && inv.id !== id));
+    } catch (error) {
+      console.error('❌ Delete Invoice Error:', error.message);
+      throw error;
+    }
+  }, []);
+
+  const setInvoicePaid = useCallback(async (id) => {
+    try {
+      const { data } = await invoiceApi.patch(`/${id}/mark-paid`, {}, { headers: authHeader() });
+      setInvoices((prev) =>
+        prev.map((inv) => (inv._id === id || inv.id === id ? data.data : inv))
+      );
+      return data.data;
+    } catch (error) {
+      console.error('❌ Mark Invoice Paid Error:', error.message);
+      throw error;
+    }
   }, []);
 
   const setCurrentInvoice = useCallback((invoice) => {
-    invoiceDispatch({ type: 'SET_CURRENT_INVOICE', payload: invoice });
+    setCurrentInvoiceState(invoice);
   }, []);
 
-  const setInvoicePaid = useCallback((id) => {
-    invoiceDispatch({ type: 'SET_PAID', payload: id });
-  }, []);
-
-  const addCustomer = useCallback((customer) => {
-    invoiceDispatch({ type: 'ADD_CUSTOMER', payload: customer });
-  }, []);
-
-  const updateCustomer = useCallback((customer) => {
-    invoiceDispatch({ type: 'UPDATE_CUSTOMER', payload: customer });
-  }, []);
-
-  const deleteCustomer = useCallback((id) => {
-    invoiceDispatch({ type: 'DELETE_CUSTOMER', payload: id });
-  }, []);
+  // Load invoices & customers once the user is authenticated
+  useEffect(() => {
+    if (wallet.token && !wallet.isLoading) {
+      fetchInvoices().catch(() => {});
+      fetchCustomers().catch(() => {});
+    }
+  }, [wallet.token, wallet.isLoading]);
 
   const value = {
-    invoices: invoiceState.invoices || [],
-    customers: invoiceState.customers || [],
-    currentInvoice: invoiceState.currentInvoice,
+    // auth / wallet
+    wallet,
+    setWallet,
+    walletBalance,
+    setWalletBalance,
+    updateWalletBalance,
+    login,
+    logout,
+    refreshWallet,
+    updateTransactionPinStatus,
+    // transactions
+    transactions,
+    transactionStats,
+    isLoadingTransactions,
+    fetchTransactions,
+    // invoices
+    invoices,
+    customers,
+    currentInvoice,
+    isLoadingInvoices,
     addInvoice,
     updateInvoice,
     deleteInvoice,
@@ -462,33 +384,15 @@ const fetchTransactions = async (filters = {}) => {
     updateCustomer,
     deleteCustomer,
     calculateInvoice,
-    wallet,
-    setWallet,
-    walletBalance,
-    setWalletBalance,
-    updateWalletBalance,
-    invoiceState,
-    invoiceDispatch,
-    login,
-    logout,
-    updateTransactionPinStatus,
-    refreshWallet,
-    wallet,
-    transactions, 
-    isLoadingTransactions, 
-    fetchTransactions, 
-    
+    fetchInvoices,
+    fetchCustomers,
   };
 
-  return (
-    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
-  );
+  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 };
 
 export const useWallet = () => {
   const context = useContext(WalletContext);
-  if (!context) {
-    throw new Error('useWallet must be used within a WalletProvider');
-  }
+  if (!context) throw new Error('useWallet must be used within a WalletProvider');
   return context;
 };

@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Platform,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +22,6 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   ScreenHeader,
   TabSelector,
-  ProviderSelector,
   QuickAmountButton,
   PayButton,
   ConfirmationModal,
@@ -308,13 +308,36 @@ export default function AirtimeScreen({ navigation, route }) {
             )}
           </View>
           
-          <ProviderSelector
-            providers={NETWORK_PROVIDERS}
-            value={provider}
-            onChange={setProvider}
-            placeholder="Select Network Provider"
-            error={validationErrors.provider}
-          />
+          <View style={styles.providerGrid}>
+            {NETWORK_PROVIDERS.map((p) => {
+              const isSelected = provider === p.value;
+              return (
+                <TouchableOpacity
+                  key={p.value}
+                  style={[
+                    styles.providerCell,
+                    { backgroundColor: isSelected ? p.color + '22' : (isDarkMode ? '#2a2a3e' : '#F3F4F6') },
+                    isSelected && { borderColor: p.color },
+                  ]}
+                  onPress={() => setProvider(p.value)}
+                  activeOpacity={0.75}
+                >
+                  <Image source={p.logo} style={styles.providerCellLogo} resizeMode="contain" />
+                  <Text style={[styles.providerCellLabel, { color: isSelected ? p.color : themeColors.subheading }]}>
+                    {p.label}
+                  </Text>
+                  {isSelected && (
+                    <View style={[styles.providerCheck, { backgroundColor: p.color }]}>
+                      <Ionicons name="checkmark" size={10} color="#fff" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {validationErrors.provider && (
+            <Text style={styles.providerError}>{validationErrors.provider}</Text>
+          )}
         </View>
 
         {/* Phone Number Input Card */}
@@ -748,5 +771,51 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#EF4444',
+  },
+  providerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  providerCell: {
+    width: (width - 32 - 40 - 10) / 2,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  providerCellSelected: {
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  providerCellLogo: {
+    width: 34,
+    height: 34,
+    marginBottom: 6,
+  },
+  providerCellLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  providerCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  providerError: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginTop: 8,
   },
 });

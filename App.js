@@ -42,8 +42,7 @@ import CustomerTabScreen from './src/screen/invoice/CustomerTabScreen';
 import CustomerRegistrationScreen from './src/screen/invoice/CustomerRegistrationScreen';
 import InvoiceTabScreen from './src/screen/invoice/InvoiceTabScreen';
 import InvoiceCreationScreen from './src/screen/invoice/InvoiceCreationScreen';
-import InvoiceProcessingScreen from './src/screen/invoice/InvoiceProcessingScreen';
-import InvoiceDetailsScreen from 'screen/invoice/InvoiceDetailScreen';
+import InvoiceDetailsScreen from 'screen/invoice/InvoiceDetailsScreen';
 import TransactionDetailsScreen from 'screen/general/TransactionDetailsScreen';
 import SetTransactionPinScreen from 'screen/auth/SetTransactionPinScreen';
 import ResetPinScreen from 'screen/auth/ResetPinScreen';
@@ -521,7 +520,7 @@ function AppContent({ initialRoute, navigationRef }) {
               />
               <Stack.Screen
                 name="InvoiceProcessing"
-                component={InvoiceProcessingScreen}
+                component={InvoiceDetailsScreen}
               />
 
 {/* =====other screens======= */}

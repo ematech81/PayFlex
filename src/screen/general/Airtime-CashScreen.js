@@ -43,9 +43,9 @@ import { verifyAirtimeToCash, convertAirtimeToCash } from 'AuthFunction/paymentS
 // PIN shown is the default airtime transfer PIN on the user's own SIM (0000).
 const USSD_GUIDE = {
   mtn: {
-    transfer: (phone, amount) => `*600*${phone}*${amount}*0000#`,
-    changePin: '*600*0000*NEWPIN*NEWPIN#',
-    changePinExample: 'e.g. *600*0000*1234*1234#',
+    transfer: (phone, amount) => `*321*${phone}*${amount}*0000#`,
+    changePin: '*321*0000*NEWPIN*NEWPIN#',
+    changePinExample: 'e.g. *321*0000*1234*1234#',
   },
   glo: {
     transfer: (phone, amount) => `*131*${phone}*${amount}*0000#`,
@@ -59,7 +59,7 @@ const USSD_GUIDE = {
     changePinExample: 'e.g. *247*0000*1234#',
   },
   airtel: {
-    transfer: null, // VTU Africa docs do not provide Airtel USSD
+    transfer: null,
     changePin: null,
   },
 };
@@ -79,7 +79,7 @@ const BeforeYouProceedCard = ({ themeColors }) => {
   ];
 
   const ussdCodes = [
-    { network: 'MTN',     code: '*600*[number]*[amount]*[pin]#' },
+    { network: 'MTN',     code: '*321*[number]*[amount]*[pin]#' },
     { network: 'GLO',     code: '*131*[number]*[amount]*[pin]#' },
     { network: '9mobile', code: '*223*[pin]*[amount]*[number]#' },
     { network: 'Airtel',  code: 'Use standard airtime share method' },
@@ -107,10 +107,12 @@ const BeforeYouProceedCard = ({ themeColors }) => {
           {/* Conditions */}
           <Text style={styles.beforeSection}>Important Conditions</Text>
           {[
-            'Minimum ₦100 per conversion. GLO maximum is ₦1,000 per transfer.',
-            'You must complete the airtime transfer within 30 minutes — the transaction auto-cancels after that.',
+            'You must have an account with us to convert airtime.',
+            'Minimum ₦100. Maximum is any amount — except GLO which is ₦1,000 per transfer.',
+            'If your SIM has no airtime transfer PIN set, load one first before transferring.',
+            'You must send the airtime within 30 minutes — the transaction auto-cancels after that.',
             'Transfer the exact amount you enter in the form. Wrong amounts delay or fail processing.',
-            'Airtime transfer only — recharge cards sent to us will not be credited.',
+            'Airtime transfer only — recharge cards or VTU sent to us will not be credited.',
           ].map((cond, i) => (
             <Text key={i} style={[styles.beforeItem, { color: themeColors.subheading }]}>
               {i + 1}. {cond}
@@ -130,9 +132,9 @@ const BeforeYouProceedCard = ({ themeColors }) => {
           </View>
 
           {/* USSD codes */}
-          <Text style={styles.beforeSection}>USSD Transfer Codes (Optional)</Text>
+          <Text style={styles.beforeSection}>How to Transfer Airtime (USSD Codes)</Text>
           <Text style={[styles.beforeNote, { color: themeColors.subheading }]}>
-            You may use any method to transfer airtime — network app, airtime share, or USSD. If using USSD:
+            Use the USSD code for your network to transfer airtime to the number we provide after verification:
           </Text>
           {ussdCodes.map(u => (
             <View key={u.network} style={styles.ussdRow}>
@@ -628,7 +630,7 @@ export default function AirtimeToCashScreen({ navigation, route }) {
           ]}
         >
           <PayButton
-            title="I've Transferred Airtime"
+            title="Convert Now"
             onPress={handleConvert}
             disabled={payment.step === 'processing'}
             loading={payment.step === 'processing'}
@@ -683,14 +685,14 @@ export default function AirtimeToCashScreen({ navigation, route }) {
     visible={payment.step === 'result'}
     onClose={payment.resetFlow}
     type={payment.result ? 'success' : 'error'}
-    title={payment.result ? 'Request Submitted!' : 'Request Failed'}
+    title={payment.result ? 'Conversion Request Registered' : 'Request Failed'}
     message={
       payment.result
-        ? `Your conversion request has been submitted. Your wallet will be credited once we receive your airtime transfer of ${formatCurrency(parseFloat(amount || 0), 'NGN')}.`
-        : 'Your conversion request could not be completed. Please try again.'
+        ? `We have registered your airtime conversion request. Once we confirm receipt of your ₦${parseFloat(amount || 0).toLocaleString()} ${network?.toUpperCase()} airtime transfer, your wallet will be credited ₦${calculateReceivable(parseFloat(amount || 0))?.toLocaleString() ?? '—'} within 3–5 minutes.`
+        : `We could not register your conversion request. Please ensure you have transferred the airtime first, then try again.`
     }
     primaryAction={{
-      label: 'View Details',
+      label: 'View Transaction',
       onPress: handleTransactionComplete,
     }}
     secondaryAction={{

@@ -1,11 +1,15 @@
 
 
-export const ApiIPAddress = 'http://10.204.218.155:5000/api/auth';
-export const PaymentApiIPAddress = 'http://10.204.218.155:5000/api/payments';
-export const PayStackApiIPAddress = 'http://10.204.218.155:5000/api/payment';
-export const NINApiIPAddress = 'http://10.204.218.155:5000/api';
-export const GeneralApiIPAddress = 'http://10.204.218.155:5000/api';
-export const InvoiceApiIPAddress = 'http://10.204.218.155:5000/api/invoices';
+// Switch between RAILWAY (live test) and local IP for on-device dev
+const BASE = 'https://payflexbackend-production-c40f.up.railway.app/api';
+// const BASE = 'http://10.204.218.155:5000/api';
+
+export const ApiIPAddress        = `${BASE}/auth`;
+export const PaymentApiIPAddress = `${BASE}/payments`;
+export const PayStackApiIPAddress = `${BASE}/payment`;
+export const NINApiIPAddress     = BASE;
+export const GeneralApiIPAddress = BASE;
+export const InvoiceApiIPAddress = `${BASE}/invoices`;
 // export const FlightApiIPAddress = 'http://10.38.133.155:5000/api/flights';
 
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, RefreshControl,
@@ -102,7 +102,7 @@ export default function WalletsScreen() {
   const user    = wallet?.user;
   const balance = Number(user?.walletBalance ?? 0);
 
-  const fetchTopups = useCallback(async () => {
+  const fetchTopups = async () => {
     try {
       const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
       if (!token) return;
@@ -116,25 +116,30 @@ export default function WalletsScreen() {
     } catch {
       // silently fail — stale data stays visible
     }
-  }, []);
+  };
 
-  const loadAll = useCallback(async (showSpinner = true) => {
-    if (showSpinner) setLoading(true);
-    await Promise.all([refreshWallet(), fetchTopups()]);
-    if (showSpinner) setLoading(false);
-  }, [refreshWallet, fetchTopups]);
+  // Stable ref so useFocusEffect never re-fires due to changing function identity
+  const refreshWalletRef = useRef(refreshWallet);
+  refreshWalletRef.current = refreshWallet;
 
   useFocusEffect(
     useCallback(() => {
-      loadAll();
-    }, [loadAll])
+      let active = true;
+      async function load() {
+        setLoading(true);
+        await Promise.all([refreshWalletRef.current(), fetchTopups()]);
+        if (active) setLoading(false);
+      }
+      load();
+      return () => { active = false; };
+    }, []) // empty deps — only fires when screen gains focus
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadAll(false);
+    await Promise.all([refreshWalletRef.current(), fetchTopups()]);
     setRefreshing(false);
-  }, [loadAll]);
+  }, []);
 
   const formattedBalance = balanceVisible
     ? formatCurrency(balance, 'NGN')

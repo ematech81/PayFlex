@@ -83,15 +83,15 @@ const services = [
     label: 'Flights',
     icon: 'plane',
     iconLib: FontAwesome5,
-    screen: 'TransportScreen',
+    screen: null, // Coming Soon — Travu integration pending
     color: '#FFEAA7',
   },
   {
     id: 'bus',
     label: 'Bus',
-    icon: 'bed',
+    icon: 'bus',
     iconLib: Ionicons,
-    screen: 'TransportScreen',
+    screen: null, // Coming Soon — Travu integration pending
     color: '#DDA0DD',
   },
   {

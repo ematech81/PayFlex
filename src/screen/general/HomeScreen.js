@@ -86,14 +86,14 @@ const services = [
     id: 'flights',
     label: 'Transport',
     icon: <FontAwesome5 name="plane" size={ICON_SIZE} />,
-    screen: 'TransportScreen',
+    screen: null, // Coming Soon — Travu integration pending
     gradient: ['#A8EDEA', '#FED6E3'],
   },
   {
     id: 'hotels',
-    label: 'Hotels',
-    icon: <Ionicons name="bed" size={ICON_SIZE} />,
-    screen: 'FlightSearch',
+    label: 'Flights',
+    icon: <Ionicons name="airplane-outline" size={ICON_SIZE} />,
+    screen: null, // Coming Soon — Travu integration pending
     gradient: ['#FFA751', '#FFE259'],
   },
   {

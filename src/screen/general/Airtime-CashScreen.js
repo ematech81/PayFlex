@@ -109,7 +109,7 @@ const BeforeYouProceedCard = ({ themeColors }) => {
           {[
             'You must have an account with us to convert airtime.',
             'Minimum ₦100. Maximum is any amount — except GLO which is ₦1,000 per transfer.',
-            'If your SIM has no airtime transfer PIN set, load one first before transferring.',
+            'If your SIM has no airtime transfer PIN set, create one first before transferring.',
             'You must send the airtime within 30 minutes — the transaction auto-cancels after that.',
             'Transfer the exact amount you enter in the form. Wrong amounts delay or fail processing.',
             'Airtime transfer only — recharge cards or VTU sent to us will not be credited.',
@@ -139,7 +139,7 @@ const BeforeYouProceedCard = ({ themeColors }) => {
           {ussdCodes.map(u => (
             <View key={u.network} style={styles.ussdRow}>
               <Text style={[styles.ussdRowNetwork, { color: themeColors.heading }]}>{u.network}:</Text>
-              <Text style={[styles.ussdRowCode, { color: themeColors.subheading }]}>{u.code}</Text>
+              <Text style={[styles.ussdRowCode, { color: '#E53935' }]}>{u.code}</Text>
             </View>
           ))}
           <Text style={[styles.beforeNote, { color: themeColors.subheading, marginTop: 8 }]}>
@@ -491,7 +491,7 @@ export default function AirtimeToCashScreen({ navigation, route }) {
         title="Airtime to Cash"
         onBackPress={() => navigation.goBack()}
         rightText="History"
-        onRightPress={() => navigation.navigate('History')}
+        onRightPress={() => navigation.navigate('Orders')}
       />
 
       <ScrollView 
@@ -1020,8 +1020,9 @@ const styles = StyleSheet.create({
       fontWeight: '700',
     },
     ussdRowCode: {
-      fontSize: 13,
+      fontSize: 15,
       fontFamily: 'monospace',
+      fontWeight: '600',
       flexShrink: 1,
     },
 

@@ -218,32 +218,34 @@ export default function FundWalletBalance({ navigation }) {
 
         {/* Quick amount selector */}
         <Text style={[styles.label, { color: themeColors.heading }]}>Select Amount</Text>
-        <View style={styles.quickGrid}>
-          {QUICK_AMOUNTS.map((q) => (
-            <TouchableOpacity
-              key={q}
-              style={[
-                styles.quickChip,
-                {
-                  backgroundColor: amount === String(q) ? themeColors.primary : themeColors.card,
-                  borderColor: amount === String(q) ? themeColors.primary : themeColors.border,
-                },
-              ]}
-              onPress={() => selectQuickAmount(q)}
-              activeOpacity={0.75}
-            >
-              <Text style={[
-                styles.quickChipText,
-                { color: amount === String(q) ? '#FFFFFF' : themeColors.heading },
-              ]}>
-                ₦{q.toLocaleString()}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {[QUICK_AMOUNTS.slice(0, 3), QUICK_AMOUNTS.slice(3)].map((row, ri) => (
+          <View key={ri} style={styles.quickRow}>
+            {row.map((q) => {
+              const selected = amount === String(q);
+              return (
+                <TouchableOpacity
+                  key={q}
+                  style={[
+                    styles.quickChip,
+                    {
+                      backgroundColor: selected ? themeColors.primary : themeColors.card,
+                      borderColor: selected ? themeColors.primary : themeColors.border,
+                    },
+                  ]}
+                  onPress={() => selectQuickAmount(q)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.quickChipText, { color: selected ? '#FFFFFF' : themeColors.heading }]}>
+                    ₦{q.toLocaleString()}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ))}
 
         {/* Custom amount */}
-        <Text style={[styles.label, { color: themeColors.heading }]}>Or Enter Custom Amount</Text>
+        <Text style={[styles.label, { color: themeColors.heading, marginTop: 10 }]}>Or Enter Custom Amount</Text>
         <View style={[styles.inputRow, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
           <Text style={[styles.nairaSign, { color: themeColors.primary }]}>₦</Text>
           <TextInput
@@ -310,13 +312,13 @@ const styles = StyleSheet.create({
   },
   cardText:    { flex: 1, fontSize: 13, lineHeight: 19 },
   label:       { fontSize: 14, fontWeight: '600', marginBottom: 10 },
-  quickGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  quickRow:  { flexDirection: 'row', gap: 10, marginBottom: 10 },
   quickChip: {
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: 20, borderWidth: 1,
-    minWidth: '30%', alignItems: 'center',
+    flex: 1, paddingVertical: 14,
+    borderRadius: 12, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
   },
-  quickChipText: { fontSize: 14, fontWeight: '600' },
+  quickChipText: { fontSize: 14, fontWeight: '700' },
   inputRow: {
     flexDirection: 'row', alignItems: 'center',
     borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 4,

@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScreenHeader } from 'component/SHARED';
 import { useWallet } from 'context/WalletContext';
 import { useThem } from 'constants/useTheme';
+import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 import { PayStackApiIPAddress } from 'utility/apiIPAdress';
@@ -21,7 +22,8 @@ const POLL_TIMEOUT_MS  = 5 * 60 * 1000; // 5 minutes
 
 export default function FundWalletBalance({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { themeColors } = useThem();
+  const isDarkMode  = useThem();
+  const themeColors = isDarkMode ? colors.dark : colors.light;
   const { refreshWallet } = useWallet();
 
   const [amount, setAmount]           = useState('');

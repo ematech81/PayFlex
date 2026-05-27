@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useThem } from 'constants/useTheme';
+import { colors } from 'constants/colors';
 import { useWallet } from 'context/WalletContext';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { StatusBarComponent } from 'component/StatusBar';
@@ -89,7 +90,8 @@ function TxRow({ tx, themeColors }) {
 export default function WalletsScreen() {
   const navigation  = useNavigation();
   const insets      = useSafeAreaInsets();
-  const { themeColors, isDarkMode } = useThem();
+  const isDarkMode  = useThem();
+  const themeColors = isDarkMode ? colors.dark : colors.light;
   const { wallet, refreshWallet }   = useWallet();
 
   const [balanceVisible, setBalanceVisible] = useState(true);

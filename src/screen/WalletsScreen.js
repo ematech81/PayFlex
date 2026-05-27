@@ -20,9 +20,9 @@ const TOPUP_URL  = `${PayStackApiIPAddress}/history`;
 const CARD_COLOR = '#5C35C9'; // solid purple card
 
 const QUICK_ACTIONS = [
-  { label: 'Bills',        icon: 'receipt-outline',      screen: 'ElectricityPayment' },
-  { label: 'Airtime',      icon: 'call-outline',          screen: 'Airtime' },
-  { label: 'Data',         icon: 'wifi-outline',          screen: 'DataPurchase' },
+  { label: 'TV',           icon: 'tv-outline',              screen: 'TVSubscription' },
+  { label: 'Airtime',      icon: 'call-outline',            screen: 'Airtime' },
+  { label: 'Data',         icon: 'wifi-outline',            screen: 'Data' },
   { label: 'Airtime-Cash', icon: 'swap-horizontal-outline', screen: 'Airtime-Cash' },
 ];
 

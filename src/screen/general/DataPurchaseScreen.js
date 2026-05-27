@@ -120,7 +120,7 @@ const DataPlanCard = React.memo(({ plan, onPress, themeColors, isSelected, provi
       <View style={styles.planInfo}>
         <View style={styles.priceRow}>
           <Text style={[styles.planPrice, { color: '#667EEA' }]}>
-            {formatCurrency(Number(plan.variation_amount), 'NGN')}
+            {formatCurrency(Number(plan.userPays ?? plan.variation_amount), 'NGN')}
           </Text>
 
           {plan.name.toLowerCase().includes('oneoff') && (
@@ -596,7 +596,7 @@ export default function DataPurchaseScreen({ navigation, route }) {
                 </Text>
                 <View style={styles.footerPriceRow}>
                   <Text style={styles.footerPrice}>
-                    {formatCurrency(Number(selectedPlan.variation_amount), 'NGN')}
+                    {formatCurrency(Number(selectedPlan.userPays ?? selectedPlan.variation_amount), 'NGN')}
                   </Text>
                   {selectedPlan.validity && (
                     <View style={styles.footerValidityBadge}>
@@ -662,7 +662,7 @@ export default function DataPurchaseScreen({ navigation, route }) {
         visible={payment.step === 'confirm'}
         onClose={payment.handleCancelPayment}
         onConfirm={payment.confirmPayment}
-        amount={Number(selectedPlan?.variation_amount || 0)}
+        amount={Number(selectedPlan?.userPays ?? selectedPlan?.variation_amount ?? 0)}
         serviceName={`Data - ${cleanPlanName(selectedPlan?.name || '')}`}
         providerLogo={getProviderLogo()}
         providerName={getProviderName()}
@@ -670,8 +670,11 @@ export default function DataPurchaseScreen({ navigation, route }) {
         recipientLabel="Phone Number"
         walletBalance={wallet?.user?.walletBalance}
         additionalDetails={[
-          { label: 'Data Plan', value: cleanPlanName(selectedPlan?.name || '') },
-          { label: 'Validity', value: selectedPlan?.validity || 'N/A' },
+          { label: 'Data Plan',        value: cleanPlanName(selectedPlan?.name || '') },
+          { label: 'Validity',         value: selectedPlan?.validity || 'N/A' },
+          ...(selectedPlan?.convenienceFee
+            ? [{ label: 'Convenience Fee', value: formatCurrency(Number(selectedPlan.convenienceFee), 'NGN') }]
+            : []),
         ]}
         loading={false}
       />

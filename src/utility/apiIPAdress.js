@@ -8,6 +8,10 @@ export const GeneralApiIPAddress = 'http://10.204.218.155:5000/api';
 export const InvoiceApiIPAddress = 'http://10.204.218.155:5000/api/invoices';
 // export const FlightApiIPAddress = 'http://10.38.133.155:5000/api/flights';
 
+
+
+// $env:REACT_NATIVE_PACKAGER_HOSTNAME = "10.204.218.155" ; npx expo start --clear
+
 // +
 // 10.204.218.155
 

@@ -9,6 +9,7 @@ import {
   Alert,
   Clipboard,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +26,6 @@ import {
 } from 'component/SHARED';
 
 // Custom Components
-// import BeneficiaryInput from 'component/SHARED/INPUT/BeneficiaryInput';
 import AmountInput from 'component/SHARED/INPUT/amountInput';
 import { useServicePayment } from 'HOOKS/UseServicePayment';
 import PinSetupModal from 'component/PinSetUpModal';
@@ -39,54 +39,249 @@ import { useThem } from 'constants/useTheme';
 import { StatusBarComponent } from 'component/StatusBar';
 import { verifyAirtimeToCash, convertAirtimeToCash } from 'AuthFunction/paymentService';
 
-/**
- * Transfer Instructions Card
- */
-const TransferInstructionsCard = ({ transferPhone, network, amount, onCopyPhone, themeColors }) => (
-  <View style={[styles.instructionsCard, { backgroundColor: `${themeColors.primary}10` }]}>
-    <View style={styles.instructionsHeader}>
-      <Ionicons name="information-circle" size={24} color={themeColors.primary} />
-      <Text style={[styles.instructionsTitle, { color: themeColors.heading }]}>
-        Transfer Instructions
-      </Text>
-    </View>
+// Network-specific USSD guide (from VTU Africa documentation)
+// PIN shown is the default airtime transfer PIN on the user's own SIM (0000).
+const USSD_GUIDE = {
+  mtn: {
+    transfer: (phone, amount) => `*600*${phone}*${amount}*0000#`,
+    changePin: '*600*0000*NEWPIN*NEWPIN#',
+    changePinExample: 'e.g. *600*0000*1234*1234#',
+  },
+  glo: {
+    transfer: (phone, amount) => `*131*${phone}*${amount}*0000#`,
+    changePin: '*132*0000*NEWPIN*NEWPIN#',
+    changePinExample: 'e.g. *132*0000*1234*1234#',
+    maxPerTransfer: 1000,
+  },
+  '9mobile': {
+    transfer: (phone, amount) => `*223*0000*${amount}*${phone}#`,
+    changePin: '*247*0000*NEWPIN#',
+    changePinExample: 'e.g. *247*0000*1234#',
+  },
+  airtel: {
+    transfer: null, // VTU Africa docs do not provide Airtel USSD
+    changePin: null,
+  },
+};
 
-    <View style={styles.instructionsContent}>
-      <Text style={[styles.instructionStep, { color: themeColors.subheading }]}>
-        1. Transfer exactly <Text style={{ fontWeight: '700' }}>₦{amount}</Text> airtime from your {network?.toUpperCase()} line
-      </Text>
-      
-      <View style={styles.phoneNumberBox}>
-        <View style={styles.phoneNumberLeft}>
-          <Text style={[styles.phoneLabel, { color: themeColors.subheading }]}>
-            Transfer to:
-          </Text>
-          <Text style={[styles.phoneNumber, { color: themeColors.heading }]}>
-            {transferPhone}
+/**
+ * Read Before You Proceed — shown immediately when the screen opens.
+ * Collapsible. Contains all key conditions, rates, and USSD codes.
+ */
+const BeforeYouProceedCard = ({ themeColors }) => {
+  const [expanded, setExpanded] = useState(true);
+
+  const rates = [
+    { network: 'MTN',    deduction: '30%', eg: '₦1,000 → ₦700' },
+    { network: 'GLO',    deduction: '45%', eg: '₦1,000 → ₦550' },
+    { network: 'Airtel', deduction: '35%', eg: '₦1,000 → ₦650' },
+    { network: '9mobile',deduction: '45%', eg: '₦1,000 → ₦550' },
+  ];
+
+  const ussdCodes = [
+    { network: 'MTN',     code: '*600*[number]*[amount]*[pin]#' },
+    { network: 'GLO',     code: '*131*[number]*[amount]*[pin]#' },
+    { network: '9mobile', code: '*223*[pin]*[amount]*[number]#' },
+    { network: 'Airtel',  code: 'Use standard airtime share method' },
+  ];
+
+  return (
+    <View style={[styles.beforeCard, { backgroundColor: themeColors.card, borderColor: '#E67E2230' }]}>
+      <TouchableOpacity
+        style={styles.beforeCardHeader}
+        onPress={() => setExpanded(e => !e)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.beforeCardHeaderLeft}>
+          <Ionicons name="alert-circle" size={20} color="#E67E22" />
+          <Text style={[styles.beforeCardTitle, { color: themeColors.heading }]}>
+            Read Before You Proceed
           </Text>
         </View>
-        <TouchableOpacity onPress={onCopyPhone} style={[styles.copyButton, { backgroundColor: themeColors.primary }]}>
-          <Ionicons name="copy-outline" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+        <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={themeColors.subheading} />
+      </TouchableOpacity>
+
+      {expanded && (
+        <View style={styles.beforeCardBody}>
+
+          {/* Conditions */}
+          <Text style={styles.beforeSection}>Important Conditions</Text>
+          {[
+            'Minimum ₦100 per conversion. GLO maximum is ₦1,000 per transfer.',
+            'You must complete the airtime transfer within 30 minutes — the transaction auto-cancels after that.',
+            'Transfer the exact amount you enter in the form. Wrong amounts delay or fail processing.',
+            'Airtime transfer only — recharge cards sent to us will not be credited.',
+          ].map((cond, i) => (
+            <Text key={i} style={[styles.beforeItem, { color: themeColors.subheading }]}>
+              {i + 1}. {cond}
+            </Text>
+          ))}
+
+          {/* Rates */}
+          <Text style={styles.beforeSection}>Conversion Rates</Text>
+          <View style={styles.ratesGrid}>
+            {rates.map(r => (
+              <View key={r.network} style={[styles.rateChip, { backgroundColor: `${themeColors.primary}10`, borderColor: themeColors.border }]}>
+                <Text style={[styles.rateChipNetwork, { color: themeColors.heading }]}>{r.network}</Text>
+                <Text style={styles.rateChipDeduction}>-{r.deduction}</Text>
+                <Text style={[styles.rateChipEg, { color: themeColors.subheading }]}>{r.eg}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* USSD codes */}
+          <Text style={styles.beforeSection}>USSD Transfer Codes (Optional)</Text>
+          <Text style={[styles.beforeNote, { color: themeColors.subheading }]}>
+            You may use any method to transfer airtime — network app, airtime share, or USSD. If using USSD:
+          </Text>
+          {ussdCodes.map(u => (
+            <View key={u.network} style={styles.ussdRow}>
+              <Text style={[styles.ussdRowNetwork, { color: themeColors.heading }]}>{u.network}:</Text>
+              <Text style={[styles.ussdRowCode, { color: themeColors.subheading }]}>{u.code}</Text>
+            </View>
+          ))}
+          <Text style={[styles.beforeNote, { color: themeColors.subheading, marginTop: 8 }]}>
+            💡 The default airtime transfer PIN on most networks is <Text style={{ fontWeight: '700' }}>0000</Text>. If you have changed yours, use your custom PIN instead.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
+/**
+ * Conversion Details Card — shown after availability check returns the transfer phone.
+ * Steps the user through the required USSD transfer and then entering the amount.
+ */
+const ConversionDetailsCard = ({ transferPhone, network, amount, deductionRate, onCopyPhone, themeColors }) => {
+  const numAmount  = parseFloat(amount);
+  const hasAmount  = !isNaN(numAmount) && numAmount >= 100;
+  const charge     = hasAmount && deductionRate != null ? Math.round(numAmount * deductionRate)       : null;
+  const receivable = hasAmount && deductionRate != null ? Math.round(numAmount * (1 - deductionRate)) : null;
+
+  const guide    = USSD_GUIDE[network?.toLowerCase()] ?? {};
+  const ussdCode = guide.transfer
+    ? guide.transfer(transferPhone, hasAmount ? numAmount : 'AMOUNT')
+    : null;
+
+  return (
+    <View style={[styles.convCard, { backgroundColor: themeColors.card }]}>
+
+      {/* Airtime-only notice */}
+      <View style={styles.convNotice}>
+        <Ionicons name="information-circle" size={16} color="#1A6BB5" />
+        <Text style={styles.convNoticeText}>
+          NOTE: We accept airtime transfer only. Any VTU sent to us will not be credited to your wallet.
+        </Text>
       </View>
 
-      <Text style={[styles.instructionStep, { color: themeColors.subheading }]}>
-        2. After transfer, click "I've Transferred" below
-      </Text>
-      
-      <Text style={[styles.instructionStep, { color: themeColors.subheading }]}>
-        3. Your wallet will be credited once we receive the airtime
-      </Text>
-    </View>
+      <View style={styles.convBody}>
 
-    <View style={[styles.warningBox, { backgroundColor: `${themeColors.destructive}15` }]}>
-      <Ionicons name="warning" size={16} color={themeColors.destructive} />
-      <Text style={[styles.warningText, { color: themeColors.destructive }]}>
-        Transfer the exact amount. Wrong amounts may delay processing.
-      </Text>
+        {/* ── Step 1: Copy destination number ───────────────────── */}
+        <View style={styles.convStepHeader}>
+          <View style={[styles.convStepBadge, { backgroundColor: themeColors.primary }]}>
+            <Text style={styles.convStepBadgeText}>1</Text>
+          </View>
+          <Text style={[styles.convStepTitle, { color: themeColors.heading }]}>
+            Copy the destination number
+          </Text>
+        </View>
+        <View style={[styles.convPhoneBox, { borderColor: themeColors.primary, backgroundColor: `${themeColors.primary}08` }]}>
+          <View style={styles.phoneNumberLeft}>
+            <Text style={[styles.phoneLabel, { color: themeColors.subheading }]}>Transfer to:</Text>
+            <Text style={[styles.convPhone, { color: themeColors.primary }]}>{transferPhone}</Text>
+          </View>
+          <TouchableOpacity onPress={onCopyPhone} style={[styles.copyButton, { backgroundColor: themeColors.primary }]}>
+            <Ionicons name="copy-outline" size={18} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Step 2: Dial USSD ──────────────────────────────────── */}
+        <View style={[styles.convStepHeader, { marginTop: 16 }]}>
+          <View style={[styles.convStepBadge, { backgroundColor: themeColors.primary }]}>
+            <Text style={styles.convStepBadgeText}>2</Text>
+          </View>
+          <Text style={[styles.convStepTitle, { color: themeColors.heading }]}>
+            Dial this USSD code to send the airtime
+          </Text>
+        </View>
+
+        {ussdCode ? (
+          <>
+            {!hasAmount && (
+              <Text style={[styles.convStepHint, { color: themeColors.primary }]}>
+                Enter the amount below first — the USSD code will update automatically.
+              </Text>
+            )}
+            <View style={[styles.ussdBox, { backgroundColor: themeColors.background, borderColor: themeColors.primary, borderWidth: 1.5 }]}>
+              <Text style={[styles.ussdCode, { color: themeColors.heading }]}>{ussdCode}</Text>
+            </View>
+            <Text style={[styles.changePinHint, { color: themeColors.subheading }]}>
+              💡 <Text style={{ fontWeight: '700' }}>0000</Text> is the default airtime transfer PIN on your SIM. If you've changed it, use your own PIN.
+            </Text>
+            {guide.changePin ? (
+              <Text style={[styles.changePinHint, { color: themeColors.subheading }]}>
+                Change transfer PIN: <Text style={{ fontFamily: 'monospace', fontWeight: '600' }}>{guide.changePin}</Text>{'  '}{guide.changePinExample}
+              </Text>
+            ) : null}
+          </>
+        ) : (
+          <Text style={[styles.convStepHint, { color: themeColors.subheading }]}>
+            Use your network's standard airtime share method to send airtime to the number above.
+          </Text>
+        )}
+
+        {/* GLO cap */}
+        {guide.maxPerTransfer ? (
+          <View style={[styles.warningBox, { backgroundColor: '#FFF3CD', borderColor: '#FFC107', borderWidth: 1, marginTop: 10 }]}>
+            <Ionicons name="alert-circle" size={16} color="#856404" />
+            <Text style={[styles.warningText, { color: '#856404' }]}>
+              GLO maximum is ₦{guide.maxPerTransfer.toLocaleString()} per transfer.
+            </Text>
+          </View>
+        ) : null}
+
+        {/* ── Step 3: Enter amount + convert ────────────────────── */}
+        <View style={[styles.convStepHeader, { marginTop: 16 }]}>
+          <View style={[styles.convStepBadge, { backgroundColor: themeColors.primary }]}>
+            <Text style={styles.convStepBadgeText}>3</Text>
+          </View>
+          <Text style={[styles.convStepTitle, { color: themeColors.heading }]}>
+            Enter the amount you transferred below, then tap "Convert Now"
+          </Text>
+        </View>
+
+        {/* Live summary — appears once amount is entered */}
+        {hasAmount && charge != null && (
+          <View style={[styles.convSummaryRow, { backgroundColor: `${themeColors.primary}08`, borderColor: themeColors.border }]}>
+            <Text style={[styles.convSummaryText, { color: themeColors.subheading }]}>
+              Charge ({Math.round(deductionRate * 100)}%):{'  '}
+              <Text style={{ color: themeColors.destructive, fontWeight: '700' }}>₦{charge.toLocaleString()}</Text>
+            </Text>
+            <Text style={[styles.convSummaryText, { color: themeColors.subheading }]}>
+              You receive:{'  '}
+              <Text style={{ color: themeColors.primary, fontWeight: '700', fontSize: 15 }}>₦{receivable.toLocaleString()}</Text>
+            </Text>
+          </View>
+        )}
+
+        {/* Credit timeline */}
+        <Text style={[styles.convTimeline, { color: themeColors.subheading }]}>
+          Wallet credited within <Text style={{ fontWeight: '700' }}>3–5 minutes</Text> once your transfer is received.
+        </Text>
+
+        {/* Critical action warning */}
+        <View style={[styles.warningBox, { backgroundColor: '#FFF3CD', borderColor: '#FFC107', borderWidth: 1, marginTop: 12 }]}>
+          <Ionicons name="alert-circle" size={16} color="#856404" />
+          <Text style={[styles.warningText, { color: '#856404' }]}>
+            You <Text style={{ fontWeight: '700' }}>must transfer the airtime first</Text> before tapping "Convert Now". Your account will be blocked if you tap "Convert Now" without transferring.
+          </Text>
+        </View>
+
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 /**
  * Airtime to Cash Conversion Screen
@@ -105,14 +300,14 @@ export default function AirtimeToCashScreen({ navigation, route }) {
 
   // Service Verification State
   const [verifying, setVerifying] = useState(false);
+  const [deductionRate, setDeductionRate] = useState(null);
   const [serviceAvailable, setServiceAvailable] = useState(false);
   const [transferPhone, setTransferPhone] = useState('');
   const [showInstructions, setShowInstructions] = useState(false);
 
-  // Charge calculation
-  const chargePercentage = 2;
-  const calculateCharge = (amt) => (amt * chargePercentage) / 100;
-  const calculateCredit = (amt) => amt - calculateCharge(amt);
+  // Payout calculation using real deductionRate from VTU Africa (e.g. 0.30 = 30% deducted)
+  const calculateDeduction = (amt) => deductionRate != null ? Math.round(amt * deductionRate) : null;
+  const calculateReceivable = (amt) => deductionRate != null ? Math.round(amt * (1 - deductionRate)) : null;
 
   // ========================================
   // VALIDATION FUNCTION
@@ -142,8 +337,11 @@ export default function AirtimeToCashScreen({ navigation, route }) {
       errors.amount = 'Minimum amount is ₦100';
     }
 
-    if (conversionData.amount > 50000) {
-      errors.amount = 'Maximum amount is ₦50,000';
+    const maxAmt = conversionData.network === 'glo' ? 1000 : 50000;
+    if (conversionData.amount > maxAmt) {
+      errors.amount = conversionData.network === 'glo'
+        ? 'GLO maximum is ₦1,000 per transfer'
+        : 'Maximum amount is ₦50,000';
     }
 
     if (!conversionData.sitePhone) {
@@ -207,16 +405,12 @@ export default function AirtimeToCashScreen({ navigation, route }) {
       
       if (result.success) {
         setServiceAvailable(true);
-        setTransferPhone(result.data.phoneNumber);
+        setTransferPhone(result.transferPhone);
+        setDeductionRate(result.deductionRate ?? null);
         setShowInstructions(true);
-        Alert.alert(
-          'Service Available',
-          `Transfer your airtime to: ${result.data.phoneNumber}`,
-          [{ text: 'OK' }]
-        );
       } else {
         setServiceAvailable(false);
-        Alert.alert('Service Unavailable', result.message);
+        Alert.alert('Service Unavailable', result.message || 'This network is currently unavailable for conversion.');
       }
     } catch (error) {
       setServiceAvailable(false);
@@ -233,6 +427,7 @@ export default function AirtimeToCashScreen({ navigation, route }) {
     setServiceAvailable(false);
     setShowInstructions(false);
     setTransferPhone('');
+    setDeductionRate(null);
   }, []);
 
   // ========================================
@@ -310,10 +505,13 @@ export default function AirtimeToCashScreen({ navigation, route }) {
               Convert Airtime to Cash
             </Text>
             <Text style={[styles.infoDescription, { color: themeColors.subheading }]}>
-              Transfer airtime and get cash credited directly to your bank account
+              Transfer airtime and get cash credited directly to your wallet
             </Text>
           </View>
         </View>
+
+        {/* Before You Proceed — always visible on screen open */}
+        <BeforeYouProceedCard themeColors={themeColors} />
 
         {/* Network Selection */}
         <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
@@ -345,35 +543,44 @@ export default function AirtimeToCashScreen({ navigation, route }) {
         {/* Service Available - Show Form */}
         {serviceAvailable && (
           <>
-            {/* Transfer Instructions */}
+            {/* Conversion Details */}
             {showInstructions && (
-              <TransferInstructionsCard
+              <ConversionDetailsCard
                 transferPhone={transferPhone}
                 network={network}
-                amount={amount || '0'}
+                amount={amount}
+                deductionRate={deductionRate}
                 onCopyPhone={handleCopyPhone}
                 themeColors={themeColors}
               />
             )}
 
             {/* Sender Number */}
-            <BeneficiaryInput
-              value={senderNumber}
-              onChangeText={setSenderNumber}
-              onNetworkDetected={setNetwork}
-              serviceType="airtime_conversion"
-              placeholder="08XX-XXX-XXXX"
-              label="Your Phone Number"
-              error={validationErrors.senderNumber}
-              keyboardType="phone-pad"
-              maxLength={11}
-              icon="call-outline"
-              identifierField="senderNumber"
-              secondaryField="network"
-              displayField={(item) => `${item.senderNumber} - ${item.network?.toUpperCase()}`}
-              enableNetworkDetection={true}
-              enableValidation={true}
-            />
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: themeColors.heading }]}>
+                Your Phone Number
+              </Text>
+              <View style={[
+                styles.phoneInputBox,
+                { borderColor: validationErrors.senderNumber ? themeColors.destructive : themeColors.border, backgroundColor: themeColors.card },
+              ]}>
+                <Ionicons name="call-outline" size={20} color={themeColors.subheading} style={styles.phoneInputIcon} />
+                <TextInput
+                  value={senderNumber}
+                  onChangeText={setSenderNumber}
+                  placeholder="08XX-XXX-XXXX"
+                  placeholderTextColor={themeColors.subheading}
+                  style={[styles.phoneInputField, { color: themeColors.heading }]}
+                  keyboardType="phone-pad"
+                  maxLength={11}
+                />
+              </View>
+              {validationErrors.senderNumber ? (
+                <Text style={[styles.inputError, { color: themeColors.destructive }]}>
+                  {validationErrors.senderNumber}
+                </Text>
+              ) : null}
+            </View>
 
             {/* Amount */}
             <AmountInput
@@ -383,44 +590,8 @@ export default function AirtimeToCashScreen({ navigation, route }) {
               placeholder="Enter amount"
               error={validationErrors.amount}
               minAmount={100}
-              maxAmount={50000}
+              maxAmount={network === 'glo' ? 1000 : 50000}
             />
-
-            {/* Conversion Summary */}
-            {amount && parseFloat(amount) >= 100 && (
-              <View style={[styles.summaryCard, { backgroundColor: themeColors.card }]}>
-                <Text style={[styles.summaryTitle, { color: themeColors.heading }]}>
-                  Conversion Summary
-                </Text>
-                
-                <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: themeColors.subheading }]}>
-                    Airtime Amount:
-                  </Text>
-                  <Text style={[styles.summaryValue, { color: themeColors.heading }]}>
-                    {formatCurrency(parseFloat(amount), 'NGN')}
-                  </Text>
-                </View>
-
-                <View style={styles.summaryRow}>
-                  <Text style={[styles.summaryLabel, { color: themeColors.subheading }]}>
-                    Charge (2%):
-                  </Text>
-                  <Text style={[styles.summaryValue, { color: themeColors.destructive }]}>
-                    -{formatCurrency(calculateCharge(parseFloat(amount)), 'NGN')}
-                  </Text>
-                </View>
-
-                <View style={[styles.summaryRow, styles.totalRow]}>
-                  <Text style={[styles.summaryLabel, styles.totalLabel, { color: themeColors.heading }]}>
-                    You'll Receive:
-                  </Text>
-                  <Text style={[styles.summaryValue, styles.totalValue, { color: themeColors.primary }]}>
-                    {formatCurrency(calculateCredit(parseFloat(amount)), 'NGN')}
-                  </Text>
-                </View>
-              </View>
-            )}
 
             {/* Change Network Button */}
             <TouchableOpacity
@@ -446,7 +617,7 @@ export default function AirtimeToCashScreen({ navigation, route }) {
       </ScrollView>
 
       {/* Sticky Convert Button */}
-      {serviceAvailable && amount && parseFloat(amount) >= 100 && (
+      {serviceAvailable && amount && parseFloat(amount) >= 100 && deductionRate != null && (
         <View 
           style={[
             styles.stickyFooter,
@@ -473,7 +644,7 @@ export default function AirtimeToCashScreen({ navigation, route }) {
       <PinSetupModal
         visible={payment.showPinSetupModal}
         serviceName="Airtime Conversion"
-        paymentAmount={amount ? calculateCredit(parseFloat(amount)) : 0}
+        paymentAmount={amount ? (calculateReceivable(parseFloat(amount)) ?? 0) : 0}
         onCreatePin={payment.handleCreatePin}
         onCancel={payment.handleCancelPinSetup}
         isDarkMode={isDarkMode}
@@ -483,20 +654,20 @@ export default function AirtimeToCashScreen({ navigation, route }) {
         visible={payment.step === 'confirm'}
         onClose={payment.handleCancelPayment}
         onConfirm={payment.confirmPayment}
-        amount={amount ? calculateCredit(parseFloat(amount)) : 0}
+        amount={amount ? (calculateReceivable(parseFloat(amount)) ?? 0) : 0}
         serviceName={`${network?.toUpperCase()} Airtime Conversion`}
         providerLogo={NETWORK_PROVIDERS.find(p => p.value === network)?.logo}
         providerName={network?.toUpperCase()}
         recipient={senderNumber.replace(/\s/g, '')}
-        recipientLabel ="Phone Number"
-walletBalance={wallet?.user?.walletBalance}
-additionalDetails={[
-{ label: 'Airtime Amount', value: formatCurrency(parseFloat(amount || 0), 'NGN') },
-{ label: 'Charge', value: formatCurrency(calculateCharge(parseFloat(amount || 0)), 'NGN') },
-{ label: 'Transfer To', value: transferPhone },
-]}
-loading={false}
-/>
+        recipientLabel="Phone Number"
+        walletBalance={wallet?.user?.walletBalance}
+        additionalDetails={[
+          { label: 'Airtime Amount', value: formatCurrency(parseFloat(amount || 0), 'NGN') },
+          { label: `Deduction (${deductionRate != null ? Math.round(deductionRate * 100) : 0}%)`, value: formatCurrency(calculateDeduction(parseFloat(amount || 0)) ?? 0, 'NGN') },
+          { label: 'Transfer To', value: transferPhone },
+        ]}
+        loading={false}
+      />
 <PinModal
     visible={payment.step === 'pin'}
     onClose={payment.handleCancelPayment}
@@ -626,14 +797,6 @@ const styles = StyleSheet.create({
       fontSize: 16,
       fontWeight: '700',
     },
-    instructionsContent: {
-      gap: 12,
-    },
-    instructionStep: {
-      fontSize: 14,
-      lineHeight: 20,
-      paddingLeft: 8,
-    },
     phoneNumberBox: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -664,9 +827,42 @@ const styles = StyleSheet.create({
       alignItems: 'center',
       marginLeft: 12,
     },
+    guideStepLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginTop: 16,
+      marginBottom: 6,
+    },
+    ussdBox: {
+      borderWidth: 1,
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      alignItems: 'center',
+      marginLeft: 34,
+    },
+    ussdCode: {
+      fontSize: 17,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      fontFamily: 'monospace',
+    },
+    changePinHint: {
+      fontSize: 12,
+      marginTop: 8,
+      lineHeight: 18,
+      paddingLeft: 34,
+    },
+    instructionStep: {
+      fontSize: 14,
+      lineHeight: 20,
+      paddingLeft: 8,
+    },
     warningBox: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       padding: 12,
       borderRadius: 8,
       marginTop: 12,
@@ -676,54 +872,7 @@ const styles = StyleSheet.create({
       flex: 1,
       fontSize: 12,
       fontWeight: '500',
-      lineHeight: 16,
-    },
-  
-    // ========================================
-    // CONVERSION SUMMARY
-    // ========================================
-    summaryCard: {
-      marginTop: 20,
-      padding: 16,
-      borderRadius: 12,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    summaryTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      marginBottom: 16,
-    },
-    summaryRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    summaryLabel: {
-      fontSize: 14,
-      fontWeight: '500',
-    },
-    summaryValue: {
-      fontSize: 14,
-      fontWeight: '600',
-    },
-    totalRow: {
-      marginTop: 8,
-      paddingTop: 16,
-      borderTopWidth: 1,
-      borderTopColor: 'rgba(0, 0, 0, 0.1)',
-    },
-    totalLabel: {
-      fontSize: 16,
-      fontWeight: '700',
-    },
-    totalValue: {
-      fontSize: 18,
-      fontWeight: '700',
+      lineHeight: 18,
     },
   
     // ========================================
@@ -781,5 +930,236 @@ const styles = StyleSheet.create({
     },
     convertButton: {
       width: '100%',
+    },
+
+    // ========================================
+    // BEFORE YOU PROCEED CARD
+    // ========================================
+    beforeCard: {
+      borderRadius: 12,
+      borderWidth: 1,
+      marginTop: 16,
+      overflow: 'hidden',
+    },
+    beforeCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 14,
+    },
+    beforeCardHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    beforeCardTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    beforeCardBody: {
+      paddingHorizontal: 14,
+      paddingBottom: 14,
+    },
+    beforeSection: {
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      color: '#E67E22',
+      marginTop: 14,
+      marginBottom: 8,
+    },
+    beforeItem: {
+      fontSize: 13,
+      lineHeight: 20,
+      marginBottom: 4,
+    },
+    beforeNote: {
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    ratesGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    rateChip: {
+      borderRadius: 8,
+      borderWidth: 1,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      minWidth: '45%',
+      flex: 1,
+      alignItems: 'center',
+    },
+    rateChipNetwork: {
+      fontSize: 13,
+      fontWeight: '700',
+      marginBottom: 2,
+    },
+    rateChipDeduction: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#E74C3C',
+    },
+    rateChipEg: {
+      fontSize: 11,
+      marginTop: 2,
+    },
+    ussdRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'flex-start',
+      marginBottom: 4,
+      gap: 4,
+    },
+    ussdRowNetwork: {
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    ussdRowCode: {
+      fontSize: 13,
+      fontFamily: 'monospace',
+      flexShrink: 1,
+    },
+
+    // ========================================
+    // CONVERSION DETAILS CARD
+    // ========================================
+    convCard: {
+      marginTop: 20,
+      borderRadius: 12,
+      overflow: 'hidden',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    convNotice: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      backgroundColor: '#EAF4FF',
+      padding: 12,
+    },
+    convNoticeText: {
+      flex: 1,
+      fontSize: 12,
+      lineHeight: 18,
+      color: '#1A6BB5',
+      fontWeight: '500',
+    },
+    convBody: {
+      padding: 14,
+    },
+    convStepHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      marginBottom: 10,
+    },
+    convStepBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 1,
+    },
+    convStepBadgeText: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    convStepTitle: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '600',
+      lineHeight: 20,
+    },
+    convStepHint: {
+      fontSize: 12,
+      lineHeight: 18,
+      marginBottom: 8,
+      paddingLeft: 34,
+    },
+    convPhoneBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1.5,
+      borderRadius: 8,
+      padding: 12,
+      marginLeft: 34,
+      marginBottom: 4,
+    },
+    convPhone: {
+      fontSize: 20,
+      fontWeight: '700',
+      letterSpacing: 1,
+    },
+    convSummaryRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginLeft: 34,
+      marginTop: 8,
+      padding: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+    },
+    convSummaryText: {
+      fontSize: 13,
+    },
+    convTimeline: {
+      fontSize: 13,
+      lineHeight: 20,
+      paddingTop: 12,
+    },
+
+    // ========================================
+    // USSD OPTIONAL BLOCK (legacy — kept for ussdBox/ussdCode styles below)
+    // ========================================
+    ussdOptionalBlock: {
+      marginTop: 10,
+    },
+    ussdOptionalLabel: {
+      fontSize: 13,
+      fontWeight: '500',
+      marginBottom: 6,
+    },
+
+    // ========================================
+    // PHONE INPUT
+    // ========================================
+    inputGroup: {
+      marginTop: 16,
+    },
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    phoneInputBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1.5,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      height: 52,
+    },
+    phoneInputIcon: {
+      marginRight: 10,
+    },
+    phoneInputField: {
+      flex: 1,
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    inputError: {
+      fontSize: 12,
+      fontWeight: '500',
+      marginTop: 4,
     },
   });

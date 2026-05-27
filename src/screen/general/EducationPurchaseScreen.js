@@ -9,6 +9,8 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Modal,
+  Clipboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -37,49 +39,56 @@ import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
 import { StatusBarComponent } from 'component/StatusBar';
-import { purchaseExamPin, verifyJAMBProfile } from 'AuthFunction/paymentService';
+import { purchaseExamPin, verifyJAMBProfile, getExamProducts } from 'AuthFunction/paymentService';
 
 /**
  * Exam Product Card Component
  */
-const ExamProductCard = React.memo(({ 
-  product, 
-  examType, 
-  onPress, 
-  themeColors, 
-  isSelected 
+const ExamProductCard = React.memo(({
+  product,
+  examType,
+  onPress,
+  themeColors,
+  isSelected,
+  price: priceProp,
+  isUnavailable,
 }) => {
-  const price = EXAM_PRICES[examType]?.[product.code] || 0;
-  
+  const price = priceProp ?? EXAM_PRICES[examType]?.[product.code] ?? 0;
+
   return (
     <TouchableOpacity
       style={[
         styles.productCard,
-        { 
+        {
           backgroundColor: themeColors.card,
           borderColor: isSelected ? themeColors.primary : themeColors.border,
           borderWidth: isSelected ? 2 : 1,
+          opacity: isUnavailable ? 0.55 : 1,
         },
       ]}
-      onPress={onPress}
-      activeOpacity={0.7}
+      onPress={isUnavailable ? undefined : onPress}
+      activeOpacity={isUnavailable ? 1 : 0.7}
     >
       <View style={styles.productHeader}>
         <Text style={[styles.productName, { color: themeColors.heading }]}>
           {product.name}
         </Text>
-        {isSelected && (
+        {isUnavailable ? (
+          <View style={[styles.comingSoonBadge, { backgroundColor: '#FF990020' }]}>
+            <Text style={[styles.comingSoonText, { color: '#CC6600' }]}>Coming Soon</Text>
+          </View>
+        ) : isSelected ? (
           <View style={[styles.selectedBadge, { backgroundColor: themeColors.primary }]}>
             <Text style={styles.checkmark}>✓</Text>
           </View>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.productDetails}>
-        <Text style={[styles.productPrice, { color: themeColors.primary }]}>
-          {formatCurrency(price, 'NGN')}
+        <Text style={[styles.productPrice, { color: isUnavailable ? themeColors.subtext : themeColors.primary }]}>
+          {isUnavailable ? 'Price TBC' : formatCurrency(price, 'NGN')}
         </Text>
-        {product.requiresProfile && (
+        {product.requiresProfile && !isUnavailable && (
           <View style={[styles.requiresBadge, { backgroundColor: `${themeColors.primary}20` }]}>
             <Text style={[styles.requiresText, { color: themeColors.primary }]}>
               Requires Profile Code
@@ -89,6 +98,147 @@ const ExamProductCard = React.memo(({
       </View>
     </TouchableOpacity>
   );
+});
+
+// ─── PIN Delivery Modal ───────────────────────────────────────────────────────
+const PinDeliveryModal = ({ visible, result, productName, examBody, onDone, onViewHistory, themeColors }) => {
+  const [copiedIdx, setCopiedIdx] = useState(null);
+  const pins   = result?.data?.pins   || [];
+  const isPending = result?.pending === true;
+  const quantity  = result?.data?.quantity || pins.length || 1;
+
+  const copyPin = useCallback((pin, idx) => {
+    Clipboard.setString(pin);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
+  }, []);
+
+  const copyAll = useCallback(() => {
+    Clipboard.setString(pins.map(p => p.pin).join('\n'));
+    setCopiedIdx('all');
+    setTimeout(() => setCopiedIdx(null), 2000);
+  }, [pins]);
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
+      <View style={pinStyles.backdrop}>
+        <View style={[pinStyles.sheet, { backgroundColor: themeColors.background }]}>
+
+          {/* Header */}
+          <View style={[pinStyles.iconWrap, { backgroundColor: isPending ? '#FFF7E6' : '#E8F5E9' }]}>
+            <Text style={pinStyles.iconEmoji}>{isPending ? '⏳' : '✅'}</Text>
+          </View>
+          <Text style={[pinStyles.title, { color: themeColors.heading }]}>
+            {isPending ? 'Processing…' : 'Purchase Successful!'}
+          </Text>
+          <Text style={[pinStyles.subtitle, { color: themeColors.subheading }]}>
+            {productName}{quantity > 1 ? ` × ${quantity}` : ''}
+          </Text>
+
+          {isPending ? (
+            // JAMB async delivery
+            <View style={[pinStyles.pendingBox, { backgroundColor: `${themeColors.primary}10`, borderColor: `${themeColors.primary}30` }]}>
+              <Text style={[pinStyles.pendingText, { color: themeColors.heading }]}>
+                Your JAMB e-PIN is being processed and will be delivered to your registered phone number and email address once confirmed.
+              </Text>
+              <Text style={[pinStyles.pendingHint, { color: themeColors.subtext }]}>
+                You can also check your Transaction History to retrieve it.
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Save warning */}
+              <View style={pinStyles.warningBox}>
+                <Text style={pinStyles.warningText}>
+                  ⚠️  Save your PIN(s) before closing. They are also saved in your Transaction History.
+                </Text>
+              </View>
+
+              {/* PIN list */}
+              <ScrollView style={pinStyles.pinList} showsVerticalScrollIndicator={false}>
+                {pins.map((item, idx) => (
+                  <View key={idx} style={[pinStyles.pinRow, { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                    {quantity > 1 && (
+                      <Text style={[pinStyles.pinIndex, { color: themeColors.subtext }]}>PIN {idx + 1}</Text>
+                    )}
+                    <Text style={[pinStyles.pinValue, { color: themeColors.heading }]}>{item.pin}</Text>
+                    {item.serial ? (
+                      <Text style={[pinStyles.pinSerial, { color: themeColors.subtext }]}>Serial: {item.serial}</Text>
+                    ) : null}
+                    <TouchableOpacity
+                      style={[pinStyles.copyBtn, { backgroundColor: copiedIdx === idx ? '#E8F5E9' : `${themeColors.primary}15` }]}
+                      onPress={() => copyPin(item.pin, idx)}
+                    >
+                      <Text style={[pinStyles.copyBtnText, { color: copiedIdx === idx ? '#2E7D32' : themeColors.primary }]}>
+                        {copiedIdx === idx ? '✓ Copied' : 'Copy'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Copy All */}
+              {pins.length > 1 && (
+                <TouchableOpacity
+                  style={[pinStyles.copyAllBtn, { borderColor: themeColors.primary }]}
+                  onPress={copyAll}
+                >
+                  <Text style={[pinStyles.copyAllText, { color: themeColors.primary }]}>
+                    {copiedIdx === 'all' ? '✓ All PINs Copied!' : 'Copy All PINs'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+
+          {/* Action buttons */}
+          <View style={pinStyles.actions}>
+            <TouchableOpacity
+              style={[pinStyles.actionBtn, pinStyles.secondaryBtn, { borderColor: themeColors.border }]}
+              onPress={onViewHistory}
+            >
+              <Text style={[pinStyles.actionBtnText, { color: themeColors.heading }]}>View History</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[pinStyles.actionBtn, pinStyles.primaryBtn, { backgroundColor: themeColors.primary }]}
+              onPress={onDone}
+            >
+              <Text style={[pinStyles.actionBtnText, { color: '#fff' }]}>Done</Text>
+            </TouchableOpacity>
+          </View>
+
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const pinStyles = StyleSheet.create({
+  backdrop:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  sheet:       { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
+  iconWrap:    { width: 64, height: 64, borderRadius: 32, alignSelf: 'center', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  iconEmoji:   { fontSize: 30 },
+  title:       { fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
+  subtitle:    { fontSize: 14, textAlign: 'center', marginBottom: 16 },
+  warningBox:  { backgroundColor: '#FFF8E1', borderRadius: 10, padding: 12, marginBottom: 14, borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
+  warningText: { fontSize: 13, color: '#92400E', lineHeight: 19 },
+  pinList:     { maxHeight: 260, marginBottom: 12 },
+  pinRow:      { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 10 },
+  pinIndex:    { fontSize: 11, fontWeight: '600', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  pinValue:    { fontSize: 26, fontWeight: '800', letterSpacing: 3, marginBottom: 4 },
+  pinSerial:   { fontSize: 12, marginBottom: 8 },
+  copyBtn:     { alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 },
+  copyBtnText: { fontSize: 13, fontWeight: '600' },
+  copyAllBtn:  { borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginBottom: 12 },
+  copyAllText: { fontSize: 14, fontWeight: '600' },
+  pendingBox:  { borderRadius: 12, borderWidth: 1, padding: 16, marginBottom: 16 },
+  pendingText: { fontSize: 14, lineHeight: 22, marginBottom: 8 },
+  pendingHint: { fontSize: 12, lineHeight: 18 },
+  actions:     { flexDirection: 'row', gap: 12, marginTop: 4 },
+  actionBtn:   { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  primaryBtn:  {},
+  secondaryBtn:{ borderWidth: 1 },
+  actionBtnText: { fontSize: 15, fontWeight: '700' },
 });
 
 /**
@@ -106,6 +256,8 @@ export default function EducationPurchaseScreen({ navigation, route }) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [validationErrors, setValidationErrors] = useState({});
+  const [apiPrices, setApiPrices] = useState({});
+  const [apiAvailability, setApiAvailability] = useState({});
 
   // JAMB Specific State
   const [profileCode, setProfileCode] = useState('');
@@ -117,21 +269,7 @@ export default function EducationPurchaseScreen({ navigation, route }) {
   // VALIDATION FUNCTION
   // ========================================
   const validateEducationPayment = useCallback((paymentData) => {
-    console.log('🔍 Validating education payment:', paymentData);
-    
     const errors = {};
-
-    // Phone validation
-    const cleanPhone = (paymentData.phone || '').replace(/\s/g, '');
-    const phoneRegex = /^0\d{10}$/;
-    
-    if (!cleanPhone) {
-      errors.phone = 'Phone number is required';
-    } else if (cleanPhone.length !== 11) {
-      errors.phone = 'Phone number must be 11 digits';
-    } else if (!phoneRegex.test(cleanPhone)) {
-      errors.phone = 'Invalid Nigerian phone number';
-    }
 
     if (!paymentData.service) {
       errors.service = 'Please select an exam type';
@@ -141,12 +279,16 @@ export default function EducationPurchaseScreen({ navigation, route }) {
       errors.product = 'Please select a product';
     }
 
-    if (!paymentData.quantity || paymentData.quantity < 1 || paymentData.quantity > 5) {
-      errors.quantity = 'Quantity must be between 1 and 5';
+    if (!paymentData.quantity || paymentData.quantity < 1 || paymentData.quantity > 50) {
+      errors.quantity = 'Quantity must be between 1 and 50';
     }
 
-    // JAMB specific validation
+    // JAMB-specific validation — phone/profile only required for JAMB
     if (paymentData.service === 'jamb') {
+      const cleanPhone = (paymentData.phone || '').replace(/\s/g, '');
+      if (!cleanPhone || !/^0\d{10}$/.test(cleanPhone)) {
+        errors.phone = 'Valid 11-digit phone number is required for JAMB';
+      }
       if (!paymentData.profilecode) {
         errors.profilecode = 'Profile code is required for JAMB';
       }
@@ -161,9 +303,7 @@ export default function EducationPurchaseScreen({ navigation, route }) {
     }
 
     const isValid = Object.keys(errors).length === 0;
-    console.log('✅ Validation result:', { isValid, errors });
     setValidationErrors(errors);
-
     return { isValid, errors };
   }, [verifiedCandidate]);
 
@@ -199,10 +339,23 @@ export default function EducationPurchaseScreen({ navigation, route }) {
   }, [payment.pendingPaymentData]);
 
   // ========================================
-  // INITIAL WALLET LOAD
+  // INITIAL WALLET LOAD + API PRICE FETCH
   // ========================================
   useEffect(() => {
     refreshWallet();
+    getExamProducts()
+      .then((products) => {
+        const priceLookup = {};
+        const availLookup = {};
+        products.forEach(({ examBody, productCode, sellingPrice, available }) => {
+          if (!priceLookup[examBody]) { priceLookup[examBody] = {}; availLookup[examBody] = {}; }
+          priceLookup[examBody][String(productCode)] = sellingPrice;
+          availLookup[examBody][String(productCode)] = available !== false;
+        });
+        setApiPrices(priceLookup);
+        setApiAvailability(availLookup);
+      })
+      .catch(() => {});
   }, []);
 
   // ========================================
@@ -258,7 +411,7 @@ export default function EducationPurchaseScreen({ navigation, route }) {
   }, [selectedExam]);
 
   const handleQuantityChange = useCallback((delta) => {
-    setQuantity(prev => Math.max(1, Math.min(5, prev + delta)));
+    setQuantity(prev => Math.max(1, Math.min(50, prev + delta)));
   }, []);
 
   const handlePurchase = useCallback(() => {
@@ -270,7 +423,7 @@ export default function EducationPurchaseScreen({ navigation, route }) {
     setValidationErrors({});
 
     const cleanPhone = phoneNumber.replace(/\s/g, '');
-    const price = EXAM_PRICES[selectedExam]?.[selectedProduct.code] || 0;
+    const price = getPriceForProduct(selectedExam, selectedProduct.code);
 
     const paymentData = {
       service: selectedExam,
@@ -302,11 +455,18 @@ export default function EducationPurchaseScreen({ navigation, route }) {
     return EXAM_PROVIDERS[selectedExam];
   }, [selectedExam]);
 
+  const getPriceForProduct = useCallback((examType, productCode) => {
+    return (
+      apiPrices[examType]?.[String(productCode)] ??
+      EXAM_PRICES[examType]?.[productCode] ??
+      0
+    );
+  }, [apiPrices]);
+
   const getTotalAmount = useCallback(() => {
     if (!selectedProduct) return 0;
-    const price = EXAM_PRICES[selectedExam]?.[selectedProduct.code] || 0;
-    return price * quantity;
-  }, [selectedExam, selectedProduct, quantity]);
+    return getPriceForProduct(selectedExam, selectedProduct.code) * quantity;
+  }, [selectedExam, selectedProduct, quantity, getPriceForProduct]);
 
   // ========================================
   // TABS CONFIGURATION
@@ -349,7 +509,7 @@ export default function EducationPurchaseScreen({ navigation, route }) {
 
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: selectedProduct ? 200 : 40 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Exam Type Tabs */}
@@ -376,78 +536,105 @@ export default function EducationPurchaseScreen({ navigation, route }) {
           </View>
         </View>
 
+        {/* JAMB how-to instructions */}
+        {selectedExam === 'jamb' && (
+          <View style={[styles.jambInstructions, { backgroundColor: '#FFF0F0', borderColor: '#FFCCCC' }]}>
+            <Text style={[styles.jambInstructionsTitle, { color: '#CC0000' }]}>
+              How to get your Profile Code
+            </Text>
+            {[
+              "SMS 'NIN' followed by a space and your 11-digit NIN to 55019 — e.g. NIN 00123456789.",
+              "You will receive an SMS with your 10-digit Profile Code and your registered NIN name.",
+              "Enter the Profile Code below and complete payment.",
+              "Your JAMB e-PIN will be delivered to your phone number once payment is confirmed.",
+            ].map((step, i) => (
+              <View key={i} style={styles.jambStep}>
+                <View style={[styles.jambStepBadge, { backgroundColor: '#CC0000' }]}>
+                  <Text style={styles.jambStepNum}>{i + 1}</Text>
+                </View>
+                <Text style={[styles.jambStepText, { color: themeColors.heading }]}>{step}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Product Selection */}
         <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
           Select Product Type
         </Text>
         <View style={styles.productsContainer}>
-          {EXAM_PRODUCTS[selectedExam]?.map((product) => (
-            <ExamProductCard
-              key={product.code}
-              product={product}
-              examType={selectedExam}
-              onPress={() => handleProductSelect(product)}
-              themeColors={themeColors}
-              isSelected={selectedProduct?.code === product.code}
-            />
-          ))}
+          {EXAM_PRODUCTS[selectedExam]?.map((product) => {
+            const avail = apiAvailability[selectedExam];
+            const isUnavailable = avail ? avail[product.code] === false : false;
+            return (
+              <ExamProductCard
+                key={product.code}
+                product={product}
+                examType={selectedExam}
+                onPress={() => handleProductSelect(product)}
+                themeColors={themeColors}
+                isSelected={selectedProduct?.code === product.code}
+                price={getPriceForProduct(selectedExam, product.code)}
+                isUnavailable={isUnavailable}
+              />
+            );
+          })}
         </View>
 
-        {/* JAMB Verification (conditional) */}
-        {selectedExam === 'jamb' && selectedProduct && (
-          <JAMBVerificationCard
-            profileCode={profileCode}
-            onProfileCodeChange={setProfileCode}
-            senderEmail={senderEmail}
-            onSenderEmailChange={setSenderEmail}
-            verifiedCandidate={verifiedCandidate}
-            onVerify={handleVerifyProfile}
-            verifying={verifyingProfile}
-            themeColors={themeColors}
-          />
-        )}
-
-        {/* Phone Number Input */}
-        <PhoneInput
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          placeholder="08XX-XXX-XXXX"
-          label="Recipient Phone Number"
-          error={validationErrors.phone}
-        />
-
-        {/* Quantity Selector */}
+        {/* Quantity Selector — all exam types */}
         {selectedProduct && (
           <View style={styles.quantitySection}>
             <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-              Quantity
+              Number of PINs
             </Text>
             <View style={styles.quantityControl}>
               <TouchableOpacity
-                style={[styles.quantityButton, { backgroundColor: themeColors.card }]}
+                style={[styles.quantityButton, { backgroundColor: themeColors.card, opacity: quantity <= 1 ? 0.4 : 1 }]}
                 onPress={() => handleQuantityChange(-1)}
                 disabled={quantity <= 1}
               >
-                <Text style={[styles.quantityButtonText, { color: themeColors.heading }]}>
-                  -
-                </Text>
+                <Text style={[styles.quantityButtonText, { color: themeColors.heading }]}>−</Text>
               </TouchableOpacity>
-              
+
               <Text style={[styles.quantityValue, { color: themeColors.heading }]}>
                 {quantity}
               </Text>
-              
+
               <TouchableOpacity
-                style={[styles.quantityButton, { backgroundColor: themeColors.card }]}
+                style={[styles.quantityButton, { backgroundColor: themeColors.card, opacity: quantity >= 50 ? 0.4 : 1 }]}
                 onPress={() => handleQuantityChange(1)}
-                disabled={quantity >= 5}
+                disabled={quantity >= 50}
               >
-                <Text style={[styles.quantityButtonText, { color: themeColors.heading }]}>
-                  +
-                </Text>
+                <Text style={[styles.quantityButtonText, { color: themeColors.heading }]}>+</Text>
               </TouchableOpacity>
             </View>
+            <Text style={[styles.quantityHint, { color: themeColors.subtext }]}>
+              Max 50 PINs per order
+            </Text>
           </View>
+        )}
+
+        {/* JAMB-specific fields */}
+        {selectedExam === 'jamb' && selectedProduct && (
+          <>
+            <JAMBVerificationCard
+              profileCode={profileCode}
+              onProfileCodeChange={setProfileCode}
+              senderEmail={senderEmail}
+              onSenderEmailChange={setSenderEmail}
+              verifiedCandidate={verifiedCandidate}
+              onVerify={handleVerifyProfile}
+              verifying={verifyingProfile}
+              themeColors={themeColors}
+            />
+            <PhoneInput
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              placeholder="08XX-XXX-XXXX"
+              label="Phone Number (to receive PIN)"
+              error={validationErrors.phone}
+            />
+          </>
         )}
 
         {/* Error Display */}
@@ -548,24 +735,25 @@ export default function EducationPurchaseScreen({ navigation, route }) {
         subtitle={`Confirm purchase of ${quantity} ${selectedProduct?.name}`}
       />
 
+      {/* Success: show PINs */}
+      <PinDeliveryModal
+        visible={payment.step === 'result' && !!payment.result}
+        result={payment.result}
+        productName={selectedProduct?.name}
+        examBody={selectedExam}
+        onDone={payment.resetFlow}
+        onViewHistory={handleTransactionComplete}
+        themeColors={themeColors}
+      />
+
+      {/* Error */}
       <ResultModal
-        visible={payment.step === 'result'}
+        visible={payment.step === 'result' && !payment.result}
         onClose={payment.resetFlow}
-        type={payment.result ? 'success' : 'error'}
-        title={payment.result ? 'Purchase Successful!' : 'Purchase Failed'}
-        message={
-          payment.result
-            ? `Your ${getExamProvider().label} ${selectedProduct?.name} purchase was successful. PINs sent to ${phoneNumber.replace(/\s/g, '')}.`
-            : 'Your exam PIN purchase could not be completed. Please try again.'
-        }
-        primaryAction={{
-          label: 'View Details',
-          onPress: handleTransactionComplete,
-        }}
-        secondaryAction={{
-          label: 'Done',
-          onPress: payment.resetFlow,
-        }}
+        type="error"
+        title="Purchase Failed"
+        message="Your exam PIN purchase could not be completed. Please try again."
+        primaryAction={{ label: 'Try Again', onPress: payment.resetFlow }}
       />
 
       <LoadingOverlay
@@ -586,7 +774,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
       paddingHorizontal: 16,
-      paddingBottom: 120,
     },
     loadingContainer: {
       flex: 1,
@@ -702,7 +889,58 @@ const styles = StyleSheet.create({
       fontSize: 11,
       fontWeight: '600',
     },
+    comingSoonBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    comingSoonText: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
   
+    // ========================================
+    // JAMB INSTRUCTIONS
+    // ========================================
+    jambInstructions: {
+      marginTop: 16,
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    jambInstructionsTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      marginBottom: 12,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    jambStep: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: 10,
+      gap: 10,
+    },
+    jambStepBadge: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 1,
+      flexShrink: 0,
+    },
+    jambStepNum: {
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    jambStepText: {
+      flex: 1,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+
     // ========================================
     // QUANTITY SELECTOR
     // ========================================
@@ -737,6 +975,11 @@ const styles = StyleSheet.create({
       fontWeight: '700',
       minWidth: 50,
       textAlign: 'center',
+    },
+    quantityHint: {
+      textAlign: 'center',
+      fontSize: 12,
+      marginTop: 8,
     },
   
     // ========================================

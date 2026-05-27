@@ -33,30 +33,31 @@ export const EXAM_PROVIDERS = {
   },
 };
 
+// All known products — screen filters by API availability at runtime
 export const EXAM_PRODUCTS = {
   waec: [
-    { code: '1', name: 'Result Checking PIN', requiresProfile: false },
+    { code: '1', name: 'Result Checking PIN',  requiresProfile: false },
     { code: '2', name: 'GCE Registration PIN', requiresProfile: false },
-    { code: '3', name: 'Verification PIN', requiresProfile: false },
+    { code: '3', name: 'Verification PIN',     requiresProfile: false },
   ],
   neco: [
     { code: '1', name: 'Result Checking Token', requiresProfile: false },
-    { code: '2', name: 'GCE Registration PIN', requiresProfile: false },
+    { code: '2', name: 'GCE Registration PIN',  requiresProfile: false },
   ],
   nabteb: [
-    { code: '1', name: 'Result Checking PIN', requiresProfile: false },
+    { code: '1', name: 'Result Checking PIN',  requiresProfile: false },
     { code: '2', name: 'GCE Registration PIN', requiresProfile: false },
   ],
   jamb: [
-    { code: '1', name: 'UTME Registration PIN', requiresProfile: true },
+    { code: '1', name: 'UTME Registration PIN',         requiresProfile: true },
     { code: '2', name: 'Direct Entry Registration PIN', requiresProfile: true },
   ],
 };
 
-// Estimated prices (will be replaced by actual API prices)
+// Fallback prices — overridden at runtime by /api/exam-pins/catalog
 export const EXAM_PRICES = {
-  waec: { '1': 3500, '2': 7000, '3': 2000 },
-  neco: { '1': 1000, '2': 5000 },
-  nabteb: { '1': 1500, '2': 5500 },
-  jamb: { '1': 4700, '2': 4700 },
+  waec:   { '1': 5500,  '2': 25000, '3': 4500 },
+  neco:   { '1': 2500 },
+  nabteb: { '1': 1500 },
+  jamb:   { '1': 7700,  '2': 6200 },
 };

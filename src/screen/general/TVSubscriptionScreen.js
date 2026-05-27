@@ -366,6 +366,13 @@ export default function TVSubscriptionScreen({ navigation, route }) {
     return isNaN(rawAmount) ? 0 : rawAmount;
   };
 
+  const getDisplayAmount = () => {
+    if (subscriptionType === 'change' && selectedBouquet) {
+      return parseFloat(selectedBouquet.userPays ?? selectedBouquet.variation_amount ?? 0);
+    }
+    return getAmount();
+  };
+
   const canProceed = () => {
     const providerInfo = TV_PROVIDERS.find(p => p.value === provider);
     const hasBasicData = provider && customerData;
@@ -513,7 +520,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
 
   const renderBouquetCard = ({ item: bouquet }) => {
     const isSelected = selectedBouquet?.variation_code === bouquet.variation_code;
-    const price = parseFloat(bouquet.variation_amount || 0);
+    const price = parseFloat(bouquet.userPays ?? bouquet.variation_amount ?? 0);
     const cleanName = cleanBouquetName(bouquet);
 
     return (
@@ -985,10 +992,10 @@ export default function TVSubscriptionScreen({ navigation, route }) {
 
               <View style={styles.paymentSummary}>
                 <Text style={[styles.summaryLabel, { color: themeColors.subheading }]}>
-                  {subscriptionType === 'renew' ? 'Renewal Amount' : 'Package Price'}
+                  {subscriptionType === 'renew' ? 'Total (incl. fee)' : 'Total Charged'}
                 </Text>
                 <Text style={styles.summaryAmount}>
-                  {formatCurrency(getAmount(), 'NGN')}
+                  {formatCurrency(getDisplayAmount(), 'NGN')}
                 </Text>
               </View>
 
@@ -1045,7 +1052,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         visible={payment.step === 'confirm'}
         onClose={payment.handleCancelPayment}
         onConfirm={payment.confirmPayment}
-        amount={getAmount()}
+        amount={getDisplayAmount()}
         serviceName="TV Subscription"
         providerName={provider.toUpperCase()}
         recipient={smartcardNumber}
@@ -1054,6 +1061,11 @@ export default function TVSubscriptionScreen({ navigation, route }) {
           subscriptionType === 'renew'
             ? `Renew: ${customerData?.currentBouquet}`
             : `Package: ${cleanBouquetName(selectedBouquet)}`
+        }
+        additionalDetails={
+          subscriptionType === 'change' && selectedBouquet?.convenienceFee
+            ? [{ label: 'Convenience Fee', value: formatCurrency(Number(selectedBouquet.convenienceFee), 'NGN') }]
+            : undefined
         }
         walletBalance={wallet?.user?.walletBalance}
         loading={false}
@@ -1068,7 +1080,7 @@ export default function TVSubscriptionScreen({ navigation, route }) {
         loading={payment.step === 'processing'}
         error={payment.pinError}
         title="Enter Transaction PIN"
-        subtitle={`Confirm payment of ${formatCurrency(getAmount(), 'NGN')}`}
+        subtitle={`Confirm payment of ${formatCurrency(getDisplayAmount(), 'NGN')}`}
       />
 
       {/* Success/Error Result Modal */}

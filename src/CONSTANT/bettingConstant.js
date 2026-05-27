@@ -9,7 +9,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Bet9ja,
     color: '#00A859',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'BetKing',
@@ -17,7 +17,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Betking,
     color: '#FF6B00',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: '1xBet',
@@ -25,7 +25,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Xbet,
     color: '#1C64F2',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'SportyBet',
@@ -33,7 +33,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.SportyBet,
     color: '#E31E24',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'NairaBet',
@@ -41,7 +41,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Nairabet,
     color: '#008000',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'Betway',
@@ -49,7 +49,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Betway,
     color: '#000000',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'MerryBet',
@@ -57,7 +57,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Merrybet,
     color: '#FFA500',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'BetBiga',
@@ -65,7 +65,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Betbiga,
     color: '#1E40AF',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'NaijaBet',
@@ -73,7 +73,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Naijabet,
     color: '#10B981',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'BangBet',
@@ -81,7 +81,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Bangbet,
     color: '#8B5CF6',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'MelBet',
@@ -89,7 +89,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Melbet,
     color: '#F59E0B',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'LiveScoreBet',
@@ -97,7 +97,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.LivesoreBet,
     color: '#EF4444',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'Naira Million',
@@ -105,7 +105,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.NairaMillion,
     color: '#059669',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'CloubBet',
@@ -113,7 +113,7 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Cloudbet,
     color: '#279605ff',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
     label: 'Paripesa',
@@ -121,15 +121,15 @@ export const BETTING_PROVIDERS = [
     logo: customImages.Paripesa,
     color: '#bbc805ff',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
   {
-    label: 'Myloto-Hub',
-    value: 'myloto-hub',
+    label: 'MylottoHub',
+    value: 'mylottohub',
     logo: customImages.MylotoHub,
     color: '#c80577ff',
     minAmount: 100,
-    maxAmount: 500000,
+    maxAmount: 100000,
   },
 ];
 

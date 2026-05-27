@@ -41,7 +41,7 @@ import { StatusBarComponent } from 'component/StatusBar';
 
 const { width, height } = Dimensions.get('window');
 const CARD_PADDING = 16;
-const ICON_SIZE = 24;
+const ICON_SIZE = 18;
 
 // Detect if device is tablet
 const isTablet = () => {
@@ -210,7 +210,7 @@ const QuickActionItem = React.memo(({ action, onPress }) => (
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
-      <Ionicons name={action.icon} size={22} color="#fff" />
+      <Ionicons name={action.icon} size={18} color="#fff" />
     </LinearGradient>
     <Text style={[styles.quickActionText, { color: '#1e293b' }]}>
       {action.label}
@@ -958,21 +958,21 @@ const styles = StyleSheet.create({
   serviceCard: {
     width: (width - CARD_PADDING * 2 - 24) / 4,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 7,
     position: 'relative',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
   },
   comingSoonBadge: {
     position: 'absolute',
@@ -994,17 +994,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   serviceLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 15,
   },
   quickActionsContainer: {
     marginBottom: 8,
   },
   quickActions: {
     borderRadius: 24,
-    paddingVertical: 20,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1019,20 +1019,20 @@ const styles = StyleSheet.create({
     width: '23%',
   },
   quickActionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 7,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 4,
   },
   quickActionText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
   },

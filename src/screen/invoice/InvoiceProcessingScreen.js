@@ -14,7 +14,7 @@ import { colors } from 'constants/colors';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import ReceiptModal from 'component/ReceiptModal';
 import AlertMessage from 'component/AlertMessage';
-import Separator from 'component/Separator';+
+import Separator from 'component/Separator';
 
 const InvoiceProcessingScreen = () => {
   const { params } = useRoute();

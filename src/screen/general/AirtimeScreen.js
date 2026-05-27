@@ -385,6 +385,14 @@ export default function AirtimeScreen({ navigation, route }) {
           />
         </View>
 
+        {/* Recipient fee hint */}
+        <View style={[styles.feeHint, { backgroundColor: `${themeColors.primary}0C` }]}>
+          <Ionicons name="information-circle-outline" size={14} color={themeColors.subtext} />
+          <Text style={[styles.feeHintText, { color: themeColors.subtext }]}>
+            Topping up a different number adds a ₦20 convenience fee.
+          </Text>
+        </View>
+
         {/* Quick Amounts Card */}
         <View style={[styles.card, { backgroundColor: themeColors.card }]}>
           <View style={styles.cardHeader}>
@@ -817,5 +825,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#EF4444',
     marginTop: 8,
+  },
+  feeHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  feeHintText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
   },
 });

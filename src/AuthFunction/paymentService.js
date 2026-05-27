@@ -1,11 +1,12 @@
 
 // src/AuthFunction/PaymentService.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PaymentApiIPAddress } from 'utility/apiIPAdress';
+import { PaymentApiIPAddress, GeneralApiIPAddress } from 'utility/apiIPAdress';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 
 // ---------- Configuration ----------
-const BASE_URL = PaymentApiIPAddress;
+const BASE_URL     = PaymentApiIPAddress;   // /api/payments  (legacy VTPass routes)
+const GENERAL_BASE = GeneralApiIPAddress;   // /api           (new VTU Africa routes)
 const REQUEST_TIMEOUT = 30000; // 30 seconds for payment operations
 
 // ---------- Helper Functions ----------
@@ -108,6 +109,31 @@ const makePaymentRequest = async (endpoint, paymentData) => {
 };
 
 
+
+// POST helper for the new /api/* routes (exam-pins, betting)
+const makeGeneralRequest = async (path, body) => {
+  const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+  if (!token) throw new Error('Authentication required. Please log in again.');
+
+  const response = await fetchWithTimeout(`${GENERAL_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  return handleResponse(response);
+};
+
+// GET helper for the new /api/* routes
+const makeGeneralGet = async (path) => {
+  const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+  if (!token) throw new Error('Authentication required. Please log in again.');
+
+  const response = await fetchWithTimeout(`${GENERAL_BASE}${path}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+  });
+  return handleResponse(response);
+};
 
 // ---------- Payment Service Methods ----------
 
@@ -361,33 +387,12 @@ export const getTVBouquets = async (provider) => {
 
 /**
  * Get Available Exam Products
- * @returns {Promise<Object>} Exam products by type
+ * @returns {Promise<Array>} Available exam products
  */
 export const getExamProducts = async () => {
   try {
-    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
-    
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
-    console.log('📊 Fetching exam products...');
-
-    const response = await fetchWithTimeout(
-      `${BASE_URL}/exam-products`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    const result = await handleResponse(response);
-    console.log('✅ Loaded exam products:', result.data);
-
-    return result.data;
+    const result = await makeGeneralGet('/exam-pins/catalog');
+    return result.products || [];
   } catch (error) {
     console.error('❌ Get Exam Products Error:', error.message);
     throw error;
@@ -403,29 +408,25 @@ export const getExamProducts = async () => {
 export const verifyJAMBProfile = async (profilecode, product_code) => {
   try {
     const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
-    
-    if (!token) {
-      throw new Error('Authentication required');
-    }
+    if (!token) throw new Error('Authentication required');
 
-    console.log('🔍 Verifying JAMB profile:', profilecode);
-
-    const response = await fetchWithTimeout(
-      `${BASE_URL}/verify-jamb-profile`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ profilecode, product_code }),
-      }
-    );
+    const response = await fetchWithTimeout(`${GENERAL_BASE}/exam-pins/verify-jamb`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ profilecode, productCode: product_code }),
+    });
 
     const result = await handleResponse(response);
-    console.log('✅ JAMB profile verified:', result.data);
-
-    return result;
+    // Normalise to the shape expected by EducationPurchaseScreen / JAMBVerificationCard
+    return {
+      success: result.success,
+      data: {
+        customerName: result.candidateName,
+        profileCode:  result.profileCode,
+        service:      result.productName,
+        sellingPrice: result.sellingPrice,
+      },
+    };
   } catch (error) {
     console.error('❌ Verify JAMB Profile Error:', error.message);
     throw error;
@@ -439,24 +440,23 @@ export const verifyJAMBProfile = async (profilecode, product_code) => {
  * @returns {Promise<object>} Purchase result with PINs
  */
 export const purchaseExamPin = async (pin, paymentData) => {
-  console.log('🔐 PIN received in purchaseExamPin:', pin);
-  console.log('📦 Payment data received:', paymentData);
-  
+  const examBody = paymentData.service || paymentData.examBody;
+
   const requestBody = {
-    service: paymentData.service,
-    product_code: paymentData.product_code,
-    quantity: paymentData.quantity,
-    phone: paymentData.phone,
+    examBody,
+    productCode:    paymentData.product_code  || paymentData.productCode,
+    quantity:       paymentData.quantity,
+    recipientPhone: paymentData.phone         || paymentData.recipientPhone,
     pin,
   };
 
-  // Add JAMB specific fields if present
-  if (paymentData.service === 'jamb') {
-    requestBody.profilecode = paymentData.profilecode;
-    requestBody.sender = paymentData.sender;
+  if (examBody === 'jamb') {
+    requestBody.profilecode    = paymentData.profilecode;
+    requestBody.recipientEmail = paymentData.sender         || paymentData.recipientEmail;
+    requestBody.candidateName  = paymentData.verifiedCandidate?.customerName;
   }
 
-  return makePaymentRequest('/purchase-exam-pin', requestBody);
+  return makeGeneralRequest('/exam-pins/purchase', requestBody);
 };
 
 /**
@@ -523,36 +523,32 @@ export const convertAirtimeToCash = async (pin, conversionData) => {
 
 /**
  * Verify Betting Account
- * @param {string} service - Betting service name
- * @param {string} userid - Betting account user ID
+ * @param {string} service - Betting platform code (e.g. 'bet9ja')
+ * @param {string} userid  - Betting account user ID
  * @returns {Promise<Object>} Verification result with customer name
  */
 export const verifyBettingAccount = async (service, userid) => {
   try {
     const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
-    
-    if (!token) {
-      throw new Error('Authentication required');
-    }
+    if (!token) throw new Error('Authentication required');
 
-    console.log('🔍 Verifying betting account:', service, userid);
-
-    const response = await fetchWithTimeout(
-      `${BASE_URL}/verify-betting-account`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ service, userid }),
-      }
-    );
+    const response = await fetchWithTimeout(`${GENERAL_BASE}/betting/verify-account`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ platform: service, userid }),
+    });
 
     const result = await handleResponse(response);
-    console.log('✅ Account verification result:', result);
-
-    return result;
+    // Normalise to the shape expected by BettingScreen / VerifiedAccountCard
+    return {
+      success: result.success,
+      data: {
+        customerName: result.customerName,
+        userId:       result.userId,
+        service:      result.platformName,
+        platform:     result.platform,
+      },
+    };
   } catch (error) {
     console.error('❌ Verify Betting Account Error:', error.message);
     throw error;
@@ -560,20 +556,31 @@ export const verifyBettingAccount = async (service, userid) => {
 };
 
 /**
+ * Get Betting Platform Catalog (fee tiers, supported platforms)
+ * @returns {Promise<object>} { normalFee, microFee, microThreshold, minAmount, maxAmount, platforms }
+ */
+export const getBettingPlatforms = async () => {
+  try {
+    const result = await makeGeneralGet('/betting/platforms');
+    return result;
+  } catch (error) {
+    console.error('❌ Get Betting Platforms Error:', error.message);
+    throw error;
+  }
+};
+
+/**
  * Fund Betting Account
- * @param {string} pin - Transaction PIN
- * @param {object} fundingData - Betting funding data
+ * @param {string} pin         - Transaction PIN
+ * @param {object} fundingData - { service, userid, verifiedAccount, amount }
  * @returns {Promise<object>} Funding result
  */
 export const fundBettingAccount = async (pin, fundingData) => {
-  console.log('🔐 PIN received in fundBettingAccount:', pin);
-  console.log('📦 Funding data received:', fundingData);
-  
-  return makePaymentRequest('/fund-betting-account', {
-    service: fundingData.service,
-    userid: fundingData.userid,
-    amount: fundingData.amount,
-    phone: fundingData.phone,
+  return makeGeneralRequest('/betting/fund', {
+    platform:     fundingData.service,
+    userid:       fundingData.userid,
+    customerName: fundingData.verifiedAccount?.customerName || null,
+    amount:       fundingData.amount,
     pin,
   });
 };
@@ -690,6 +697,7 @@ export default {
 
   // betting
   verifyBettingAccount,
-  fundBettingAccount
+  fundBettingAccount,
+  getBettingPlatforms,
 };
 

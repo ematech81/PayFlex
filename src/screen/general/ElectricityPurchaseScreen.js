@@ -845,6 +845,27 @@ export default function ElectricityPurchaseScreen({ navigation, route }) {
                 error={validationErrors.amount}
               />
 
+              {/* Fee preview */}
+              {amount && parseFloat(amount) >= ELECTRICITY_CONSTANTS.LIMITS.MIN_AMOUNT && (() => {
+                const base     = parseFloat(amount);
+                const markup   = Math.max(base * 0.015, 50);
+                const fee      = markup + 30;
+                const total    = base + fee;
+                return (
+                  <View style={[styles.feePreview, { backgroundColor: `${themeColors.primary}0C`, borderColor: themeColors.border }]}>
+                    <View style={styles.feePreviewRow}>
+                      <Text style={[styles.feePreviewLabel, { color: themeColors.subheading }]}>Service Fee</Text>
+                      <Text style={[styles.feePreviewValue, { color: themeColors.heading }]}>{formatCurrency(fee, 'NGN')}</Text>
+                    </View>
+                    <View style={[styles.feePreviewDivider, { backgroundColor: themeColors.border }]} />
+                    <View style={styles.feePreviewRow}>
+                      <Text style={[styles.feePreviewLabel, { color: themeColors.subheading }]}>Total Charged</Text>
+                      <Text style={[styles.feePreviewValue, { color: themeColors.primary, fontWeight: '700' }]}>{formatCurrency(total, 'NGN')}</Text>
+                    </View>
+                  </View>
+                );
+              })()}
+
               <TouchableOpacity
                 style={[
                   styles.payButtonContainer,
@@ -1386,5 +1407,29 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#1E40AF',
     lineHeight: 18,
+  },
+  feePreview: {
+    marginTop: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    gap: 8,
+  },
+  feePreviewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  feePreviewLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  feePreviewValue: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  feePreviewDivider: {
+    height: 1,
+    marginVertical: 2,
   },
 });

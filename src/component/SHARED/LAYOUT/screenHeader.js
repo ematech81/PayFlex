@@ -6,7 +6,8 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThem } from 'constants/useTheme';
@@ -72,8 +73,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 30,
-    marginBottom: 30,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 8 : 16,
+    paddingBottom: 16,
     paddingHorizontal: 4,
   },
   leftContainer: {

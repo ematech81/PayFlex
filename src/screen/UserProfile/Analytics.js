@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
@@ -67,6 +68,7 @@ function StatCard({ label, value, icon, color, themeColors }) {
 export default function Analytics({ navigation }) {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
+  const insets = useSafeAreaInsets();
   const { transactions, transactionStats, fetchTransactions, wallet } = useWallet();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -95,7 +97,7 @@ export default function Analytics({ navigation }) {
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <StatusBarComponent />
 
-      <View style={[styles.header, { backgroundColor: themeColors.background, borderBottomColor: themeColors.border || '#E0E0E0' }]}>
+      <View style={[styles.header, { backgroundColor: themeColors.background, borderBottomColor: themeColors.border || '#E0E0E0', paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={themeColors.heading} />
         </TouchableOpacity>

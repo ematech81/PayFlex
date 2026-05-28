@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
@@ -27,6 +28,7 @@ const InfoRow = ({ label, value, themeColors }) => (
 export default function VerifyNINScreen({ navigation }) {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
+  const insets = useSafeAreaInsets();
   const { wallet, refreshWallet } = useWallet();
   const user = wallet?.user;
 
@@ -71,7 +73,7 @@ export default function VerifyNINScreen({ navigation }) {
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <StatusBarComponent />
 
-      <View style={[styles.header, { backgroundColor: themeColors.background, borderBottomColor: themeColors.border || '#E0E0E0' }]}>
+      <View style={[styles.header, { backgroundColor: themeColors.background, borderBottomColor: themeColors.border || '#E0E0E0', paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={themeColors.heading} />
         </TouchableOpacity>

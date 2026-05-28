@@ -10,6 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
@@ -57,12 +58,13 @@ function LinkRow({ item, themeColors }) {
 export default function About({ navigation }) {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
+  const insets = useSafeAreaInsets();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <StatusBarComponent />
 
-      <View style={[styles.header, { backgroundColor: themeColors.background, borderBottomColor: themeColors.border || '#E0E0E0' }]}>
+      <View style={[styles.header, { backgroundColor: themeColors.background, borderBottomColor: themeColors.border || '#E0E0E0', paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={themeColors.heading} />
         </TouchableOpacity>

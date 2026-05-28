@@ -655,6 +655,79 @@ export const AuthService = {
  * @param {string} newPin - New 6-digit login PIN
  * @returns {Promise<Object>} Response
  */
+export const updateProfile = async ({ firstName, lastName, email }) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (!token) throw new Error('Authentication required');
+
+    const response = await fetchWithTimeout(`${BASE_URL}/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ firstName, lastName, email }),
+    });
+
+    const result = await handleResponse(response);
+
+    if (result.success && result.user) {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      if (stored) {
+        const existing = JSON.parse(stored);
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({ ...existing, ...result.user }));
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('❌ Update Profile Error:', error.message);
+    throw error;
+  }
+};
+
+export const changeTransactionPin = async (currentPin, newPin) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (!token) throw new Error('Authentication required');
+
+    const response = await fetchWithTimeout(`${BASE_URL}/change-transaction-pin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ currentPin, newPin }),
+    });
+
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('❌ Change Transaction PIN Error:', error.message);
+    throw error;
+  }
+};
+
+export const deleteAccount = async (pin) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (!token) throw new Error('Authentication required');
+
+    const response = await fetchWithTimeout(`${BASE_URL}/delete-account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ pin }),
+    });
+
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('❌ Delete Account Error:', error.message);
+    throw error;
+  }
+};
+
 export const changeLoginPin = async (currentPin, newPin) => {
   try {
     const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);

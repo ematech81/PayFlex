@@ -70,6 +70,7 @@ import LoginSettingsScreen from 'screen/Settings/LoginSettingsScreen';
 import ChangeLoginScreen from 'screen/Settings/ChangeLoginScreen';
 import NINScreen from 'screen/general/NINScreen';
 import CACScreen from 'screen/general/CACScreen';
+import DeleteAccountScreen from 'screen/UserProfile/DeleteAccountScreen';
 // import CategoriesScreen from 'screen/CategoriesScreen';
 import { ThemeProvider } from 'context/ThemeContext';
 import ThemeSettings from 'screen/Settings/ThemeSettings';
@@ -486,6 +487,10 @@ function AppContent({ initialRoute, navigationRef }) {
               <Stack.Screen
                 name="About"
                 component={About}
+              />
+              <Stack.Screen
+                name="DeleteAccount"
+                component={DeleteAccountScreen}
               />
 
 

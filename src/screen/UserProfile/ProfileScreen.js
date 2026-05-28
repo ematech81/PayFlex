@@ -266,7 +266,7 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.statsContainer}>
           <TouchableOpacity 
             style={[styles.statCard, { backgroundColor: themeColors.card }]}
-            onPress={() => navigation.navigate('TransactionHistory')}
+            onPress={() => navigation.navigate('TransactionDetails')}
           >
             <Ionicons name="receipt-outline" size={24} color="#4CAF50" />
             <Text style={[styles.statValue, { color: themeColors.heading }]}>

@@ -75,9 +75,10 @@ export default function About({ navigation }) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* App identity */}
         <View style={styles.appSection}>
-          <View style={[styles.appIconWrap, { backgroundColor: themeColors.primary }]}>
-            <Text style={styles.appIconText}>PF</Text>
-          </View>
+          <Image
+            source={require('../../../assets/appStoreIcon.jpg')}
+            style={styles.appLogo}
+          />
           <Text style={[styles.appName, { color: themeColors.heading }]}>PayFlex</Text>
           <Text style={[styles.appTagline, { color: themeColors.subheading }]}>
             Pay smarter. Live better.
@@ -104,20 +105,8 @@ export default function About({ navigation }) {
           <LinkRow key={item.label} item={item} themeColors={themeColors} />
         ))}
 
-        {/* Built with */}
-        <View style={[styles.builtWith, { backgroundColor: themeColors.card }]}>
-          <Text style={[styles.builtTitle, { color: themeColors.heading }]}>Built with</Text>
-          <View style={styles.techRow}>
-            {['React Native', 'Expo', 'Node.js', 'MongoDB'].map(tech => (
-              <View key={tech} style={[styles.techBadge, { backgroundColor: `${themeColors.primary}12` }]}>
-                <Text style={[styles.techText, { color: themeColors.primary }]}>{tech}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
         <Text style={[styles.copyright, { color: themeColors.subtext }]}>
-          © 2025 PayFlex. All rights reserved.{'\n'}Made with ❤️ in Nigeria.
+          © 2025 PayFlex. All rights reserved.
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -137,15 +126,12 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '700' },
   content: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 40 },
   appSection: { alignItems: 'center', marginBottom: 28 },
-  appIconWrap: {
-    width: 80,
-    height: 80,
+  appLogo: {
+    width: 90,
+    height: 90,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: 12,
   },
-  appIconText: { fontSize: 30, fontWeight: '800', color: '#FFF' },
   appName: { fontSize: 26, fontWeight: '800', marginBottom: 4 },
   appTagline: { fontSize: 14, marginBottom: 12 },
   versionBadge: {
@@ -193,19 +179,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkLabel: { flex: 1, fontSize: 15, fontWeight: '600' },
-  builtWith: {
-    padding: 16,
-    borderRadius: 14,
-    marginTop: 24,
-    marginBottom: 24,
-  },
-  builtTitle: { fontSize: 14, fontWeight: '700', marginBottom: 12 },
-  techRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  techBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  techText: { fontSize: 13, fontWeight: '600' },
-  copyright: { fontSize: 12, textAlign: 'center', lineHeight: 20 },
+  copyright: { fontSize: 12, textAlign: 'center', lineHeight: 20, marginTop: 24 },
 });

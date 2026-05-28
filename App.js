@@ -69,6 +69,7 @@ import PaymentSettings from 'screen/Settings/PaymentSettings';
 import LoginSettingsScreen from 'screen/Settings/LoginSettingsScreen';
 import ChangeLoginScreen from 'screen/Settings/ChangeLoginScreen';
 import NINScreen from 'screen/general/NINScreen';
+import CACScreen from 'screen/general/CACScreen';
 // import CategoriesScreen from 'screen/CategoriesScreen';
 import { ThemeProvider } from 'context/ThemeContext';
 import ThemeSettings from 'screen/Settings/ThemeSettings';
@@ -381,6 +382,10 @@ function AppContent({ initialRoute, navigationRef }) {
               <Stack.Screen
                 name="NINScreen"
                 component={NINScreen}
+              />
+              <Stack.Screen
+                name="CACScreen"
+                component={CACScreen}
               />
             
               <Stack.Screen

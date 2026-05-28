@@ -115,7 +115,7 @@ const services = [
     label: 'CAC',
     icon: 'business',
     iconLib: Ionicons,
-    screen: 'Airtime',
+    screen: 'CACScreen',
     color: '#81CEC6',
   },
   {

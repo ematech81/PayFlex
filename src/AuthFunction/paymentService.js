@@ -675,6 +675,30 @@ export const getTransactionHistory = async (filters = {}) => {
     throw error;
   }
 };
+// ─── CAC VAS ──────────────────────────────────────────────────────────────────
+
+/** Free BN name availability check — no PIN required */
+export const cacValidateName = (proposedName) =>
+  makeGeneralRequest('/cac/validate-name', { proposedName });
+
+/** Fetch public pricing for BN registration and validation */
+export const cacGetPrices = () => makeGeneralGet('/cac/prices');
+
+/** Submit Business Name registration — PIN sent in body (backend verifyPin middleware) */
+export const cacRegisterBusinessName = (pin, payload) =>
+  makeGeneralRequest('/cac/register/business-name', { ...payload, pin });
+
+/** Poll registration status by transactionRef */
+export const cacGetRegistrationStatus = (transactionRef) =>
+  makeGeneralGet(`/cac/registration/${transactionRef}`);
+
+/** Business validation search — PIN sent in body */
+export const cacSearchBusiness = (pin, validationType, searchParam) =>
+  makeGeneralRequest('/cac/search', { validationType, searchParam, pin });
+
+/** CAC registration + validation history */
+export const cacGetHistory = () => makeGeneralGet('/cac/history');
+
 // Export the service
 export default {
   // Basic services

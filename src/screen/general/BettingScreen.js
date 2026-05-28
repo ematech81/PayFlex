@@ -955,38 +955,35 @@ const VerifiedDetail = ({ label, value }) => (
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000, 20000];
 
 const QuickAmountPills = ({ onSelect, selectedAmount, themeColors }) => (
-  <View style={styles.pillsRow}>
-    {QUICK_AMOUNTS.map((val) => {
-      const isActive = selectedAmount === val.toString();
-      return (
-        <ScalePressable
-          key={val}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onSelect(val.toString());
-          }}
-          style={[
-            styles.pill,
-            {
-              backgroundColor: isActive
-                ? themeColors.primary
-                : `${themeColors.primary}12`,
-              borderColor: isActive ? themeColors.primary : 'transparent',
-            },
-          ]}
-        >
-          <Text
-            style={[
-              styles.pillText,
-              { color: isActive ? '#fff' : themeColors.primary },
-            ]}
-          >
-            ₦{val >= 1000 ? `${val / 1000}K` : val}
-          </Text>
-        </ScalePressable>
-      );
-    })}
-  </View>
+  <>
+    {[QUICK_AMOUNTS.slice(0, 3), QUICK_AMOUNTS.slice(3)].map((row, ri) => (
+      <View key={ri} style={styles.pillsRow}>
+        {row.map((val) => {
+          const isActive = selectedAmount === val.toString();
+          return (
+            <ScalePressable
+              key={val}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onSelect(val.toString());
+              }}
+              style={[
+                styles.pill,
+                {
+                  backgroundColor: isActive ? themeColors.primary : `${themeColors.primary}12`,
+                  borderColor: isActive ? themeColors.primary : 'transparent',
+                },
+              ]}
+            >
+              <Text style={[styles.pillText, { color: isActive ? '#fff' : themeColors.primary }]}>
+                ₦{val >= 1000 ? `${val / 1000}K` : val}
+              </Text>
+            </ScalePressable>
+          );
+        })}
+      </View>
+    ))}
+  </>
 );
 
 // ─── Summary Row ──────────────────────────────────────────────────────────────
@@ -1993,15 +1990,16 @@ const styles = StyleSheet.create({
   // Quick pills
   pillsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 8,
   },
   pill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    flex: 1,
+    paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pillText: { fontSize: 13, fontWeight: '700' },
 

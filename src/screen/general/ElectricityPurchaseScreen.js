@@ -777,40 +777,34 @@ export default function ElectricityPurchaseScreen({ navigation, route }) {
                 </View>
               </View>
 
-              <View style={styles.quickAmountsGrid}>
-                {ELECTRICITY_CONSTANTS.QUICK_AMOUNTS.map((quickAmount) => (
-                  <TouchableOpacity
-                    key={quickAmount.value}
-                    style={[
-                      styles.quickAmountCard,
-                      amount === quickAmount.value.toString() && styles.quickAmountCardSelected,
-                      { backgroundColor: isDarkMode ? '#2a2a3e' : '#F9FAFB' }
-                    ]}
-                    onPress={() => handleQuickAmount(quickAmount.value)}
-                    activeOpacity={0.7}
-                  >
-                    <LinearGradient
-                      colors={
-                        amount === quickAmount.value.toString()
-                          ? ['#667EEA', '#764BA2']
-                          : ['transparent', 'transparent']
-                      }
-                      style={styles.quickAmountGradient}
-                    >
-                      <Text style={[
-                        styles.quickAmountText,
-                        { 
-                          color: amount === quickAmount.value.toString()
-                            ? '#FFFFFF' 
-                            : themeColors.heading 
-                        }
-                      ]}>
-                        {formatCurrency(quickAmount.value, 'NGN')}
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {[ELECTRICITY_CONSTANTS.QUICK_AMOUNTS.slice(0, 3), ELECTRICITY_CONSTANTS.QUICK_AMOUNTS.slice(3)].map((row, ri) => (
+                <View key={ri} style={styles.quickAmountsRow}>
+                  {row.map((quickAmount) => {
+                    const selected = amount === quickAmount.value.toString();
+                    return (
+                      <TouchableOpacity
+                        key={quickAmount.value}
+                        style={[
+                          styles.quickAmountCard,
+                          selected && styles.quickAmountCardSelected,
+                          { backgroundColor: isDarkMode ? '#2a2a3e' : '#F9FAFB' }
+                        ]}
+                        onPress={() => handleQuickAmount(quickAmount.value)}
+                        activeOpacity={0.7}
+                      >
+                        <LinearGradient
+                          colors={selected ? ['#667EEA', '#764BA2'] : ['transparent', 'transparent']}
+                          style={styles.quickAmountGradient}
+                        >
+                          <Text style={[styles.quickAmountText, { color: selected ? '#FFFFFF' : themeColors.heading }]}>
+                            {formatCurrency(quickAmount.value, 'NGN')}
+                          </Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
             </View>
 
             {/* Custom Amount Card */}
@@ -1315,14 +1309,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 4,
   },
-  quickAmountsGrid: {
+  quickAmountsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -6,
+    gap: 10,
+    marginBottom: 10,
   },
   quickAmountCard: {
-    width: (width - 32 - 40 - 24) / 3,
-    margin: 6,
+    flex: 1,
     borderRadius: 14,
     overflow: 'hidden',
     shadowColor: '#000',

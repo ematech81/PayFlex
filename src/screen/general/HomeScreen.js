@@ -814,14 +814,14 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   walletInner: {
-    padding: 24,
+    padding: 14,
   },
   balanceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   balanceContainer: {
     flexDirection: 'row',
@@ -835,16 +835,16 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   walletLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.3,
   },
   balanceWrapper: {
-    marginVertical: 16,
+    marginVertical: 8,
     alignItems: 'center',
   },
   walletAmount: {
-    fontSize: 42,
+    fontSize: 28,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
@@ -852,7 +852,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: 8,
     gap: 12,
   },
   actionBtn: {
@@ -864,9 +864,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    gap: 8,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    gap: 6,
   },
   topText: {
     color: '#ffffff',

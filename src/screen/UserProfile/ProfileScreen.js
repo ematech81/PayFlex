@@ -311,7 +311,7 @@ export default function ProfileScreen({ navigation }) {
           icon="person-outline"
           title="My Profile"
           subtitle="View and edit your profile"
-          onPress={() => navigation.navigate('MyProfile')}
+          onPress={() => navigation.navigate('EditProfile')}
           themeColors={themeColors}
           iconColor="#4CAF50"
         />

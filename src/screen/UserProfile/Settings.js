@@ -6,7 +6,9 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
@@ -78,6 +80,21 @@ const SectionHeader = ({ title, themeColors }) => (
 /**
  * Main Settings Screen
  */
+const comingSoon = (label) =>
+  Alert.alert('Coming Soon', `${label} will be available in a future update.`);
+
+const clearCache = async () => {
+  try {
+    const keysToKeep = ['@payflex_token', '@payflex_user', '@payflex_deviceId', '@payflex_requirePin', '@payflex_hasSeenOnboarding', 'transactionPinSet'];
+    const all = await AsyncStorage.getAllKeys();
+    const toRemove = all.filter(k => !keysToKeep.includes(k));
+    if (toRemove.length > 0) await AsyncStorage.multiRemove(toRemove);
+    Alert.alert('Cache Cleared', 'App cache has been cleared successfully.');
+  } catch {
+    Alert.alert('Error', 'Failed to clear cache. Please try again.');
+  }
+};
+
 export default function SettingsScreen({ navigation }) {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
@@ -142,7 +159,7 @@ export default function SettingsScreen({ navigation }) {
           icon="language-outline"
           title="Language"
           subtitle="English (Default)"
-          onPress={() => navigation.navigate('LanguageSettings')}
+          onPress={() => comingSoon('Language Settings')}
           themeColors={themeColors}
           iconColor="#10B981"
         />
@@ -151,7 +168,7 @@ export default function SettingsScreen({ navigation }) {
           icon="notifications-outline"
           title="Notifications"
           subtitle="Manage notification preferences"
-          onPress={() => navigation.navigate('NotificationSettings')}
+          onPress={() => navigation.navigate('Notification')}
           themeColors={themeColors}
           iconColor="#8B5CF6"
         />
@@ -163,7 +180,7 @@ export default function SettingsScreen({ navigation }) {
           icon="eye-outline"
           title="Privacy Settings"
           subtitle="Control your data and privacy"
-          onPress={() => navigation.navigate('PrivacySettings')}
+          onPress={() => comingSoon('Privacy Settings')}
           themeColors={themeColors}
           iconColor="#6B7280"
         />
@@ -172,7 +189,7 @@ export default function SettingsScreen({ navigation }) {
           icon="finger-print-outline"
           title="Biometric Login"
           subtitle="Use fingerprint or face ID"
-          onPress={() => navigation.navigate('BiometricSettings')}
+          onPress={() => comingSoon('Biometric Login')}
           themeColors={themeColors}
           iconColor="#EC4899"
         />
@@ -184,7 +201,7 @@ export default function SettingsScreen({ navigation }) {
           icon="cloud-download-outline"
           title="Download Data"
           subtitle="Export your transaction history"
-          onPress={() => navigation.navigate('DownloadData')}
+          onPress={() => comingSoon('Download Data')}
           themeColors={themeColors}
           iconColor="#06B6D4"
         />
@@ -193,7 +210,7 @@ export default function SettingsScreen({ navigation }) {
           icon="trash-outline"
           title="Clear Cache"
           subtitle="Free up storage space"
-          onPress={() => navigation.navigate('ClearCache')}
+          onPress={clearCache}
           themeColors={themeColors}
           iconColor="#FF6B6B"
         />

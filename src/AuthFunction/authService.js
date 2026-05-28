@@ -707,6 +707,26 @@ export const changeTransactionPin = async (currentPin, newPin) => {
   }
 };
 
+export const verifyMyNIN = async (nin, pin) => {
+  try {
+    const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (!token) throw new Error('Authentication required');
+
+    const response = await fetchWithTimeout(
+      `${BASE_URL.replace('/auth', '')}/verification/verify-nin`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ nin, pin }),
+      }
+    );
+    return await handleResponse(response);
+  } catch (error) {
+    console.error('❌ Verify NIN Error:', error.message);
+    throw error;
+  }
+};
+
 export const deleteAccount = async (pin) => {
   try {
     const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);

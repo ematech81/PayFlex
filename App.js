@@ -72,6 +72,7 @@ import NINScreen from 'screen/general/NINScreen';
 import CACScreen from 'screen/general/CACScreen';
 import DeleteAccountScreen from 'screen/UserProfile/DeleteAccountScreen';
 import NotificationsInboxScreen from 'screen/general/NotificationsInboxScreen';
+import IssueReportScreen from 'screen/general/IssueReportScreen';
 import { NotificationProvider } from 'context/NotificationContext';
 // import CategoriesScreen from 'screen/CategoriesScreen';
 import { ThemeProvider } from 'context/ThemeContext';
@@ -498,6 +499,10 @@ function AppContent({ initialRoute, navigationRef }) {
               <Stack.Screen
                 name="Notifications"
                 component={NotificationsInboxScreen}
+              />
+              <Stack.Screen
+                name="IssueReport"
+                component={IssueReportScreen}
               />
 
 

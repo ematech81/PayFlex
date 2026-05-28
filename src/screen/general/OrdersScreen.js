@@ -202,9 +202,10 @@ const loadTransactions = async (page = 1) => {
   // Render Transaction Item
   // ========================================
   const renderTransactionItem = ({ item }) => {
-    const isDebit = true; // All payments are debits
-    const amountSign = isDebit ? '-' : '+';
-    const amountColor = isDebit ? themeColors.destructive : '#4CAF50';
+    const isSuccess = item.status === 'success' || item.status === 'successful' || item.status === 'completed';
+    const isCredit = item.type === 'wallet_topup' || item.type === 'referral_bonus';
+    const amountSign = isCredit ? '+' : '-';
+    const amountColor = isSuccess ? '#4CAF50' : item.status === 'failed' ? themeColors.destructive : '#FFC107';
 
     return (
       <TouchableOpacity

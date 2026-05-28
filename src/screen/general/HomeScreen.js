@@ -83,18 +83,18 @@ const services = [
     gradient: ['#F857A6', '#FF5858'],
   },
   {
-    id: 'flights',
-    label: 'Transport',
-    icon: <FontAwesome5 name="plane" size={ICON_SIZE} />,
-    screen: null, // Coming Soon — Travu integration pending
-    gradient: ['#A8EDEA', '#FED6E3'],
+    id: 'cac',
+    label: 'CAC',
+    icon: <Ionicons name="business" size={ICON_SIZE} />,
+    screen: 'CACScreen',
+    gradient: ['#0d6e6e', '#14b8a6'],
   },
   {
-    id: 'hotels',
-    label: 'Flights',
-    icon: <Ionicons name="airplane-outline" size={ICON_SIZE} />,
-    screen: null, // Coming Soon — Travu integration pending
-    gradient: ['#FFA751', '#FFE259'],
+    id: 'nin',
+    label: 'NIN',
+    icon: <Ionicons name="card-outline" size={ICON_SIZE} />,
+    screen: 'NINScreen',
+    gradient: ['#A29BFE', '#6C5CE7'],
   },
   {
     id: 'waec',

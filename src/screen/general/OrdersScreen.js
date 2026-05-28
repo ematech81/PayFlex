@@ -20,6 +20,7 @@ import BackBtn from 'utility/BackBtn';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { StatusBarComponent } from 'component/StatusBar';
 
 /**
  * Transaction History Screen
@@ -281,6 +282,7 @@ const loadTransactions = async (page = 1) => {
   // ========================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <StatusBarComponent />
       {/* Header */}
       <View style={[styles.header, { backgroundColor: themeColors.card }]}>
         <BackBtn onPress={() => navigation.goBack()} />

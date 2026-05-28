@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import flightService from 'AuthFunction/transport/flightServices';
 import { getFlightSummary } from 'utility/FlightDataHelper';
+import { StatusBarComponent } from 'component/StatusBar';
 
 
 
@@ -417,6 +418,7 @@ const FlightSeatSelectionScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
+      <StatusBarComponent />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Select Your Seats</Text>

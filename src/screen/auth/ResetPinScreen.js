@@ -15,6 +15,7 @@ import { useWallet } from 'context/WalletContext';
 import axios from 'axios';
 import WelcomeComponent from 'component/WelcomeComponent';
 import { ApiIPAddress } from 'utility/apiIPAdress';
+import { StatusBarComponent } from 'component/StatusBar';
 
 const BASE_URL = ApiIPAddress;
 
@@ -104,6 +105,7 @@ export default function ResetPinScreen({ navigation, route }) {
     <View
       style={[styles.container, { backgroundColor: themeColors.background }]}
     >
+      <StatusBarComponent />
       <WelcomeComponent />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>

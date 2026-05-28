@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useWallet } from 'context/WalletContext';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
+import { StatusBarComponent } from 'component/StatusBar';
 
 const CustomerRegistrationScreen = ({ route }) => {
   const { customer } = route.params || {};
@@ -77,6 +78,7 @@ const CustomerRegistrationScreen = ({ route }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 100}
     >
+      <StatusBarComponent />
       <ScrollView
         style={[styles.container, { backgroundColor: themeColors.background }]}
         contentContainerStyle={styles.contentContainer}

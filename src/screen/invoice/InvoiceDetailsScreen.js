@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { StatusBarComponent } from 'component/StatusBar';
 import { useWallet } from 'context/WalletContext';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
@@ -169,6 +170,7 @@ const InvoiceDetailsScreen = () => {
 
   return (
     <View style={styles.root}>
+      <StatusBarComponent />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* ── Purple gradient header ─────────────────────────────────── */}

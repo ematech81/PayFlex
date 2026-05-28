@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useWallet } from 'context/WalletContext';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
+import { StatusBarComponent } from 'component/StatusBar';
 import CustomerDetailsComponent from 'component/CustomerDetailsComponent';
 import InvoiceDetailsComponent from 'component/InvoiceDetailsComponent';
 import ProductComponent from 'component/ProductComponent';
@@ -173,6 +174,7 @@ const InvoiceCreationScreen = ({ route }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 10}
     >
+      <StatusBarComponent />
       <FlatList
         data={[
           { type: 'customer' },

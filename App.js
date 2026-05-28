@@ -71,6 +71,8 @@ import ChangeLoginScreen from 'screen/Settings/ChangeLoginScreen';
 import NINScreen from 'screen/general/NINScreen';
 import CACScreen from 'screen/general/CACScreen';
 import DeleteAccountScreen from 'screen/UserProfile/DeleteAccountScreen';
+import NotificationsInboxScreen from 'screen/general/NotificationsInboxScreen';
+import { NotificationProvider } from 'context/NotificationContext';
 // import CategoriesScreen from 'screen/CategoriesScreen';
 import { ThemeProvider } from 'context/ThemeContext';
 import ThemeSettings from 'screen/Settings/ThemeSettings';
@@ -324,6 +326,7 @@ function AppContent({ initialRoute, navigationRef }) {
   return (
     <ThemeProvider>
     <WalletProvider>
+    <NotificationProvider>
     <AuthProvider>
       <PaperProvider theme={isDarkMode ? DarkTheme : DefaultTheme}>
         <SafeAreaProvider>
@@ -492,6 +495,10 @@ function AppContent({ initialRoute, navigationRef }) {
                 name="DeleteAccount"
                 component={DeleteAccountScreen}
               />
+              <Stack.Screen
+                name="Notifications"
+                component={NotificationsInboxScreen}
+              />
 
 
 {/* =====settings and related screens======= */}
@@ -546,6 +553,7 @@ function AppContent({ initialRoute, navigationRef }) {
         </SafeAreaProvider>
       </PaperProvider>
     </AuthProvider>
+    </NotificationProvider>
     </WalletProvider>
     </ThemeProvider>
   );

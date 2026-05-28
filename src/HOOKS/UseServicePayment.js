@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 
 import { useWallet } from 'context/WalletContext';
+import { useNotifications } from 'context/NotificationContext';
 import { useTransactionPin } from './useTransationPin';
 import { usePaymentFlow } from './usePaymentFlow';
 /**
@@ -25,6 +26,7 @@ export function useServicePayment({
   route 
 }) {
   const { wallet, refreshWallet } = useWallet();
+  const { addNotification } = useNotifications();
   
   // Local state
   const [showPinSetupModal, setShowPinSetupModal] = useState(false);
@@ -241,17 +243,38 @@ export function useServicePayment({
     
     if (success) {
       resetPin();
-      
+
+      // Fire success notification
+      const amt = currentPaymentData?.amount || currentPaymentData?.price;
+      addNotification({
+        type: 'success',
+        title: `${serviceName} Successful`,
+        body: amt
+          ? `Your ${serviceName.toLowerCase()} purchase of ${typeof amt === 'number' ? '₦' + amt.toLocaleString() : amt} was successful.`
+          : `Your ${serviceName.toLowerCase()} purchase was successful.`,
+        reference: result?.reference || result?.data?.reference || null,
+        serviceName,
+        amount: amt,
+      });
+
       // ✅ AUTO-SAVE BENEFICIARY ON SUCCESS
       await saveBeneficiaryOnSuccess(currentPaymentData);
-      
+
       setPendingPaymentData(null);
       setCurrentPaymentData(null);
       isReturningFromPinSetup.current = false;
-      
+
       await refreshWallet();
+    } else {
+      // Fire failure notification
+      addNotification({
+        type: 'failed',
+        title: `${serviceName} Failed`,
+        body: `Your ${serviceName.toLowerCase()} transaction could not be completed. Please try again.`,
+        serviceName,
+      });
     }
-    
+
     return success;
   }, [currentPaymentData, executePurchase, processPayment, resetPin, clearPinError, refreshWallet, serviceName]);
   

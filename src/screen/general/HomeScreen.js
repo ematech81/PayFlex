@@ -35,6 +35,7 @@ import { useWalletBalance } from 'HOOKS';
 import { PromoCard } from 'component/SHARED';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { useWallet } from 'context/WalletContext';
+import { useNotifications } from 'context/NotificationContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AddWalletFund from 'component/AddWalletFund';
 import { StatusBarComponent } from 'component/StatusBar';
@@ -226,6 +227,7 @@ export default function HomeScreen({route}) {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
   const { wallet, refreshWallet, transactions, fetchTransactions } = useWallet();
+  const { unreadCount } = useNotifications();
   const [user, setUser] = useState(null);
   
   // State
@@ -381,9 +383,13 @@ export default function HomeScreen({route}) {
             >
               <View style={styles.notificationIconContainer}>
                 <Ionicons name="notifications-outline" size={24} color="#ffffff" />
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.notificationBadgeText}>3</Text>
-                </View>
+                {unreadCount > 0 && (
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.notificationBadgeText}>
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
           </View>

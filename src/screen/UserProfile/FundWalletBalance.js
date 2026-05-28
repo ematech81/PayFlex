@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from 'component/SHARED';
 import { useWallet } from 'context/WalletContext';
+import { useNotifications } from 'context/NotificationContext';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
@@ -25,6 +26,7 @@ export default function FundWalletBalance({ navigation }) {
   const isDarkMode  = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
   const { refreshWallet } = useWallet();
+  const { addNotification } = useNotifications();
 
   const [amount, setAmount]           = useState('');
   const [loading, setLoading]         = useState(false);
@@ -62,6 +64,14 @@ export default function FundWalletBalance({ navigation }) {
           setResultAmount(paid);
           setStatus('success');
           refreshWallet();
+          addNotification({
+            type: 'topup',
+            title: 'Wallet Funded',
+            body: paid
+              ? `₦${Number(paid).toLocaleString()} has been added to your PayFlex wallet.`
+              : 'Your wallet has been funded successfully.',
+            reference,
+          });
           return;
         }
         if (data.data?.status === 'failed') {

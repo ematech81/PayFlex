@@ -1,27 +1,47 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useWallet } from 'context/WalletContext';
 
-const STORAGE_KEY = '@payflex_notifications';
 const MAX_NOTIFICATIONS = 100;
+
+// Per-user key — each account gets its own isolated notification list
+const storageKey = (userId) => `@payflex_notifications_${userId}`;
 
 const NotificationContext = createContext(null);
 
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState([]);
+  const { wallet } = useWallet();
+  const userId = wallet?.user?.id || wallet?.user?._id || null;
 
+  const [notifications, setNotifications] = useState([]);
+  const currentUserIdRef = useRef(null);
+
+  // Reload notifications whenever the logged-in user changes
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then(raw => {
+    if (userId === currentUserIdRef.current) return;
+
+    // Clear in-memory notifications immediately so the previous user's
+    // notifications are never visible to the new user even for a split second
+    setNotifications([]);
+    currentUserIdRef.current = userId;
+
+    if (!userId) return;
+
+    AsyncStorage.getItem(storageKey(userId)).then(raw => {
       if (raw) setNotifications(JSON.parse(raw));
     }).catch(() => {});
+  }, [userId]);
+
+  const persist = useCallback(async (list) => {
+    if (!currentUserIdRef.current) return;
+    try {
+      await AsyncStorage.setItem(storageKey(currentUserIdRef.current), JSON.stringify(list));
+    } catch (_) {}
   }, []);
 
-  const persist = async (list) => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-    } catch (_) {}
-  };
-
   const addNotification = useCallback(async ({ type = 'info', title, body, reference, serviceName, amount }) => {
+    if (!currentUserIdRef.current) return;
+
     const notification = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       type,
@@ -39,7 +59,7 @@ export const NotificationProvider = ({ children }) => {
       persist(updated);
       return updated;
     });
-  }, []);
+  }, [persist]);
 
   const markRead = useCallback(async (id) => {
     setNotifications(prev => {
@@ -47,7 +67,7 @@ export const NotificationProvider = ({ children }) => {
       persist(updated);
       return updated;
     });
-  }, []);
+  }, [persist]);
 
   const markAllRead = useCallback(async () => {
     setNotifications(prev => {
@@ -55,11 +75,13 @@ export const NotificationProvider = ({ children }) => {
       persist(updated);
       return updated;
     });
-  }, []);
+  }, [persist]);
 
   const clearAll = useCallback(async () => {
     setNotifications([]);
-    try { await AsyncStorage.removeItem(STORAGE_KEY); } catch (_) {}
+    if (currentUserIdRef.current) {
+      try { await AsyncStorage.removeItem(storageKey(currentUserIdRef.current)); } catch (_) {}
+    }
   }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;

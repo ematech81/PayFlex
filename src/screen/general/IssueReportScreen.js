@@ -26,7 +26,7 @@ const ISSUE_TYPES = [
   { key: 'other',           label: 'Other',                      icon: 'ellipsis-horizontal-outline' },
 ];
 
-const SUPPORT_EMAIL = 'support@techspereapp.com';
+const SUPPORT_EMAIL = 'support@techsphereapp.com';
 
 export default function IssueReportScreen({ navigation, route }) {
   const isDarkMode = useThem();

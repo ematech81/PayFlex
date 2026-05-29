@@ -38,6 +38,15 @@
       "expo-secure-store",
       "expo-web-browser",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/appStoreIcon.jpg",
+          "color": "#4a00e0",
+          "sounds": [],
+          "androidMode": "default"
+        }
+      ],
+      [
         "expo-media-library",
         {
           "photosPermission": "Allow PayFlex to save verification slips to your photos.",

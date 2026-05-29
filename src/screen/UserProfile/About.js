@@ -22,13 +22,13 @@ const LINKS = [
   {
     icon: 'document-text-outline',
     label: 'Terms of Service',
-    url: 'https://payflex.app/terms',
+    url: 'https://payflex-privacy.netlify.app/terms.html',
     iconColor: '#3498DB',
   },
   {
     icon: 'shield-checkmark-outline',
     label: 'Privacy Policy',
-    url: 'https://payflex.app/privacy',
+    url: 'https://payflex-privacy.netlify.app/privacy.html',
     iconColor: '#4CAF50',
   },
   {

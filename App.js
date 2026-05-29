@@ -74,6 +74,8 @@ import DeleteAccountScreen from 'screen/UserProfile/DeleteAccountScreen';
 import NotificationsInboxScreen from 'screen/general/NotificationsInboxScreen';
 import IssueReportScreen from 'screen/general/IssueReportScreen';
 import { NotificationProvider } from 'context/NotificationContext';
+import { registerForPushNotifications, clearPushToken } from 'utility/pushNotifications';
+import * as Notifications from 'expo-notifications';
 // import CategoriesScreen from 'screen/CategoriesScreen';
 import { ThemeProvider } from 'context/ThemeContext';
 import ThemeSettings from 'screen/Settings/ThemeSettings';
@@ -324,6 +326,22 @@ export default function App() {
 // ✅ NEW: Separate component that can use theme
 function AppContent({ initialRoute, navigationRef }) {
   const isDarkMode = useThem(); // ✅ Now safe to use
+
+  // ── Push notifications setup ────────────────────────────────────────────
+  useEffect(() => {
+    // Register on mount — safe to call every time, skips if token unchanged
+    registerForPushNotifications().catch(() => {});
+
+    // Handle notification tapped while app is backgrounded/closed
+    const tapSub = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data || {};
+      if (data.reference && navigationRef?.current) {
+        navigationRef.current.navigate('TransactionDetails', { reference: data.reference });
+      }
+    });
+
+    return () => tapSub.remove();
+  }, []);
 
   return (
     <ThemeProvider>

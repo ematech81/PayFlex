@@ -11,6 +11,7 @@ import axios from 'axios';
 import { ApiIPAddress, InvoiceApiIPAddress } from 'utility/apiIPAdress';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 import { getTransactionHistory } from 'AuthFunction/paymentService';
+import { clearPushToken } from 'utility/pushNotifications';
 
 const WalletContext = createContext();
 const BASE_URL = ApiIPAddress;
@@ -160,6 +161,7 @@ export const WalletProvider = ({ children }) => {
   const logout = async () => {
     tokenRef.current = null;
     await AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.USER, 'transactionPinSet']);
+    await clearPushToken().catch(() => {});
     setWallet({ token: null, user: null, transactionPinSet: false, isLoading: false });
   };
 

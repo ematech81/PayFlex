@@ -176,7 +176,7 @@ const ServiceCard = React.memo(({ service, onPress, index, themeColors }) => {
           {
             backgroundColor: themeColors.card,
             borderColor: isDisabled 
-              ? `${themeColors.text}20` 
+              ? `${themeColors.heading}20` 
               : `${service.color}20`,
           },
         ]}
@@ -190,7 +190,7 @@ const ServiceCard = React.memo(({ service, onPress, index, themeColors }) => {
               styles.iconCircle,
               {
                 backgroundColor: isDisabled
-                  ? `${themeColors.text}15`
+                  ? `${themeColors.heading}15`
                   : `${service.color}15`,
               },
             ]}
@@ -198,7 +198,7 @@ const ServiceCard = React.memo(({ service, onPress, index, themeColors }) => {
             <IconComponent
               name={service.icon}
               size={24}
-              color={isDisabled ? `${themeColors.text}70` : themeColors.primary}
+              color={isDisabled ? `${themeColors.heading}70` : themeColors.primary}
               // stokeWidth='30'/
             />
           </View>
@@ -215,8 +215,8 @@ const ServiceCard = React.memo(({ service, onPress, index, themeColors }) => {
             styles.serviceLabel,
             {
               color: isDisabled
-                ? `${themeColors.text}60`
-                : themeColors.text,
+                ? `${themeColors.heading}60`
+                : themeColors.heading,
             },
           ]}
           numberOfLines={2}
@@ -287,14 +287,14 @@ const AllServicesScreen = ({ navigation }) => {
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={24} color={themeColors.text} />
+            <Ionicons name="arrow-back" size={24} color={themeColors.heading} />
           </TouchableOpacity>
           
           <View style={styles.headerTitleContainer}>
-            <Text style={[styles.headerTitle, { color: themeColors.text }]}>
+            <Text style={[styles.headerTitle, { color: themeColors.heading }]}>
               All Services
             </Text>
-            <Text style={[styles.headerSubtitle, { color: themeColors.lightText }]}>
+            <Text style={[styles.headerSubtitle, { color: themeColors.subheading }]}>
               {services.length} services available
             </Text>
           </View>
@@ -304,7 +304,7 @@ const AllServicesScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('Search')}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Feather name="search" size={22} color={themeColors.text} />
+            <Feather name="search" size={22} color={themeColors.heading} />
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -321,7 +321,7 @@ const AllServicesScreen = ({ navigation }) => {
         {/* Services Grid */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>
+            <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
               All Services
             </Text>
             <View style={[styles.servicesCount, { backgroundColor: `${themeColors.primary}15` }]}>
@@ -355,7 +355,7 @@ const AllServicesScreen = ({ navigation }) => {
         {/* Recent Transactions Section */}
         <View style={[styles.recentSection, { backgroundColor: themeColors.card }]}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>
+            <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
               Recently Used
             </Text>
             <TouchableOpacity>
@@ -366,8 +366,8 @@ const AllServicesScreen = ({ navigation }) => {
           </View>
           
           {/* Placeholder for recent services */}
-          <View style={[styles.recentList, { borderColor: themeColors.border || `${themeColors.text}20` }]}>
-            <Text style={[styles.placeholderText, { color: themeColors.lightText }]}>
+          <View style={[styles.recentList, { borderColor: themeColors.border || `${themeColors.heading}20` }]}>
+            <Text style={[styles.placeholderText, { color: themeColors.subheading }]}>
               No recent services
             </Text>
           </View>
@@ -376,7 +376,7 @@ const AllServicesScreen = ({ navigation }) => {
         {/* Quick Tips */}
         <View style={[styles.tipsContainer, { backgroundColor: `${themeColors.primary}10` }]}>
           <Feather name="info" size={20} color={themeColors.primary} />
-          <Text style={[styles.tipsText, { color: themeColors.text }]}>
+          <Text style={[styles.tipsText, { color: themeColors.heading }]}>
             Tap on any service to get started. Services marked "SOON" are coming in future updates.
           </Text>
         </View>

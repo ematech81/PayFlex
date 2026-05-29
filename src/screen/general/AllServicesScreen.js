@@ -299,13 +299,7 @@ const AllServicesScreen = ({ navigation }) => {
             </Text>
           </View>
           
-          <TouchableOpacity
-            style={[styles.searchButton, { backgroundColor: themeColors.card }]}
-            onPress={() => navigation.navigate('Search')}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Feather name="search" size={22} color={themeColors.heading} />
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
         </View>
       </Animated.View>
 

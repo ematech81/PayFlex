@@ -1,6 +1,3 @@
-
-
-
 // src/screen/AirtimeScreen.js
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -9,36 +6,26 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
-  Dimensions,
   TouchableOpacity,
-  StatusBar,
-  Platform,
   Image,
+  TextInput,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Shared Components
 import {
-  ScreenHeader,
-  TabSelector,
-  QuickAmountButton,
-  PayButton,
   ConfirmationModal,
   PinModal,
   ResultModal,
-  PromoCard,
   LoadingOverlay,
   BeneficiaryInput,
 } from 'component/SHARED';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Custom Components
-import PhoneInput from 'component/SHARED/INPUT/phoneInput';
-import AmountInput from 'component/SHARED/INPUT/amountInput';
-import { PaymentApiIPAddress } from "utility/apiIPAdress";
 import PinSetupModal from 'component/PinSetUpModal';
 import { useWallet } from 'context/WalletContext';
+import { StatusBarComponent } from 'component/StatusBar';
 
 // Constants & Utils
 import { AIRTIME_CONSTANTS } from 'CONSTANT/SERVICES/airtimeServices';
@@ -48,332 +35,146 @@ import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
 import { useServicePayment } from 'HOOKS/UseServicePayment';
 import { purchaseAirtime } from 'AuthFunction/paymentService';
-import { STORAGE_KEYS } from 'utility/storageKeys';
-import { StatusBarComponent } from 'component/StatusBar';
 
-const { width } = Dimensions.get('window');
+const QUICK_AMOUNTS = [100, 200, 500, 1000, 2000];
 
-/**
- * Refactored Airtime Purchase Screen - Professional & Modern Design
- */
 export default function AirtimeScreen({ navigation, route }) {
-  const isDarkMode = useThem();
-  const themeColors = isDarkMode ? colors.dark : colors.light;
+  const isDarkMode   = useThem();
+  const themeColors  = isDarkMode ? colors.dark : colors.light;
+  const insets       = useSafeAreaInsets();
   const { wallet, refreshWallet } = useWallet();
 
-  // Local State
-  const [selectedTab, setSelectedTab] = useState('Local');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [provider, setProvider] = useState('');
-  const [amount, setAmount] = useState('');
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [phoneNumber, setPhoneNumber]       = useState('');
+  const [provider,    setProvider]          = useState('');
+  const [amount,      setAmount]            = useState('');
   const [validationErrors, setValidationErrors] = useState({});
 
-  const inputRef = useRef(null);
-
-  // ========================================
-  // VALIDATION FUNCTION
-  // ========================================
+  // ── Validation ─────────────────────────────────────────────────────────────
   const validateAirtimePayment = useCallback((paymentData) => {
-    console.log('🔍 Validating airtime payment:', paymentData);
-    
     const errors = {};
-
-    // Validate phone number with RegEx (remove whitespace first)
     const cleanPhone = (paymentData.phoneNumber || '').replace(/\s/g, '');
-    const phoneRegex = /^0\d{10}$/;
-
-    if (!cleanPhone) {
-      errors.phoneNumber = 'Phone number is required';
-    } else if (cleanPhone.length !== 11) {
-      errors.phoneNumber = 'Phone number must be 11 digits';
-    } else if (!phoneRegex.test(cleanPhone)) {
-      errors.phoneNumber = 'Invalid Nigerian phone number';
-    }
-
-    if (!paymentData.network) {  
-      errors.network = 'Please select a network provider';
-    }
-
-    // Check both amount fields (for compatibility with usePaymentFlow)
-    const amountToValidate = paymentData.amount;
-    if (!amountToValidate || amountToValidate < AIRTIME_CONSTANTS.LIMITS.MIN_AMOUNT) {
+    if (!cleanPhone)                          errors.phoneNumber = 'Phone number is required';
+    else if (cleanPhone.length !== 11)        errors.phoneNumber = 'Phone number must be 11 digits';
+    else if (!/^0\d{10}$/.test(cleanPhone))  errors.phoneNumber = 'Invalid Nigerian phone number';
+    if (!paymentData.network)                 errors.network     = 'Please select a network provider';
+    const amt = paymentData.amount;
+    if (!amt || amt < AIRTIME_CONSTANTS.LIMITS.MIN_AMOUNT)
       errors.amount = `Minimum amount is ${formatCurrency(AIRTIME_CONSTANTS.LIMITS.MIN_AMOUNT, 'NGN')}`;
-    }
-
-    if (amountToValidate > AIRTIME_CONSTANTS.LIMITS.MAX_AMOUNT) {
+    if (amt > AIRTIME_CONSTANTS.LIMITS.MAX_AMOUNT)
       errors.amount = `Maximum amount is ${formatCurrency(AIRTIME_CONSTANTS.LIMITS.MAX_AMOUNT, 'NGN')}`;
-    }
-
     const isValid = Object.keys(errors).length === 0;
-    console.log('✅ Validation result:', { isValid, errors });
     setValidationErrors(errors);
-
-    return {
-      isValid,
-      errors,
-    };
+    return { isValid, errors };
   }, []);
 
-  // ========================================
-  // PURCHASE EXECUTOR FUNCTION
-  // ========================================
+  // ── Payment hook ───────────────────────────────────────────────────────────
   const payment = useServicePayment({
-    serviceName: 'Airtime',
+    serviceName:    'Airtime',
     validatePayment: validateAirtimePayment,
-    executePurchase: async (pin, paymentData) => {
-      return await purchaseAirtime(pin, paymentData);
-    },
+    executePurchase: async (pin, paymentData) => purchaseAirtime(pin, paymentData),
     navigation,
     route,
   });
 
-  // ========================================
-  // RESTORE FORM DATA AFTER PIN SETUP
-  // ========================================
+  // Restore form after PIN setup
   useEffect(() => {
     payment.restoreFormData((data) => {
-      console.log('📝 Restoring airtime purchase form:', data);
       setPhoneNumber(data.phoneNumber);
       setProvider(data.provider);
       setAmount(data.amount.toString());
     });
   }, [payment.pendingPaymentData]);
 
-  // ========================================
-  // INITIAL WALLET LOAD
-  // ========================================
-  useEffect(() => {
-    refreshWallet();
-  }, []);
+  useEffect(() => { refreshWallet(); }, []);
 
-  // ========================================
-  // PAYMENT HANDLERS
-  // ========================================
-  const handleQuickAmount = useCallback((selectedAmount) => {
-    setAmount(selectedAmount.toString());
-    handlePayment(selectedAmount);
-  }, [phoneNumber, provider]);
-
-  const handleCustomPayment = useCallback(() => {
-    const paymentAmount = parseFloat(amount);
-    if (isNaN(paymentAmount)) {
-      setValidationErrors({ amount: 'Please enter a valid amount' });
-      return;
-    }
-    handlePayment(paymentAmount);
-  }, [amount, phoneNumber, provider]);
-
+  // ── Handlers ───────────────────────────────────────────────────────────────
   const handlePayment = useCallback((paymentAmount) => {
-    // Clear errors
     setValidationErrors({});
-
-    // Clean phone number (remove whitespace)
-    const cleanPhone = phoneNumber.replace(/\s/g, '');
-
-    // Prepare payment data
-    const paymentData = {
-      phoneNumber: cleanPhone,
-      network: provider,
-      amount: paymentAmount,
-    };
-
-    // Initiate payment (handles PIN check automatically)
-    payment.initiatePayment(paymentData);
+    payment.initiatePayment({
+      phoneNumber: phoneNumber.replace(/\s/g, ''),
+      network:     provider,
+      amount:      paymentAmount,
+    });
   }, [phoneNumber, provider, payment]);
 
-  // Handle transaction complete function
+  const handleQuickAmount = useCallback((val) => {
+    setAmount(val.toString());
+    handlePayment(val);
+  }, [handlePayment]);
+
+  const handleBuyPress = useCallback(() => {
+    const amt = parseFloat(amount);
+    if (isNaN(amt)) { setValidationErrors({ amount: 'Please enter a valid amount' }); return; }
+    handlePayment(amt);
+  }, [amount, handlePayment]);
+
   const handleTransactionComplete = useCallback(() => {
-    console.log('📍 Transaction complete triggered');
-    console.log('📦 Full payment result:', JSON.stringify(payment.result, null, 2));
-    
-    // Reset form
-    setPhoneNumber('');
-    setProvider('');
-    setAmount('');
-    
-    // Get reference
-    const reference = 
-      payment.result?.reference ||
-      payment.result?.data?.reference ||
-      payment.result?.data?._id;
-    
-    console.log('✅ Using reference:', reference);
-    
-    payment.handleTransactionComplete(reference);
-  }, [payment, setPhoneNumber, setProvider, setAmount]);
- 
-  // ========================================
-  // UTILITY FUNCTIONS
-  // ========================================
-  const getProviderLogo = useCallback(() => {
-    return NETWORK_PROVIDERS.find(p => p.value === provider)?.logo;
-  }, [provider]);
+    setPhoneNumber(''); setProvider(''); setAmount('');
+    const ref = payment.result?.reference || payment.result?.data?.reference || payment.result?.data?._id;
+    payment.handleTransactionComplete(ref);
+  }, [payment]);
 
-  const getProviderName = useCallback(() => {
-    return NETWORK_PROVIDERS.find(p => p.value === provider)?.label;
-  }, [provider]);
+  const getProviderLogo = useCallback(() => NETWORK_PROVIDERS.find(p => p.value === provider)?.logo, [provider]);
+  const getProviderName = useCallback(() => NETWORK_PROVIDERS.find(p => p.value === provider)?.label, [provider]);
 
-  // ========================================
-  // TABS CONFIGURATION
-  // ========================================
-  const tabs = [
-    { label: 'Local', value: 'Local' },
-    { label: 'International', value: 'International', disabled: true },
-  ];
+  const walletBalance = wallet?.user?.walletBalance || 0;
+  const selectedProvider = NETWORK_PROVIDERS.find(p => p.value === provider);
 
-  // After successful purchase, save as beneficiary:
-  const handleAirtimeSuccess = async () => {
-    await saveBeneficiary('airtime', {
-      phoneNumber: phoneNumber,
-      network: provider,
-    });
-    
-    payment.handleTransactionComplete();
-  };
-
-  // ========================================
-  // MAIN RENDER
-  // ========================================
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-      {/* Header gradient is always dark — keep icons white regardless of theme */}
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBarComponent />
 
-      {/* Header with Gradient */}
-      <LinearGradient
-        colors={isDarkMode ? ['#1a1a2e', '#16213e'] : ['#667EEA', '#764BA2']}
-        style={styles.headerGradient}
-      >
-        <ScreenHeader
-          title="Airtime Purchase"
-          onBackPress={() => navigation.goBack()}
-          rightText="History"
-          onRightPress={() => navigation.navigate('Orders')}
-          textColor="#FFFFFF"
-          iconColor="#FFFFFF"
-        />
-      </LinearGradient>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: themeColors.background, borderBottomColor: themeColors.border || '#E5E5EA', paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Ionicons name="arrow-back" size={24} color={themeColors.heading} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: themeColors.heading }]}>Buy Airtime</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Orders')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={[styles.headerRight, { color: themeColors.primary }]}>History</Text>
+        </TouchableOpacity>
+      </View>
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Wallet Balance Card */}
-        <LinearGradient
-          colors={['#667EEA', '#764BA2']}
-          style={styles.balanceCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.balanceContent}>
-            <View style={styles.balanceLeft}>
-              <Text style={styles.balanceLabel}>Wallet Balance</Text>
-              <Text style={styles.balanceAmount}>
-                {formatCurrency(wallet?.user?.walletBalance || 0, 'NGN')}
-              </Text>
-            </View>
-            <View style={styles.balanceIcon}>
-              <Ionicons name="wallet" size={32} color="rgba(255,255,255,0.9)" />
-            </View>
-          </View>
-        </LinearGradient>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-        {/* Tabs */}
-        <View style={styles.section}>
-          <TabSelector
-            tabs={tabs}
-            selectedTab={selectedTab}
-            onTabChange={setSelectedTab}
-          />
-        </View>
-
-        {/* Provider Selection Card */}
-        <View style={[styles.card, { backgroundColor: themeColors.card }]}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardTitleContainer}>
-              <LinearGradient
-                colors={['#667EEA', '#764BA2']}
-                style={styles.cardIcon}
+        {/* SELECT NETWORK */}
+        <Text style={[styles.sectionLabel, { color: themeColors.subheading }]}>SELECT NETWORK</Text>
+        <View style={styles.networkRow}>
+          {NETWORK_PROVIDERS.map((p) => {
+            const isSelected = provider === p.value;
+            return (
+              <TouchableOpacity
+                key={p.value}
+                style={[
+                  styles.networkCard,
+                  { backgroundColor: themeColors.card, borderColor: isSelected ? p.color : themeColors.border || '#E5E5EA' },
+                  isSelected && { borderWidth: 2 },
+                ]}
+                onPress={() => setProvider(p.value)}
+                activeOpacity={0.8}
               >
-                <Ionicons name="business" size={20} color="#FFFFFF" />
-              </LinearGradient>
-              <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
-                Network Provider
-              </Text>
-            </View>
-            {validationErrors.provider && (
-              <View style={styles.errorBadge}>
-                <Ionicons name="alert-circle" size={14} color="#EF4444" />
-              </View>
-            )}
-          </View>
-          
-          <View style={styles.providerGrid}>
-            {NETWORK_PROVIDERS.map((p) => {
-              const isSelected = provider === p.value;
-              return (
-                <TouchableOpacity
-                  key={p.value}
-                  style={[
-                    styles.providerCell,
-                    { backgroundColor: isSelected ? p.color + '22' : (isDarkMode ? '#2a2a3e' : '#F3F4F6') },
-                    isSelected && { borderColor: p.color },
-                  ]}
-                  onPress={() => setProvider(p.value)}
-                  activeOpacity={0.75}
-                >
-                  <Image source={p.logo} style={styles.providerCellLogo} resizeMode="contain" />
-                  <Text style={[styles.providerCellLabel, { color: isSelected ? p.color : themeColors.subheading }]}>
-                    {p.label}
-                  </Text>
-                  {isSelected && (
-                    <View style={[styles.providerCheck, { backgroundColor: p.color }]}>
-                      <Ionicons name="checkmark" size={10} color="#fff" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {validationErrors.provider && (
-            <Text style={styles.providerError}>{validationErrors.provider}</Text>
-          )}
+                <Image source={p.logo} style={styles.networkLogo} resizeMode="contain" />
+                <Text style={[styles.networkLabel, { color: isSelected ? p.color : themeColors.subheading }]}>{p.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
+        {validationErrors.network && <Text style={styles.fieldError}>{validationErrors.network}</Text>}
 
-        {/* Phone Number Input Card */}
-        <View style={[styles.card, { backgroundColor: themeColors.card }]}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardTitleContainer}>
-              <LinearGradient
-                colors={['#F093FB', '#F5576C']}
-                style={styles.cardIcon}
-              >
-                <Ionicons name="call" size={20} color="#FFFFFF" />
-              </LinearGradient>
-              <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
-                Phone Number
-              </Text>
-            </View>
-            {validationErrors.phoneNumber && (
-              <View style={styles.errorBadge}>
-                <Ionicons name="alert-circle" size={14} color="#EF4444" />
-              </View>
-            )}
-          </View>
-
+        {/* PHONE NUMBER */}
+        <Text style={[styles.sectionLabel, { color: themeColors.subheading, marginTop: 20 }]}>PHONE NUMBER</Text>
+        <View style={[styles.fieldBox, { backgroundColor: themeColors.card, borderColor: validationErrors.phoneNumber ? '#EF4444' : themeColors.border || '#E5E5EA' }]}>
           <BeneficiaryInput
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             onNetworkDetected={setProvider}
-            onBeneficiarySelect={(beneficiary) => {
-              if (beneficiary.network) {
-                setProvider(beneficiary.network);
-              }
-            }}
+            onBeneficiarySelect={(b) => { if (b.network) setProvider(b.network); }}
             serviceType="airtime"
-            placeholder="08XX-XXX-XXXX"
+            placeholder="08XX XXX XXXX"
             label=""
-            error={validationErrors.phoneNumber}
+            error={null}
             keyboardType="phone-pad"
             maxLength={11}
             icon="call-outline"
@@ -384,155 +185,99 @@ export default function AirtimeScreen({ navigation, route }) {
             enableValidation={true}
           />
         </View>
+        {validationErrors.phoneNumber && <Text style={styles.fieldError}>{validationErrors.phoneNumber}</Text>}
 
-        {/* Recipient fee hint */}
+        {/* Fee hint */}
         <View style={[styles.feeHint, { backgroundColor: `${themeColors.primary}0C` }]}>
-          <Ionicons name="information-circle-outline" size={14} color={themeColors.subtext} />
+          <Ionicons name="information-circle-outline" size={13} color={themeColors.subtext} />
           <Text style={[styles.feeHintText, { color: themeColors.subtext }]}>
             Topping up a different number adds a ₦20 convenience fee.
           </Text>
         </View>
 
-        {/* Quick Amounts Card */}
-        <View style={[styles.card, { backgroundColor: themeColors.card }]}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardTitleContainer}>
-              <LinearGradient
-                colors={['#4FACFE', '#00F2FE']}
-                style={styles.cardIcon}
-              >
-                <Ionicons name="flash" size={20} color="#FFFFFF" />
-              </LinearGradient>
-              <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
-                Quick Top-up
-              </Text>
-            </View>
-          </View>
+        {/* AMOUNT */}
+        <View style={styles.amountHeader}>
+          <Text style={[styles.sectionLabel, { color: themeColors.subheading, marginTop: 0, marginBottom: 0 }]}>AMOUNT (₦)</Text>
+          <Text style={[styles.balanceText, { color: themeColors.primary }]}>
+            Balance: {formatCurrency(walletBalance, 'NGN')}
+          </Text>
+        </View>
+        <View style={[styles.fieldBox, styles.amountBox, { backgroundColor: themeColors.card, borderColor: validationErrors.amount ? '#EF4444' : themeColors.border || '#E5E5EA' }]}>
+          <TextInput
+            style={[styles.amountInput, { color: themeColors.heading }]}
+            value={amount}
+            onChangeText={setAmount}
+            placeholder="Enter amount"
+            placeholderTextColor={themeColors.subtext}
+            keyboardType="number-pad"
+          />
+        </View>
+        {validationErrors.amount && <Text style={styles.fieldError}>{validationErrors.amount}</Text>}
 
-          {[AIRTIME_CONSTANTS.QUICK_AMOUNTS.slice(0, 3), AIRTIME_CONSTANTS.QUICK_AMOUNTS.slice(3)].map((row, ri) => (
-            <View key={ri} style={styles.quickAmountsRow}>
-              {row.map((quickAmount) => {
-                const selected = amount === quickAmount.value.toString();
-                return (
-                  <TouchableOpacity
-                    key={quickAmount.value}
-                    style={[
-                      styles.quickAmountCard,
-                      selected && styles.quickAmountCardSelected,
-                      { backgroundColor: isDarkMode ? '#2a2a3e' : '#F9FAFB' }
-                    ]}
-                    onPress={() => handleQuickAmount(quickAmount.value)}
-                    activeOpacity={0.7}
-                  >
-                    <LinearGradient
-                      colors={selected ? ['#667EEA', '#764BA2'] : ['transparent', 'transparent']}
-                      style={styles.quickAmountGradient}
-                    >
-                      <Text style={[styles.quickAmountText, { color: selected ? '#FFFFFF' : themeColors.heading }]}>
-                        {formatCurrency(quickAmount.value, 'NGN')}
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+        {/* Quick amounts */}
+        <View style={styles.quickRow}>
+          {QUICK_AMOUNTS.map((val) => (
+            <TouchableOpacity
+              key={val}
+              style={[styles.quickChip, { backgroundColor: amount === val.toString() ? themeColors.primary : themeColors.card, borderColor: amount === val.toString() ? themeColors.primary : themeColors.border || '#E5E5EA' }]}
+              onPress={() => handleQuickAmount(val)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.quickChipText, { color: amount === val.toString() ? '#FFF' : themeColors.heading }]}>
+                ₦{val.toLocaleString()}
+              </Text>
+            </TouchableOpacity>
           ))}
         </View>
 
-        {/* Custom Amount Card */}
-        <View style={[styles.card, { backgroundColor: themeColors.card }]}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardTitleContainer}>
-              <LinearGradient
-                colors={['#43E97B', '#38F9D7']}
-                style={styles.cardIcon}
-              >
-                <Ionicons name="create" size={20} color="#FFFFFF" />
-              </LinearGradient>
-              <Text style={[styles.cardTitle, { color: themeColors.heading }]}>
-                Custom Amount
-              </Text>
-            </View>
-            {validationErrors.amount && (
-              <View style={styles.errorBadge}>
-                <Ionicons name="alert-circle" size={14} color="#EF4444" />
-              </View>
-            )}
+        {/* PAYMENT SUMMARY */}
+        <View style={[styles.summaryCard, { backgroundColor: themeColors.card, borderColor: themeColors.border || '#E5E5EA' }]}>
+          <Text style={[styles.summaryTitle, { color: themeColors.subheading }]}>PAYMENT SUMMARY</Text>
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, { color: themeColors.subheading }]}>Network</Text>
+            <Text style={[styles.summaryValue, { color: selectedProvider ? selectedProvider.color : themeColors.heading }]}>
+              {selectedProvider ? selectedProvider.label : 'Not Selected'}
+            </Text>
           </View>
-
-          <AmountInput
-            value={amount}
-            onChangeText={setAmount}
-            placeholder="Enter Amount"
-            minAmount={AIRTIME_CONSTANTS.LIMITS.MIN_AMOUNT}
-            maxAmount={AIRTIME_CONSTANTS.LIMITS.MAX_AMOUNT}
-            showBalance
-            balance={wallet?.user?.walletBalance}
-            error={validationErrors.amount}
-          />
-
-          {/* Pay Button with Gradient */}
-          <TouchableOpacity
-            style={[
-              styles.payButtonContainer,
-              (!phoneNumber || !provider || payment.step === 'processing') && styles.payButtonDisabled
-            ]}
-            onPress={handleCustomPayment}
-            disabled={!phoneNumber || !provider || payment.step === 'processing'}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={
-                !phoneNumber || !provider || payment.step === 'processing'
-                  ? ['#9CA3AF', '#6B7280']
-                  : ['#667EEA', '#764BA2']
-              }
-              style={styles.payButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              {payment.step === 'processing' ? (
-                <Text style={styles.payButtonText}>Processing...</Text>
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
-                  <Text style={styles.payButtonText}>Pay Now</Text>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+          <View style={[styles.summaryDivider, { backgroundColor: themeColors.border || '#F0F0F0' }]} />
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, { color: themeColors.subheading }]}>Phone Number</Text>
+            <Text style={[styles.summaryValue, { color: themeColors.heading }]}>
+              {phoneNumber.replace(/\s/g, '') || '---'}
+            </Text>
+          </View>
+          <View style={[styles.summaryDivider, { backgroundColor: themeColors.border || '#F0F0F0' }]} />
+          <View style={styles.summaryRow}>
+            <Text style={[styles.summaryLabel, { color: themeColors.subheading }]}>Total Amount</Text>
+            <Text style={[styles.summaryAmount, { color: amount ? themeColors.primary : themeColors.subheading }]}>
+              {amount ? formatCurrency(parseFloat(amount) || 0, 'NGN') : '₦0.00'}
+            </Text>
+          </View>
         </View>
 
-        {/* Error Display */}
+        {/* Flow error */}
         {payment.flowError && (
-          <View style={styles.errorContainer}>
-            <LinearGradient
-              colors={['#FEE2E2', '#FECACA']}
-              style={styles.errorGradient}
-            >
-              <Ionicons name="alert-circle" size={20} color="#EF4444" />
-              <Text style={styles.errorText}>
-                {payment.flowError}
-              </Text>
-            </LinearGradient>
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle" size={18} color="#EF4444" />
+            <Text style={styles.errorText}>{payment.flowError}</Text>
           </View>
         )}
 
-        {/* Promo Card */}
-        <PromoCard
-          title="🎉 Refer And Win"
-          subtitle="Invite your Friends and earn up to ₦10,000"
-          buttonText="Refer Now"
-          onPress={() => navigation.navigate('Referral')}
-          gradientColors={['#FA8BFF', '#2BD2FF', '#2BFF88']}
-        />
+        {/* Buy button */}
+        <TouchableOpacity
+          style={[styles.buyBtn, { backgroundColor: themeColors.primary, opacity: payment.step === 'processing' ? 0.7 : 1 }]}
+          onPress={handleBuyPress}
+          disabled={payment.step === 'processing'}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.buyBtnText}>
+            {payment.step === 'processing' ? 'Processing…' : 'Buy Airtime ⚡'}
+          </Text>
+        </TouchableOpacity>
+
       </ScrollView>
 
-      {/* ========================================
-          MODALS - Using Unified System
-          ======================================== */}
-
-      {/* PIN Setup Modal */}
+      {/* ── Modals (all logic unchanged) ──────────────────────────────────── */}
       <PinSetupModal
         visible={payment.showPinSetupModal}
         serviceName="Airtime Recharge"
@@ -542,7 +287,6 @@ export default function AirtimeScreen({ navigation, route }) {
         isDarkMode={isDarkMode}
       />
 
-      {/* Confirmation Modal */}
       <ConfirmationModal
         visible={payment.step === 'confirm'}
         onClose={payment.handleCancelPayment}
@@ -553,11 +297,10 @@ export default function AirtimeScreen({ navigation, route }) {
         providerName={getProviderName()}
         recipient={phoneNumber.replace(/\s/g, '')}
         recipientLabel="Phone Number"
-        walletBalance={wallet?.user?.walletBalance}
+        walletBalance={walletBalance}
         loading={false}
       />
 
-      {/* PIN Input Modal */}
       <PinModal
         visible={payment.step === 'pin'}
         onClose={payment.handleCancelPayment}
@@ -569,13 +312,9 @@ export default function AirtimeScreen({ navigation, route }) {
         subtitle={`Confirm payment of ${formatCurrency(Number(amount), 'NGN')}`}
       />
 
-      {/* Success/Error Result Modal */}
       <ResultModal
         visible={payment.step === 'result'}
-        onClose={() => {
-          console.log('🚪 Closing result modal');
-          payment.resetFlow();
-        }}
+        onClose={payment.resetFlow}
         type={payment.result ? 'success' : 'error'}
         title={payment.result ? 'Purchase Successful!' : 'Purchase Failed'}
         message={
@@ -583,254 +322,152 @@ export default function AirtimeScreen({ navigation, route }) {
             ? `Your airtime purchase of ${formatCurrency(Number(amount), 'NGN')} to ${phoneNumber.replace(/\s/g, '')} was successful.`
             : payment.flowError || 'Your airtime purchase could not be completed. Please try again.'
         }
-        primaryAction={{
-          label: 'View Details',
-          onPress: () => {
-            console.log('👁️ View Details pressed');
-            handleTransactionComplete();
-          },
-        }}
+        primaryAction={{ label: 'View Details', onPress: handleTransactionComplete }}
         secondaryAction={{
           label: 'Done',
-          onPress: () => {
-            console.log('✅ Done pressed - closing modal');
-            setPhoneNumber('');
-            setProvider('');
-            setAmount('');
-            payment.resetFlow();
-          },
+          onPress: () => { setPhoneNumber(''); setProvider(''); setAmount(''); payment.resetFlow(); },
         }}
       />
 
-      {/* Processing Overlay */}
-      <LoadingOverlay
-        visible={payment.step === 'processing'}
-        message="Processing your payment..."
-      />
+      <LoadingOverlay visible={payment.step === 'processing'} message="Processing your payment..." />
     </SafeAreaView>
   );
 }
 
-// ========================================
-// STYLES
-// ========================================
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  headerGradient: {
-    paddingBottom: 16,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  balanceCard: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  balanceContent: {
+  container: { flex: 1 },
+
+  // Header
+  header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
   },
-  balanceLeft: {
-    flex: 1,
-  },
-  balanceLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.9)',
-    marginBottom: 8,
-  },
-  balanceAmount: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  balanceIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  section: {
-    marginBottom: 16,
-  },
-  card: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  cardTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cardIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  cardTitle: {
-    fontSize: 16,
+  headerTitle: { fontSize: 18, fontWeight: '700' },
+  headerRight:  { fontSize: 14, fontWeight: '600' },
+
+  scroll: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 48 },
+
+  // Section labels
+  sectionLabel: {
+    fontSize: 11,
     fontWeight: '700',
-  },
-  errorBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FEE2E2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickAmountsRow: {
-    flexDirection: 'row',
-    gap: 10,
+    letterSpacing: 0.8,
     marginBottom: 10,
   },
-  quickAmountCard: {
-    flex: 1,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  quickAmountCardSelected: {
-    shadowColor: '#667EEA',
-    shadowOpacity: 0.3,
-    elevation: 4,
-  },
-  quickAmountGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickAmountText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  payButtonContainer: {
-    marginTop: 16,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  payButtonDisabled: {
-    opacity: 0.6,
-  },
-  payButtonGradient: {
+
+  // Network grid
+  networkRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 10,
+    gap: 8,
   },
-  payButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  errorContainer: {
-    marginBottom: 16,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  errorGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
-  },
-  errorText: {
+  networkCard: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EF4444',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 6,
   },
-  providerGrid: {
+  networkLogo:  { width: 36, height: 36 },
+  networkLabel: { fontSize: 11, fontWeight: '600' },
+
+  // Field box (phone + amount)
+  fieldBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
+    marginBottom: 4,
+  },
+  amountBox:   { paddingVertical: 4 },
+  amountInput: { fontSize: 17, fontWeight: '600', paddingVertical: 12 },
+
+  // Amount header (label + balance)
+  amountHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  balanceText: { fontSize: 13, fontWeight: '600' },
+
+  // Quick amount chips
+  quickRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 20,
   },
-  providerCell: {
-    width: (width - 32 - 40 - 10) / 2,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    overflow: 'hidden',
-    position: 'relative',
+  quickChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
   },
-  providerCellSelected: {
-    borderColor: 'rgba(255,255,255,0.5)',
-  },
-  providerCellLogo: {
-    width: 34,
-    height: 34,
-    marginBottom: 6,
-  },
-  providerCellLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  providerCheck: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  providerError: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#EF4444',
-    marginTop: 8,
-  },
+  quickChipText: { fontSize: 13, fontWeight: '600' },
+
+  // Fee hint
   feeHint: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  feeHintText: { flex: 1, fontSize: 11, lineHeight: 16 },
+
+  // Payment summary
+  summaryCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 20,
+  },
+  summaryTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: 14,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: 8,
+  },
+  summaryLabel:  { fontSize: 14, fontWeight: '500' },
+  summaryValue:  { fontSize: 14, fontWeight: '600' },
+  summaryAmount: { fontSize: 18, fontWeight: '800' },
+  summaryDivider: { height: 1, marginHorizontal: -4 },
+
+  // Error
+  fieldError: { fontSize: 12, color: '#EF4444', marginBottom: 6, marginLeft: 4 },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEE2E2',
+    padding: 12,
     borderRadius: 10,
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  feeHintText: {
-    flex: 1,
-    fontSize: 12,
-    lineHeight: 17,
+  errorText: { flex: 1, fontSize: 13, color: '#EF4444', fontWeight: '500' },
+
+  // Buy button
+  buyBtn: {
+    paddingVertical: 17,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  buyBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });

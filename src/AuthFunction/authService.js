@@ -728,7 +728,7 @@ export const changeTransactionPin = async (currentPin, newPin) => {
   }
 };
 
-export const verifyMyNIN = async (nin, pin) => {
+export const verifyMyNIN = async (nin) => {
   try {
     const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
     if (!token) throw new Error('Authentication required');
@@ -738,7 +738,7 @@ export const verifyMyNIN = async (nin, pin) => {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ nin, pin }),
+        body: JSON.stringify({ nin }),
       }
     );
     return await handleResponse(response);

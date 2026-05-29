@@ -33,11 +33,8 @@ export default function VerifyNINScreen({ navigation }) {
   const user = wallet?.user;
 
   const [nin, setNin] = useState('');
-  const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const [pinVisible, setPinVisible] = useState(false);
-  const [noPinSet, setNoPinSet] = useState(false);
 
   const alreadyVerified = !!user?.isNINVerified;
 
@@ -46,36 +43,21 @@ export default function VerifyNINScreen({ navigation }) {
       Alert.alert('Invalid NIN', 'NIN must be exactly 11 digits.');
       return;
     }
-    if (!pin || pin.length !== 4) {
-      Alert.alert('PIN required', 'Enter your 4-digit transaction PIN to proceed.');
-      return;
-    }
 
     try {
       setLoading(true);
       setResult(null);
-      setNoPinSet(false);
-      const res = await verifyMyNIN(nin, pin);
+      const res = await verifyMyNIN(nin);
 
       if (!res.success) {
-        const msg = res.message || '';
-        if (msg.toLowerCase().includes('pin not set') || msg.toLowerCase().includes('transaction pin')) {
-          setNoPinSet(true);
-          return;
-        }
-        Alert.alert('Verification Failed', msg || 'Could not verify NIN. Please try again.');
+        Alert.alert('Verification Failed', res.message || 'Could not verify NIN. Please try again.');
         return;
       }
 
       setResult(res);
       await refreshWallet();
     } catch (error) {
-      const msg = error.message || '';
-      if (msg.toLowerCase().includes('pin not set') || msg.toLowerCase().includes('transaction pin')) {
-        setNoPinSet(true);
-      } else {
-        Alert.alert('Error', msg || 'Something went wrong. Please try again.');
-      }
+      Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -115,27 +97,6 @@ export default function VerifyNINScreen({ navigation }) {
           </Text>
         </View>
 
-        {/* No transaction PIN set — guide card */}
-        {noPinSet && (
-          <View style={[styles.noPinCard, { backgroundColor: '#FF980015', borderColor: '#FF980040' }]}>
-            <Ionicons name="lock-open-outline" size={22} color="#FF9800" />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.noPinTitle, { color: '#FF9800' }]}>Transaction PIN not set</Text>
-              <Text style={[styles.noPinBody, { color: themeColors.heading }]}>
-                NIN verification requires your 4-digit transaction PIN. You haven't set one yet.{'\n\n'}
-                Tap the button below to create your PIN, then come back to complete verification.
-              </Text>
-              <TouchableOpacity
-                style={[styles.noPinBtn, { backgroundColor: '#FF9800' }]}
-                onPress={() => navigation.navigate('SetTransactionPin', { fromScreen: 'VerifyNIN' })}
-              >
-                <Ionicons name="lock-closed-outline" size={16} color="#FFF" />
-                <Text style={styles.noPinBtnText}>Set Transaction PIN</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
         {!alreadyVerified && (
           <>
             {/* NIN input */}
@@ -153,26 +114,6 @@ export default function VerifyNINScreen({ navigation }) {
               <Text style={[styles.fieldHint, { color: themeColors.subtext }]}>
                 {nin.length}/11 digits
               </Text>
-            </View>
-
-            {/* Transaction PIN */}
-            <View style={styles.fieldWrap}>
-              <Text style={[styles.fieldLabel, { color: themeColors.subheading }]}>TRANSACTION PIN</Text>
-              <View style={styles.pinRow}>
-                <TextInput
-                  style={[styles.input, styles.pinInput, { backgroundColor: themeColors.card, color: themeColors.heading, borderColor: themeColors.border || '#E0E0E0' }]}
-                  value={pin}
-                  onChangeText={t => setPin(t.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="4-digit PIN"
-                  placeholderTextColor={themeColors.subtext}
-                  keyboardType="number-pad"
-                  secureTextEntry={!pinVisible}
-                  maxLength={4}
-                />
-                <TouchableOpacity onPress={() => setPinVisible(v => !v)} style={styles.eyeBtn}>
-                  <Ionicons name={pinVisible ? 'eye-off-outline' : 'eye-outline'} size={20} color={themeColors.subheading} />
-                </TouchableOpacity>
-              </View>
             </View>
 
             <TouchableOpacity
@@ -260,9 +201,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fieldHint: { fontSize: 11, marginTop: 4 },
-  pinRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  pinInput: { flex: 1 },
-  eyeBtn: { padding: 10 },
   verifyBtn: {
     paddingVertical: 16,
     borderRadius: 14,
@@ -299,26 +237,4 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 13 },
   infoValue: { fontSize: 13, fontWeight: '600', maxWidth: '60%', textAlign: 'right' },
   alreadyText: { fontSize: 14, lineHeight: 22, textAlign: 'center', padding: 8 },
-  noPinCard: {
-    flexDirection: 'row',
-    gap: 12,
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 20,
-    alignItems: 'flex-start',
-  },
-  noPinTitle: { fontSize: 15, fontWeight: '700', marginBottom: 6 },
-  noPinBody: { fontSize: 13, lineHeight: 20 },
-  noPinBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginTop: 12,
-  },
-  noPinBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 });

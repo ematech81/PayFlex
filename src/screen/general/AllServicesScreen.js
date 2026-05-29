@@ -352,27 +352,6 @@ const AllServicesScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Recent Transactions Section */}
-        <View style={[styles.recentSection, { backgroundColor: themeColors.card }]}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: themeColors.heading }]}>
-              Recently Used
-            </Text>
-            <TouchableOpacity>
-              <Text style={[styles.seeAllText, { color: themeColors.primary }]}>
-                See All
-              </Text>
-            </TouchableOpacity>
-          </View>
-          
-          {/* Placeholder for recent services */}
-          <View style={[styles.recentList, { borderColor: themeColors.border || `${themeColors.heading}20` }]}>
-            <Text style={[styles.placeholderText, { color: themeColors.subheading }]}>
-              No recent services
-            </Text>
-          </View>
-        </View>
-
         {/* Quick Tips */}
         <View style={[styles.tipsContainer, { backgroundColor: `${themeColors.primary}10` }]}>
           <Feather name="info" size={20} color={themeColors.primary} />

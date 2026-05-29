@@ -133,6 +133,8 @@ function BottomTabs() {
   const tabBarHeight = height > 800 ? 70 : 60;
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const insets = useSafeAreaInsets();
+  const isDarkMode = useThem();
+  const themeColors = isDarkMode ? colors.dark : colors.light;
 
   useEffect(() => {
     const keyboardDidShow = Keyboard.addListener('keyboardDidShow', () => {
@@ -165,17 +167,16 @@ function BottomTabs() {
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: colors.light.primary,
-        tabBarInactiveTintColor: colors.light.subheading,
+        tabBarActiveTintColor: themeColors.primary,
+        tabBarInactiveTintColor: themeColors.subheading,
         tabBarStyle: {
           height: tabBarHeight + insets.bottom,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 5,
           paddingTop: 5,
-          backgroundColor: colors.light.card,
+          backgroundColor: themeColors.card,
           borderTopWidth: 1,
-          borderTopColor: '#e0e0e0',
-          display:
-            keyboardVisible && Platform.OS === 'android' ? 'none' : 'flex',
+          borderTopColor: isDarkMode ? '#2a2a2a' : '#e0e0e0',
+          display: keyboardVisible && Platform.OS === 'android' ? 'none' : 'flex',
         },
         headerShown: false,
       })}

@@ -76,7 +76,7 @@ export default function About({ navigation }) {
         {/* App identity */}
         <View style={styles.appSection}>
           <Image
-            source={require('../../../assets/appStoreIcon.jpg')}
+            source={require('../../../assets/icon.png')}
             style={styles.appLogo}
           />
           <Text style={[styles.appName, { color: themeColors.heading }]}>PayFlex</Text>

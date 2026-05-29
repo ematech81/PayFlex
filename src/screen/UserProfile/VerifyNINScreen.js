@@ -37,6 +37,7 @@ export default function VerifyNINScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [pinVisible, setPinVisible] = useState(false);
+  const [noPinSet, setNoPinSet] = useState(false);
 
   const alreadyVerified = !!user?.isNINVerified;
 
@@ -53,17 +54,28 @@ export default function VerifyNINScreen({ navigation }) {
     try {
       setLoading(true);
       setResult(null);
+      setNoPinSet(false);
       const res = await verifyMyNIN(nin, pin);
 
       if (!res.success) {
-        Alert.alert('Verification Failed', res.message || 'Could not verify NIN. Please try again.');
+        const msg = res.message || '';
+        if (msg.toLowerCase().includes('pin not set') || msg.toLowerCase().includes('transaction pin')) {
+          setNoPinSet(true);
+          return;
+        }
+        Alert.alert('Verification Failed', msg || 'Could not verify NIN. Please try again.');
         return;
       }
 
       setResult(res);
       await refreshWallet();
     } catch (error) {
-      Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
+      const msg = error.message || '';
+      if (msg.toLowerCase().includes('pin not set') || msg.toLowerCase().includes('transaction pin')) {
+        setNoPinSet(true);
+      } else {
+        Alert.alert('Error', msg || 'Something went wrong. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -102,6 +114,27 @@ export default function VerifyNINScreen({ navigation }) {
             Verifying your NIN increases your account trust level, may raise transaction limits, and is required for some services. A small verification fee is deducted from your wallet.
           </Text>
         </View>
+
+        {/* No transaction PIN set — guide card */}
+        {noPinSet && (
+          <View style={[styles.noPinCard, { backgroundColor: '#FF980015', borderColor: '#FF980040' }]}>
+            <Ionicons name="lock-open-outline" size={22} color="#FF9800" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.noPinTitle, { color: '#FF9800' }]}>Transaction PIN not set</Text>
+              <Text style={[styles.noPinBody, { color: themeColors.heading }]}>
+                NIN verification requires your 4-digit transaction PIN. You haven't set one yet.{'\n\n'}
+                Tap the button below to create your PIN, then come back to complete verification.
+              </Text>
+              <TouchableOpacity
+                style={[styles.noPinBtn, { backgroundColor: '#FF9800' }]}
+                onPress={() => navigation.navigate('SetTransactionPin', { fromScreen: 'VerifyNIN' })}
+              >
+                <Ionicons name="lock-closed-outline" size={16} color="#FFF" />
+                <Text style={styles.noPinBtnText}>Set Transaction PIN</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {!alreadyVerified && (
           <>
@@ -266,4 +299,26 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 13 },
   infoValue: { fontSize: 13, fontWeight: '600', maxWidth: '60%', textAlign: 'right' },
   alreadyText: { fontSize: 14, lineHeight: 22, textAlign: 'center', padding: 8 },
+  noPinCard: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 20,
+    alignItems: 'flex-start',
+  },
+  noPinTitle: { fontSize: 15, fontWeight: '700', marginBottom: 6 },
+  noPinBody: { fontSize: 13, lineHeight: 20 },
+  noPinBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 12,
+  },
+  noPinBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 });

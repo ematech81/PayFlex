@@ -268,7 +268,7 @@ const AllServicesScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={themeColors.background} />
+      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor={themeColors.background} />
       
       {/* Animated Header */}
       <Animated.View 
@@ -282,8 +282,8 @@ const AllServicesScreen = ({ navigation }) => {
         ]}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.backButton}
+          <TouchableOpacity
+            style={[styles.backButton, { backgroundColor: themeColors.card }]}
             onPress={() => navigation.goBack()}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -299,8 +299,8 @@ const AllServicesScreen = ({ navigation }) => {
             </Text>
           </View>
           
-          <TouchableOpacity 
-            style={styles.searchButton}
+          <TouchableOpacity
+            style={[styles.searchButton, { backgroundColor: themeColors.card }]}
             onPress={() => navigation.navigate('Search')}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
@@ -324,7 +324,7 @@ const AllServicesScreen = ({ navigation }) => {
             <Text style={[styles.sectionTitle, { color: themeColors.text }]}>
               All Services
             </Text>
-            <View style={styles.servicesCount}>
+            <View style={[styles.servicesCount, { backgroundColor: `${themeColors.primary}15` }]}>
               <Text style={[styles.servicesCountText, { color: themeColors.primary }]}>
                 {services.filter(s => s.screen).length} Active
               </Text>
@@ -366,7 +366,7 @@ const AllServicesScreen = ({ navigation }) => {
           </View>
           
           {/* Placeholder for recent services */}
-          <View style={styles.recentList}>
+          <View style={[styles.recentList, { borderColor: themeColors.border || `${themeColors.text}20` }]}>
             <Text style={[styles.placeholderText, { color: themeColors.lightText }]}>
               No recent services
             </Text>
@@ -405,7 +405,6 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
     borderRadius: 12,
-    backgroundColor: '#F5F5F5',
   },
   headerTitleContainer: {
     alignItems: 'center',
@@ -424,7 +423,6 @@ const styles = StyleSheet.create({
   searchButton: {
     padding: 8,
     borderRadius: 12,
-    backgroundColor: '#F5F5F5',
   },
   scrollContent: {
     paddingTop: 16,
@@ -444,7 +442,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   servicesCount: {
-    backgroundColor: '#F0F0FF',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -544,7 +541,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#E0E0E0',
     borderRadius: 12,
     marginTop: 12,
   },

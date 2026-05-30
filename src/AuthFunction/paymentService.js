@@ -681,6 +681,14 @@ export const getTransactionHistory = async (filters = {}) => {
 export const cacValidateName = (proposedName) =>
   makeGeneralRequest('/cac/validate-name', { proposedName });
 
+/** BN compliance pre-check with advanceCheck=true — free, returns statusCode + suggestions */
+export const cacCheckCompliance = (proposedName, lineOfBusiness) =>
+  makeGeneralRequest('/cac/compliance', { proposedName, lineOfBusiness });
+
+/** Validate full registration payload (images stripped server-side) before wallet deduction */
+export const cacValidatePayload = (payload) =>
+  makeGeneralRequest('/cac/validate', payload);
+
 /** Fetch public pricing for BN registration and validation */
 export const cacGetPrices = () => makeGeneralGet('/cac/prices');
 

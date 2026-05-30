@@ -70,6 +70,7 @@ import LoginSettingsScreen from 'screen/Settings/LoginSettingsScreen';
 import ChangeLoginScreen from 'screen/Settings/ChangeLoginScreen';
 import NINScreen from 'screen/general/NINScreen';
 import CACScreen from 'screen/general/CACScreen';
+import CACStatusScreen from 'screens/services/CACStatusScreen';
 import DeleteAccountScreen from 'screen/UserProfile/DeleteAccountScreen';
 import NotificationsInboxScreen from 'screen/general/NotificationsInboxScreen';
 import IssueReportScreen from 'screen/general/IssueReportScreen';
@@ -410,6 +411,10 @@ function AppContent({ initialRoute, navigationRef }) {
               <Stack.Screen
                 name="CACScreen"
                 component={CACScreen}
+              />
+              <Stack.Screen
+                name="CACStatus"
+                component={CACStatusScreen}
               />
             
               <Stack.Screen

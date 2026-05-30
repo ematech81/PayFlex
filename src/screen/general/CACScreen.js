@@ -115,103 +115,188 @@ const DatePicker = React.memo(({ value, onChange, tc, maxDate, minDate, placehol
   );
 });
 
-// NameField: stable component with compliance check — defined OUTSIDE CACScreen
-const NameField = React.memo(({ label, optLabel, value, onChange, lob, onStatusChange, tc, onChipPress }) => {
-  const [compStatus, setCompStatus] = useState(null);
-  const [checking,   setChecking]   = useState(false);
-  const [clientErr,  setClientErr]  = useState('');
-  const debounceRef = useRef(null);
+// NameInput: plain text input with client-side checks only (no auto-API)
+// Compliance checking is done separately via ComplianceChecker.
+const NameInput = React.memo(({ optLabel, value, onChange, tc }) => {
+  const [clientErr, setClientErr] = useState('');
 
   useEffect(() => {
-    clearTimeout(debounceRef.current);
-    // Reset compliance status and client error
-    setCompStatus(null);
-    setClientErr('');
-
-    if (!value || !value.trim()) {
-      onStatusChange(null);
-      return;
-    }
-
-    // Step A: client-side checks (instant)
-    if (isSingle(value)) {
-      const err = 'Name must be more than one word';
-      setClientErr(err);
-      onStatusChange({ code: 'client_err' });
-      return;
-    }
+    if (!value || !value.trim()) { setClientErr(''); return; }
+    if (isSingle(value))         { setClientErr('Name must be more than one word'); return; }
     const pw = findProhibited(value);
-    if (pw) {
-      const err = `Contains prohibited word: "${pw}"`;
-      setClientErr(err);
-      onStatusChange({ code: 'client_err' });
-      return;
-    }
-
-    // Step B: API compliance check (debounced 800ms)
-    setChecking(true);
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const res  = await cacCheckCompliance(value.trim(), lob || '');
-        const d    = res?.data || res;
-        const code = String(d?.statusCode ?? d?.data?.statusCode ?? '');
-        const result = { code, data: d };
-        setCompStatus(result);
-        onStatusChange(result);
-      } catch (_) {
-        setCompStatus({ code: 'error' });
-        onStatusChange({ code: 'error' });
-      } finally {
-        setChecking(false);
-      }
-    }, 800);
-
-    return () => { clearTimeout(debounceRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, lob]);
-
-  const msg   = COMPLIANCE_MESSAGES[compStatus?.code];
-  const chips = compStatus?.data?.recommendedActions?.keywords || compStatus?.data?.suggestedNames || compStatus?.data?.similarNames || [];
+    if (pw)                      { setClientErr(`Contains prohibited word: "${pw}"`); return; }
+    setClientErr('');
+  }, [value]);
 
   return (
     <View>
       {optLabel && <Text style={[ss.optLabel, { color: tc.subheading }]}>{optLabel}</Text>}
-      <View style={[ss.inp, { backgroundColor: tc.card, borderColor: compStatus?.code === '00' ? '#4CAF50' : tc.border || '#E5E5EA', flexDirection: 'row', alignItems: 'center', borderWidth: compStatus?.code === '00' ? 1.5 : 1 }]}>
+      <View style={[ss.inp, { backgroundColor: tc.card, borderColor: clientErr ? '#EF4444' : tc.border || '#E5E5EA', flexDirection: 'row', alignItems: 'center' }]}>
         <TextInput
           style={[{ flex: 1, fontSize: 15, color: tc.heading }]}
           value={value} onChangeText={onChange}
           placeholder="e.g. Emeka Ventures" placeholderTextColor={tc.subtext}
           autoCapitalize="words"
         />
-        {checking && <ActivityIndicator size="small" color={tc.primary} style={{ marginLeft: 8 }} />}
-        {!checking && compStatus?.code === '00' && <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />}
-        {!checking && clientErr ? <Ionicons name="alert-circle" size={20} color="#EF4444" /> : null}
+        {clientErr ? <Ionicons name="alert-circle" size={20} color="#EF4444" /> : (value?.trim() && !isSingle(value) && !findProhibited(value)) ? <Ionicons name="checkmark-circle" size={20} color="#4CAF50" /> : null}
       </View>
-
       {clientErr ? <Text style={[ss.hint, { color: '#EF4444' }]}>{clientErr}</Text> : null}
+    </View>
+  );
+});
 
-      {!clientErr && msg && (
-        <View style={[ss.compRow, { backgroundColor: `${msg.color}12` }]}>
-          <Ionicons name={msg.color === '#4CAF50' ? 'checkmark-circle-outline' : 'information-circle-outline'} size={14} color={msg.color} />
-          <Text style={[ss.compText, { color: msg.color }]}>{msg.label}</Text>
+// ComplianceChecker: manual compliance check for both names — defined OUTSIDE CACScreen
+const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onChipPress2, onSupportingDocRequired }) => {
+  const [result1,  setResult1]  = useState(null);
+  const [result2,  setResult2]  = useState(null);
+  const [checking, setChecking] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const runCheck = async () => {
+    if (!name1?.trim() && !name2?.trim()) { Alert.alert('Enter names', 'Please fill in at least one business name first.'); return; }
+    setChecking(true);
+    setResult1(null); setResult2(null);
+    try {
+      const [r1, r2] = await Promise.all([
+        name1?.trim() ? cacCheckCompliance(name1.trim(), lob || '') : Promise.resolve(null),
+        name2?.trim() ? cacCheckCompliance(name2.trim(), lob || '') : Promise.resolve(null),
+      ]);
+      const parse = (r) => { if (!r) return null; const d = r?.data || r; return { code: String(d?.statusCode ?? d?.data?.statusCode ?? ''), data: d }; };
+      const p1 = parse(r1), p2 = parse(r2);
+      setResult1(p1); setResult2(p2);
+      if (p1?.code === '03' || p1?.code === '04' || p2?.code === '03' || p2?.code === '04') onSupportingDocRequired?.();
+      setExpanded(true);
+    } catch (e) {
+      Alert.alert('Check failed', e.message || 'Could not run compliance check. Please try again.');
+    } finally { setChecking(false); }
+  };
+
+  const ResultCard = ({ name, result, onChip }) => {
+    if (!result) return null;
+    const msg     = COMPLIANCE_MESSAGES[result.code];
+    const score   = result.data?.complianceScorePercentage ?? result.data?.data?.complianceScorePercentage;
+    const simScore= result.data?.similarityScorePercentage ?? result.data?.data?.similarityScorePercentage;
+    const chips   = result.data?.recommendedActions?.[0]?.keywords || result.data?.data?.recommendedActions?.[0]?.keywords || [];
+    const suggested = result.data?.suggestedNames || result.data?.data?.suggestedNames || [];
+    const similar   = result.data?.similarNames   || result.data?.data?.similarNames   || [];
+
+    return (
+      <View style={[ss.compCard, { backgroundColor: msg ? `${msg.color}08` : `${tc.primary}08`, borderColor: msg ? `${msg.color}30` : tc.border || '#E5E5EA' }]}>
+        <View style={ss.compCardHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={[ss.compCardName, { color: tc.heading }]} numberOfLines={1}>{name}</Text>
+          </View>
+          <View style={[ss.compBadge, { backgroundColor: msg ? `${msg.color}20` : `${tc.primary}20` }]}>
+            <Text style={[ss.compBadgeText, { color: msg?.color || tc.primary }]}>{result.code}</Text>
+          </View>
         </View>
-      )}
 
-      {chips.length > 0 && (
-        <View style={ss.chipRow}>
-          <Text style={[ss.chipHint, { color: tc.subheading }]}>Tap to use:</Text>
-          {chips.slice(0, 5).map((c, i) => (
-            <TouchableOpacity key={i} style={[ss.chip, { borderColor: tc.primary, backgroundColor: `${tc.primary}10` }]} onPress={() => onChipPress?.(String(c))}>
-              <Text style={[ss.chipT, { color: tc.primary }]}>+ {c}</Text>
-            </TouchableOpacity>
-          ))}
+        {msg && (
+          <View style={[ss.compStatusRow, { backgroundColor: `${msg.color}12` }]}>
+            <Ionicons name={result.code === '00' ? 'checkmark-circle' : 'information-circle'} size={16} color={msg.color} />
+            <Text style={[ss.compStatusText, { color: msg.color }]}>{msg.label}</Text>
+          </View>
+        )}
+
+        {/* Scores */}
+        {(score !== undefined || simScore !== undefined) && (
+          <View style={ss.scoreRow}>
+            {score !== undefined && (
+              <View style={ss.scoreItem}>
+                <Text style={[ss.scoreLabel, { color: tc.subheading }]}>Compliance Score</Text>
+                <View style={[ss.scoreBar, { backgroundColor: tc.border || '#E5E5EA' }]}>
+                  <View style={[ss.scoreFill, { width: `${Math.min(score, 100)}%`, backgroundColor: score >= 70 ? '#4CAF50' : score >= 40 ? '#FF9800' : '#EF4444' }]} />
+                </View>
+                <Text style={[ss.scoreVal, { color: score >= 70 ? '#4CAF50' : score >= 40 ? '#FF9800' : '#EF4444' }]}>{score?.toFixed(1)}%</Text>
+              </View>
+            )}
+            {simScore !== undefined && (
+              <View style={ss.scoreItem}>
+                <Text style={[ss.scoreLabel, { color: tc.subheading }]}>Similarity Score</Text>
+                <View style={[ss.scoreBar, { backgroundColor: tc.border || '#E5E5EA' }]}>
+                  <View style={[ss.scoreFill, { width: `${Math.min(simScore, 100)}%`, backgroundColor: '#FF9800' }]} />
+                </View>
+                <Text style={[ss.scoreVal, { color: '#FF9800' }]}>{simScore?.toFixed(1)}%</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Qualifier chips */}
+        {chips.length > 0 && (
+          <View style={{ marginTop: 8 }}>
+            <Text style={[ss.chipSectionLabel, { color: tc.subheading }]}>Suggested qualifiers — tap to append:</Text>
+            <View style={ss.chipRow}>
+              {chips.slice(0, 6).map((c, i) => (
+                <TouchableOpacity key={i} style={[ss.chip, { borderColor: tc.primary, backgroundColor: `${tc.primary}10` }]} onPress={() => onChip?.(`${name} ${c}`)}>
+                  <Text style={[ss.chipT, { color: tc.primary }]}>+ {c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Suggested names */}
+        {suggested.length > 0 && (
+          <View style={{ marginTop: 8 }}>
+            <Text style={[ss.chipSectionLabel, { color: tc.subheading }]}>Suggested alternatives:</Text>
+            <View style={ss.chipRow}>
+              {suggested.slice(0, 4).map((n, i) => (
+                <TouchableOpacity key={i} style={[ss.chip, { borderColor: '#4CAF50', backgroundColor: '#4CAF5010' }]} onPress={() => onChip?.(n)}>
+                  <Text style={[ss.chipT, { color: '#4CAF50' }]}>{n}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Similar names */}
+        {similar.length > 0 && (
+          <View style={{ marginTop: 8 }}>
+            <Text style={[ss.chipSectionLabel, { color: tc.subheading }]}>Similar existing names:</Text>
+            {similar.slice(0, 3).map((n, i) => (
+              <View key={i} style={[ss.similarRow, { borderBottomColor: tc.border || '#F0F0F0' }]}>
+                <Ionicons name="business-outline" size={14} color={tc.subtext} />
+                <Text style={[{ fontSize: 13, color: tc.subheading, flex: 1 }]}>{n}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  return (
+    <View style={[ss.compCheckerCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+      <TouchableOpacity style={ss.compCheckerHeader} onPress={() => setExpanded(v => !v)} activeOpacity={0.8}>
+        <View style={[ss.compCheckerIcon, { backgroundColor: `${tc.primary}15` }]}>
+          <Ionicons name="shield-checkmark-outline" size={20} color={tc.primary} />
         </View>
-      )}
+        <View style={{ flex: 1 }}>
+          <Text style={[ss.compCheckerTitle, { color: tc.heading }]}>Check Business Name Compliance</Text>
+          <Text style={[ss.compCheckerSub, { color: tc.subheading }]}>Verify your names meet CAC requirements before submitting</Text>
+        </View>
+        <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={tc.subtext} />
+      </TouchableOpacity>
 
-      {(compStatus?.code === '03' || compStatus?.code === '04') && (
-        <View style={[ss.warnRow, { backgroundColor: '#FF980015' }]}>
-          <Ionicons name="warning-outline" size={14} color="#FF9800" />
-          <Text style={{ fontSize: 12, color: '#FF9800', flex: 1 }}>A supporting document will be required in Step 4.</Text>
+      {expanded && (
+        <View style={ss.compCheckerBody}>
+          <TouchableOpacity
+            style={[ss.checkBtn, { backgroundColor: tc.primary, opacity: checking ? 0.7 : 1 }]}
+            onPress={runCheck} disabled={checking} activeOpacity={0.85}
+          >
+            {checking
+              ? <><ActivityIndicator size="small" color="#FFF" /><Text style={ss.checkBtnText}>Checking…</Text></>
+              : <><Ionicons name="search-outline" size={18} color="#FFF" /><Text style={ss.checkBtnText}>Run Compliance Check</Text></>
+            }
+          </TouchableOpacity>
+
+          {(result1 || result2) && (
+            <View style={{ gap: 10, marginTop: 4 }}>
+              {result1 && name1?.trim() && <ResultCard name={name1} result={result1} onChip={v => onChipPress1?.(v)} />}
+              {result2 && name2?.trim() && <ResultCard name={name2} result={result2} onChip={v => onChipPress2?.(v)} />}
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -297,8 +382,8 @@ export default function CACScreen({ navigation }) {
   const [form,  setForm]  = useState({ ...EMPTY_FORM });
   const [pin,   setPin]   = useState('');
   const [busy,  setBusy]  = useState(false);
-  const [n1Stat, setN1Stat] = useState(null);
-  const [n2Stat, setN2Stat] = useState(null);
+  // n1Stat/n2Stat removed — compliance is now optional via ComplianceChecker
+
 
   // Stable setter — doesn't recreate on every render
   const setField = useCallback((k, v) => setForm(f => ({ ...f, [k]: v })), []);
@@ -309,8 +394,10 @@ export default function CACScreen({ navigation }) {
   // ── Step validation ──────────────────────────────────────────────────────
   const canGoNext = () => {
     if (step === 1) {
-      const ok = s => s?.code === '00' || s?.code === '03' || s?.code === '04';
-      return ok(n1Stat) && ok(n2Stat) && !!form.lineOfBusiness && !!form.businessCommencementDate;
+      // Client-side checks only — compliance API is optional/informational
+      const nameOk = (n) => !!n?.trim() && !isSingle(n) && !findProhibited(n);
+      return nameOk(form.proposedOption1) && nameOk(form.proposedOption2) &&
+        !!form.lineOfBusiness && !!form.businessCommencementDate;
     }
     if (step === 2) {
       return !!(form.proprietorFirstname && form.proprietorSurname && form.proprietorGender &&
@@ -370,25 +457,22 @@ export default function CACScreen({ navigation }) {
           <Text style={[ss.cardTitle, { color: tc.heading }]}>Proposed Business Names</Text>
         </View>
         <Text style={[ss.cardSub, { color: tc.subheading }]}>Option 1 (Preferred)</Text>
-        <NameField
-          value={form.proposedOption1}
-          onChange={v => setField('proposedOption1', v)}
-          lob={form.lineOfBusiness}
-          onStatusChange={s => { setN1Stat(s); if (s?.code === '03' || s?.code === '04') setField('requiresSupportingDoc', true); }}
-          tc={tc}
-          onChipPress={v => setField('proposedOption2', v)}
-        />
+        <NameInput value={form.proposedOption1} onChange={v => setField('proposedOption1', v)} tc={tc} />
         <View style={ss.divider} />
         <Text style={[ss.cardSub, { color: tc.subheading, marginTop: 12 }]}>Option 2 (Alternative)</Text>
-        <NameField
-          value={form.proposedOption2}
-          onChange={v => setField('proposedOption2', v)}
-          lob={form.lineOfBusiness}
-          onStatusChange={s => { setN2Stat(s); if (s?.code === '03' || s?.code === '04') setField('requiresSupportingDoc', true); }}
-          tc={tc}
-          onChipPress={v => setField('proposedOption1', v)}
-        />
+        <NameInput value={form.proposedOption2} onChange={v => setField('proposedOption2', v)} tc={tc} />
       </View>
+
+      {/* Compliance Checker card */}
+      <ComplianceChecker
+        name1={form.proposedOption1}
+        name2={form.proposedOption2}
+        lob={form.lineOfBusiness}
+        tc={tc}
+        onChipPress1={v => setField('proposedOption1', v)}
+        onChipPress2={v => setField('proposedOption2', v)}
+        onSupportingDocRequired={() => setField('requiresSupportingDoc', true)}
+      />
 
       {/* Industry & Operations card */}
       <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
@@ -896,4 +980,29 @@ const ss = StyleSheet.create({
   tabBar:       { flexDirection: 'row', borderTopWidth: 1, paddingTop: 8 },
   tabItem:      { flex: 1, alignItems: 'center', gap: 2, paddingBottom: 4 },
   tabLabel:     { fontSize: 10 },
+
+  // ComplianceChecker
+  compCheckerCard:   { borderRadius: 14, borderWidth: 1, marginBottom: 14 },
+  compCheckerHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
+  compCheckerIcon:   { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  compCheckerTitle:  { fontSize: 14, fontWeight: '700' },
+  compCheckerSub:    { fontSize: 11, marginTop: 1 },
+  compCheckerBody:   { paddingHorizontal: 14, paddingBottom: 14 },
+  checkBtn:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 10, marginBottom: 12 },
+  checkBtnText:      { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  compCard:          { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 2 },
+  compCardHeader:    { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  compCardName:      { fontSize: 14, fontWeight: '700' },
+  compBadge:         { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  compBadgeText:     { fontSize: 11, fontWeight: '800' },
+  compStatusRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderRadius: 8, marginBottom: 8 },
+  compStatusText:    { fontSize: 12, fontWeight: '600', flex: 1 },
+  scoreRow:          { gap: 10, marginBottom: 8 },
+  scoreItem:         { gap: 4 },
+  scoreLabel:        { fontSize: 11, fontWeight: '600' },
+  scoreBar:          { height: 6, borderRadius: 3, overflow: 'hidden' },
+  scoreFill:         { height: 6, borderRadius: 3 },
+  scoreVal:          { fontSize: 12, fontWeight: '700' },
+  chipSectionLabel:  { fontSize: 11, marginBottom: 6 },
+  similarRow:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth },
 });

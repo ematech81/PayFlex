@@ -381,7 +381,8 @@ export default function CACScreen({ navigation }) {
   const [step,  setStep]  = useState(1);
   const [form,  setForm]  = useState({ ...EMPTY_FORM });
   const [pin,   setPin]   = useState('');
-  const [busy,  setBusy]  = useState(false);
+  const [busy,      setBusy]     = useState(false);
+  const [showHint,  setShowHint] = useState(false);
   // n1Stat/n2Stat removed — compliance is now optional via ComplianceChecker
 
 
@@ -429,6 +430,11 @@ export default function CACScreen({ navigation }) {
   };
 
   const canGoNext = () => getMissing().length === 0;
+
+  // Auto-hide hint once all issues are resolved
+  useEffect(() => {
+    if (showHint && canGoNext()) setShowHint(false);
+  }, [form, showHint]);
 
   // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -862,27 +868,38 @@ export default function CACScreen({ navigation }) {
         <View style={[ss.nav, { backgroundColor: tc.background, borderTopColor: tc.border || '#E5E5EA', paddingBottom: insets.bottom + 8 }]}>
 
           <TouchableOpacity
-            style={[ss.nextBtn, { backgroundColor: tc.primary, opacity: canGoNext() ? 1 : 0.5 }]}
-            onPress={() => canGoNext() && setStep(n => n + 1)}
-            disabled={!canGoNext()} activeOpacity={0.85}
+            style={[ss.nextBtn, { backgroundColor: tc.primary }]}
+            onPress={() => {
+              if (canGoNext()) {
+                setShowHint(false);
+                setStep(n => n + 1);
+              } else {
+                setShowHint(true);
+              }
+            }}
+            activeOpacity={0.85}
           >
             <Text style={ss.nextTxt}>{btnLabel}</Text>
             <Ionicons name="chevron-forward" size={18} color="#FFF" />
           </TouchableOpacity>
 
           {step > 1 && (
-            <TouchableOpacity style={[ss.prevBtn, { borderColor: tc.border || '#E5E5EA' }]} onPress={() => setStep(n => n - 1)} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={[ss.prevBtn, { borderColor: tc.border || '#E5E5EA' }]}
+              onPress={() => { setShowHint(false); setStep(n => n - 1); }}
+              activeOpacity={0.8}
+            >
               <Ionicons name="chevron-back" size={16} color={tc.subheading} />
               <Text style={[ss.prevTxt, { color: tc.subheading }]}>{prevLabel}</Text>
             </TouchableOpacity>
           )}
 
-          {/* Missing fields hint — below both buttons, at "Save Draft" level */}
-          {!canGoNext() && getMissing().length > 0 && (
+          {/* Missing fields hint — only shown after a failed continue attempt */}
+          {showHint && getMissing().length > 0 && (
             <View style={[ss.missingBox, { backgroundColor: '#FFF3E0', borderColor: '#FF9800' }]}>
               <Ionicons name="alert-circle-outline" size={14} color="#FF9800" />
               <View style={{ flex: 1 }}>
-                <Text style={ss.missingTitle}>Still needed to continue:</Text>
+                <Text style={ss.missingTitle}>Please complete the following:</Text>
                 {getMissing().map((f, i) => (
                   <Text key={i} style={ss.missingItem}>• {f}</Text>
                 ))}

@@ -861,19 +861,6 @@ export default function CACScreen({ navigation }) {
       {step < 5 && (
         <View style={[ss.nav, { backgroundColor: tc.background, borderTopColor: tc.border || '#E5E5EA', paddingBottom: insets.bottom + 8 }]}>
 
-          {/* Missing fields hint — only shown when button is disabled */}
-          {!canGoNext() && getMissing().length > 0 && (
-            <View style={[ss.missingBox, { backgroundColor: '#FFF3E0', borderColor: '#FF9800' }]}>
-              <Ionicons name="alert-circle-outline" size={14} color="#FF9800" />
-              <View style={{ flex: 1 }}>
-                <Text style={ss.missingTitle}>Still needed:</Text>
-                {getMissing().map((f, i) => (
-                  <Text key={i} style={ss.missingItem}>• {f}</Text>
-                ))}
-              </View>
-            </View>
-          )}
-
           <TouchableOpacity
             style={[ss.nextBtn, { backgroundColor: tc.primary, opacity: canGoNext() ? 1 : 0.5 }]}
             onPress={() => canGoNext() && setStep(n => n + 1)}
@@ -882,11 +869,25 @@ export default function CACScreen({ navigation }) {
             <Text style={ss.nextTxt}>{btnLabel}</Text>
             <Ionicons name="chevron-forward" size={18} color="#FFF" />
           </TouchableOpacity>
+
           {step > 1 && (
             <TouchableOpacity style={[ss.prevBtn, { borderColor: tc.border || '#E5E5EA' }]} onPress={() => setStep(n => n - 1)} activeOpacity={0.8}>
               <Ionicons name="chevron-back" size={16} color={tc.subheading} />
               <Text style={[ss.prevTxt, { color: tc.subheading }]}>{prevLabel}</Text>
             </TouchableOpacity>
+          )}
+
+          {/* Missing fields hint — below both buttons, at "Save Draft" level */}
+          {!canGoNext() && getMissing().length > 0 && (
+            <View style={[ss.missingBox, { backgroundColor: '#FFF3E0', borderColor: '#FF9800' }]}>
+              <Ionicons name="alert-circle-outline" size={14} color="#FF9800" />
+              <View style={{ flex: 1 }}>
+                <Text style={ss.missingTitle}>Still needed to continue:</Text>
+                {getMissing().map((f, i) => (
+                  <Text key={i} style={ss.missingItem}>• {f}</Text>
+                ))}
+              </View>
+            </View>
           )}
         </View>
       )}

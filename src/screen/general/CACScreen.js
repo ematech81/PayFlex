@@ -392,29 +392,43 @@ export default function CACScreen({ navigation }) {
   const bal = wallet?.user?.walletBalance || 0;
 
   // ── Step validation ──────────────────────────────────────────────────────
-  const canGoNext = () => {
+  // Returns array of missing field labels for current step
+  const getMissing = () => {
+    const m = [];
     if (step === 1) {
-      // Client-side checks only — compliance API is optional/informational
       const nameOk = (n) => !!n?.trim() && !isSingle(n) && !findProhibited(n);
-      return nameOk(form.proposedOption1) && nameOk(form.proposedOption2) &&
-        !!form.lineOfBusiness && !!form.businessCommencementDate;
+      if (!nameOk(form.proposedOption1)) m.push('Desired Business Name (must be 2+ words, no prohibited words)');
+      if (!nameOk(form.proposedOption2)) m.push('Alternative Business Name (must be 2+ words, no prohibited words)');
+      if (!form.lineOfBusiness)          m.push('Line of Business');
+      if (!form.businessCommencementDate) m.push('Commencement Date');
     }
     if (step === 2) {
-      return !!(form.proprietorFirstname && form.proprietorSurname && form.proprietorGender &&
-        form.proprietorDob && getAge(form.proprietorDob) >= 18 &&
-        form.proprietorPhonenumber && form.proprietorEmail &&
-        form.proprietorStreetNumber && form.proprietorServiceAddress &&
-        form.proprietorCity && form.proprietorState && form.proprietorLga && form.proprietorPostcode);
+      if (!form.proprietorFirstname)      m.push('First Name');
+      if (!form.proprietorSurname)        m.push('Surname');
+      if (!form.proprietorGender)         m.push('Gender');
+      if (!form.proprietorDob)            m.push('Date of Birth');
+      else if (getAge(form.proprietorDob) < 18) m.push('Date of Birth (must be 18+)');
+      if (!form.proprietorPhonenumber)    m.push('Phone Number');
+      if (!form.proprietorEmail)          m.push('Email');
+      if (!form.proprietorServiceAddress) m.push('Service Address');
+      if (!form.proprietorCity)           m.push('City');
+      if (!form.proprietorState)          m.push('State');
     }
     if (step === 3) {
-      return !!(form.companyEmail && form.companyStreetNumber && form.companyAddress && form.companyCity && form.companyState);
+      if (!form.companyEmail)    m.push('Company Email');
+      if (!form.companyAddress)  m.push('Company Address');
+      if (!form.companyState)    m.push('State');
     }
     if (step === 4) {
-      return !!(form.passport && form.meansOfId && form.signature &&
-        (!form.requiresSupportingDoc || form.supportingDoc));
+      if (!form.passport)  m.push('Passport Photo');
+      if (!form.meansOfId) m.push('Means of ID');
+      if (!form.signature) m.push('Signature');
+      if (form.requiresSupportingDoc && !form.supportingDoc) m.push('Supporting Document (required for your business name)');
     }
-    return true;
+    return m;
   };
+
+  const canGoNext = () => getMissing().length === 0;
 
   // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -846,6 +860,20 @@ export default function CACScreen({ navigation }) {
       {/* Bottom nav */}
       {step < 5 && (
         <View style={[ss.nav, { backgroundColor: tc.background, borderTopColor: tc.border || '#E5E5EA', paddingBottom: insets.bottom + 8 }]}>
+
+          {/* Missing fields hint — only shown when button is disabled */}
+          {!canGoNext() && getMissing().length > 0 && (
+            <View style={[ss.missingBox, { backgroundColor: '#FFF3E0', borderColor: '#FF9800' }]}>
+              <Ionicons name="alert-circle-outline" size={14} color="#FF9800" />
+              <View style={{ flex: 1 }}>
+                <Text style={ss.missingTitle}>Still needed:</Text>
+                {getMissing().map((f, i) => (
+                  <Text key={i} style={ss.missingItem}>• {f}</Text>
+                ))}
+              </View>
+            </View>
+          )}
+
           <TouchableOpacity
             style={[ss.nextBtn, { backgroundColor: tc.primary, opacity: canGoNext() ? 1 : 0.5 }]}
             onPress={() => canGoNext() && setStep(n => n + 1)}
@@ -977,6 +1005,9 @@ const ss = StyleSheet.create({
   nextTxt:      { color: '#FFF', fontSize: 15, fontWeight: '700' },
   prevBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
   prevTxt:      { fontSize: 14, fontWeight: '500' },
+  missingBox:   { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 10 },
+  missingTitle: { fontSize: 12, fontWeight: '700', color: '#E65100', marginBottom: 2 },
+  missingItem:  { fontSize: 12, color: '#E65100', lineHeight: 18 },
   tabBar:       { flexDirection: 'row', borderTopWidth: 1, paddingTop: 8 },
   tabItem:      { flex: 1, alignItems: 'center', gap: 2, paddingBottom: 4 },
   tabLabel:     { fontSize: 10 },

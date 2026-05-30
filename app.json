@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "fintech-app",
+    "name": "PayFlex",
     "slug": "fintech-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/appStoreIcon.jpg",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/main-splash.png",
+      "image": "./assets/splash.png",
       "resizeMode": "cover",
       "backgroundColor": "#4a00e0"
     },
@@ -21,18 +21,25 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/appStoreIcon.jpg",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4a00e0"
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
         "WRITE_EXTERNAL_STORAGE",
         "READ_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES"
-      ]
+        "READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
+      ],
+      "package": "com.ematech81.payflex"
     },
     "web": {
-      "favicon": "./assets/appStoreIcon.jpg"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-secure-store",
@@ -40,7 +47,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/appStoreIcon.jpg",
+          "icon": "./assets/notification-icon.png",
           "color": "#4a00e0",
           "sounds": [],
           "androidMode": "default"
@@ -54,6 +61,11 @@
         }
       ],
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "530d4f55-26c5-410f-802b-85f9a0cbc7f5"
+      }
+    }
   }
 }

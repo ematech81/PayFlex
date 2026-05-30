@@ -14,10 +14,10 @@ export const InvoiceApiIPAddress = `${BASE}/invoices`;
 
 
 
-// $env:REACT_NATIVE_PACKAGER_HOSTNAME = "10.204.218.155" ; npx expo start --clear
+// $env:REACT_NATIVE_PACKAGER_HOSTNAME = "10.161.217.155" ; npx expo start --clear
 
 
-
+  
 
 
 

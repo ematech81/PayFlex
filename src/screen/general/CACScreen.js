@@ -147,28 +147,52 @@ const NameInput = React.memo(({ optLabel, value, onChange, tc }) => {
 
 // ComplianceChecker: manual compliance check for both names — defined OUTSIDE CACScreen
 const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onChipPress2, onSupportingDocRequired }) => {
-  const [result1,  setResult1]  = useState(null);
-  const [result2,  setResult2]  = useState(null);
-  const [checking, setChecking] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [result1,     setResult1]     = useState(null);
+  const [result2,     setResult2]     = useState(null);
+  const [checking,    setChecking]    = useState(false);
+  const [expanded,    setExpanded]    = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  const [unavailMsg,  setUnavailMsg]  = useState('');
 
   const runCheck = async () => {
-    if (!name1?.trim() && !name2?.trim()) { Alert.alert('Enter names', 'Please fill in at least one business name first.'); return; }
+    if (!name1?.trim() && !name2?.trim()) {
+      Alert.alert('Enter names', 'Please fill in at least one business name first.');
+      return;
+    }
     setChecking(true);
     setResult1(null); setResult2(null);
+    setUnavailable(false); setUnavailMsg('');
     try {
       const [r1, r2] = await Promise.all([
         name1?.trim() ? cacCheckCompliance(name1.trim(), lob || '') : Promise.resolve(null),
         name2?.trim() ? cacCheckCompliance(name2.trim(), lob || '') : Promise.resolve(null),
       ]);
-      const parse = (r) => { if (!r) return null; const d = r?.data || r; return { code: String(d?.statusCode ?? d?.data?.statusCode ?? ''), data: d }; };
+
+      // Handle graceful "not available" response from backend (403 from VAS)
+      const anyUnavailable = r1?.unavailable || r2?.unavailable;
+      if (anyUnavailable) {
+        setUnavailable(true);
+        setUnavailMsg(r1?.message || r2?.message || 'Compliance check is not available for your account.');
+        setExpanded(true);
+        return;
+      }
+
+      const parse = (r) => {
+        if (!r) return null;
+        const d = r?.data || r;
+        return { code: String(d?.statusCode ?? d?.data?.statusCode ?? ''), data: d };
+      };
       const p1 = parse(r1), p2 = parse(r2);
       setResult1(p1); setResult2(p2);
-      if (p1?.code === '03' || p1?.code === '04' || p2?.code === '03' || p2?.code === '04') onSupportingDocRequired?.();
+      if (p1?.code === '03' || p1?.code === '04' || p2?.code === '03' || p2?.code === '04') {
+        onSupportingDocRequired?.();
+      }
       setExpanded(true);
     } catch (e) {
       Alert.alert('Check failed', e.message || 'Could not run compliance check. Please try again.');
-    } finally { setChecking(false); }
+    } finally {
+      setChecking(false);
+    }
   };
 
   const ResultCard = ({ name, result, onChip }) => {
@@ -291,7 +315,25 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
             }
           </TouchableOpacity>
 
-          {(result1 || result2) && (
+          {/* Not available — 403 from VAS */}
+          {unavailable && (
+            <View style={[ss.unavailBox, { backgroundColor: '#FFF8E1', borderColor: '#FFC107' }]}>
+              <Ionicons name="information-circle-outline" size={18} color="#F59E0B" />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E' }}>
+                  Compliance Check Unavailable
+                </Text>
+                <Text style={{ fontSize: 12, color: '#92400E', lineHeight: 18 }}>
+                  {unavailMsg}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#92400E', marginTop: 4, fontStyle: 'italic' }}>
+                  You can still proceed with your registration. The CAC team will review your name during processing.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {(result1 || result2) && !unavailable && (
             <View style={{ gap: 10, marginTop: 4 }}>
               {result1 && name1?.trim() && <ResultCard name={name1} result={result1} onChip={v => onChipPress1?.(v)} />}
               {result2 && name2?.trim() && <ResultCard name={name2} result={result2} onChip={v => onChipPress2?.(v)} />}
@@ -1168,6 +1210,7 @@ const ss = StyleSheet.create({
   idUploadCard:    { borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', padding: 14, marginTop: 8 },
   idTipRow:        { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 8, marginBottom: 12 },
   idTipText:       { flex: 1, fontSize: 12, lineHeight: 18, fontWeight: '500' },
+  unavailBox:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 4 },
   missingBox:   { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 10 },
   missingTitle: { fontSize: 12, fontWeight: '700', color: '#E65100', marginBottom: 2 },
   missingItem:  { fontSize: 12, color: '#E65100', lineHeight: 18 },

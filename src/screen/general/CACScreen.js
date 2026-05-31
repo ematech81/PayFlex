@@ -352,7 +352,7 @@ const ImageUpload = React.memo(({ label, subtitle, required, value, fileName, fi
   const pick = async () => {
     const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (p.status !== 'granted') { Alert.alert('Permission needed', 'Allow photo library access.'); return; }
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85, base64: true, allowsEditing: true });
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85, base64: true, allowsEditing: false });
     if (r.canceled) return;
     const a  = r.assets[0];
     const kb = a.fileSize ? a.fileSize / 1024 : (a.base64?.length * 0.75) / 1024;
@@ -557,9 +557,11 @@ export default function CACScreen({ navigation }) {
   const [pin,          setPin]          = useState('');
   const [busy,         setBusy]         = useState(false);
   const [showHint,     setShowHint]     = useState(false);
-  const [preChecking,  setPreChecking]  = useState(false);
-  const [preCheckDone, setPreCheckDone] = useState(false);
-  const [preCheckErrors, setPreCheckErrors] = useState({});
+  const [preChecking,      setPreChecking]      = useState(false);
+  const [preCheckDone,     setPreCheckDone]     = useState(false);
+  const [preCheckErrors,   setPreCheckErrors]   = useState({});
+  const [preCheckUnavail,  setPreCheckUnavail]  = useState(false);
+  const [preCheckUnavailMsg, setPreCheckUnavailMsg] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
   const [tipExpanded,   setTipExpanded]   = useState(false);
 
@@ -623,10 +625,13 @@ export default function CACScreen({ navigation }) {
       if (!form.companyState)    m.push('State');
     }
     if (step === 4) {
-      if (!form.passport)        m.push('Passport Photo');
-      if (!form.selectedIdType)  m.push('Select a Means of Identification');
-      if (!form.meansOfId)       m.push('Upload your selected ID document');
-      if (!form.signature)       m.push('Signature');
+      if (!form.selectedIdType)                 m.push('Select a Means of Identification');
+      if (!form.meansOfId)                      m.push('Upload your selected ID document');
+      if (!form.signature)                      m.push('Signature');
+      if (!form.proprietorProofOfAddressType)   m.push('Proprietor Proof of Address — select type');
+      else if (!form.proprietorProofOfAddress)  m.push('Proprietor Proof of Address — upload document');
+      if (!form.businessProofOfAddressType)     m.push('Business Proof of Address — select type');
+      else if (!form.businessProofOfAddress)    m.push('Business Proof of Address — upload document');
       if (form.requiresSupportingDoc && !form.supportingDoc) m.push('Supporting Document (required for your business name)');
     }
     return m;
@@ -644,46 +649,49 @@ export default function CACScreen({ navigation }) {
     setPreChecking(true);
     setPreCheckDone(false);
     setPreCheckErrors({});
+    setPreCheckUnavail(false);
+    setPreCheckUnavailMsg('');
     try {
-      // Build clean payload (exclude images — not needed for validation)
       const payload = {
-        proposedOption1: form.proposedOption1,
-        proposedOption2: form.proposedOption2,
-        lineOfBusiness: form.lineOfBusiness,
+        proposedOption1:          form.proposedOption1,
+        proposedOption2:          form.proposedOption2,
+        lineOfBusiness:           form.lineOfBusiness,
         businessCommencementDate: form.businessCommencementDate,
-        proprietorFirstname: form.proprietorFirstname,
-        proprietorOthername: form.proprietorOthername,
-        proprietorSurname: form.proprietorSurname,
-        proprietorGender: form.proprietorGender,
-        proprietorDob: form.proprietorDob,
-        proprietorNationality: form.proprietorNationality,
-        proprietorPhonenumber: form.proprietorPhonenumber,
-        proprietorEmail: form.proprietorEmail,
-        proprietorStreetNumber: form.proprietorStreetNumber,
+        proprietorFirstname:      form.proprietorFirstname,
+        proprietorOthername:      form.proprietorOthername,
+        proprietorSurname:        form.proprietorSurname,
+        proprietorGender:         form.proprietorGender,
+        proprietorDob:            form.proprietorDob,
+        proprietorNationality:    form.proprietorNationality,
+        proprietorPhonenumber:    form.proprietorPhonenumber,
+        proprietorEmail:          form.proprietorEmail,
+        proprietorStreetNumber:   form.proprietorStreetNumber,
         proprietorServiceAddress: form.proprietorServiceAddress,
-        proprietorCity: form.proprietorCity,
-        proprietorState: form.proprietorState,
-        proprietorLga: form.proprietorLga,
-        proprietorPostcode: form.proprietorPostcode,
-        companyEmail: form.companyEmail,
-        companyStreetNumber: form.companyStreetNumber,
-        companyAddress: form.companyAddress,
-        companyCity: form.companyCity,
-        companyState: form.companyState,
+        proprietorCity:           form.proprietorCity,
+        proprietorState:          form.proprietorState,
+        proprietorLga:            form.proprietorLga,
+        proprietorPostcode:       form.proprietorPostcode,
+        companyEmail:             form.companyEmail,
+        companyStreetNumber:      form.companyStreetNumber,
+        companyAddress:           form.companyAddress,
+        companyCity:              form.companyCity,
+        companyState:             form.companyState,
       };
 
       const res = await cacValidatePayload(payload);
 
-      // data object: { fieldName: ["error msg"] } — empty means all good
-      const errors = res?.data || res?.result || {};
-      const errorCount = Object.keys(errors).filter(k => errors[k]?.length > 0).length;
+      // Graceful degradation — VAS returned 403 (endpoint not enabled for this account)
+      if (res?.unavailable) {
+        setPreCheckUnavail(true);
+        setPreCheckUnavailMsg(res.message || 'Pre-validation is not available. You can still proceed with registration.');
+        setPreCheckDone(true);
+        setPreCheckErrors({});
+        return;
+      }
 
+      const errors = res?.data || res?.result || {};
       setPreCheckErrors(errors);
       setPreCheckDone(true);
-
-      if (errorCount === 0) {
-        // No field errors — validation passed
-      }
     } catch (e) {
       Alert.alert('Pre-Check Failed', e.message || 'Could not run validation. Please check your connection.');
     } finally {
@@ -691,7 +699,10 @@ export default function CACScreen({ navigation }) {
     }
   };
 
-  const preCheckPassed = preCheckDone && Object.keys(preCheckErrors).filter(k => preCheckErrors[k]?.length > 0).length === 0;
+  const preCheckPassed = preCheckDone && (
+    preCheckUnavail ||
+    Object.keys(preCheckErrors).filter(k => preCheckErrors[k]?.length > 0).length === 0
+  );
 
   // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -966,28 +977,7 @@ export default function CACScreen({ navigation }) {
           )}
         </TouchableOpacity>
 
-        {/* 1 — Passport Photo */}
-        <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-          <View style={ss.idSectionHeader}>
-            <Ionicons name="person-circle-outline" size={18} color={tc.primary} />
-            <Text style={[ss.idSectionTitle, { color: tc.heading }]}>Passport Photograph</Text>
-            <View style={[ss.requiredBadge, { backgroundColor: `${tc.primary}15` }]}>
-              <Text style={[ss.requiredBadgeText, { color: tc.primary }]}>REQUIRED</Text>
-            </View>
-          </View>
-          <Text style={[ss.idSectionSub, { color: tc.subheading }]}>Recent passport-sized photo of the business owner (white background preferred).</Text>
-          <ImageUpload
-            label="Passport Photo" subtitle="Clear face photo, plain background" required
-            value={form.passport} fileName={form.passportName} fileKB={form.passportKB}
-            onPick={(b, kb, n, uri) => {
-              setField('passport', b); setField('passportKB', kb);
-              setField('passportName', n); setField('passportUri', uri || '');
-            }}
-            tc={tc}
-          />
-        </View>
-
-        {/* 2 — Means of ID: select type first, then upload appears */}
+        {/* 1 — Means of ID: select type first, then upload appears */}
         <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
           <View style={ss.idSectionHeader}>
             <Ionicons name="shield-checkmark-outline" size={18} color={tc.primary} />
@@ -1098,8 +1088,8 @@ export default function CACScreen({ navigation }) {
           <View style={ss.idSectionHeader}>
             <Ionicons name="home-outline" size={18} color={tc.primary} />
             <Text style={[ss.idSectionTitle, { color: tc.heading }]}>Proprietor Proof of Address</Text>
-            <View style={[ss.optionalBadge, { backgroundColor: `${tc.subtext}15` }]}>
-              <Text style={[ss.requiredBadgeText, { color: tc.subtext }]}>OPTIONAL</Text>
+            <View style={[ss.requiredBadge, { backgroundColor: `${tc.primary}15` }]}>
+              <Text style={[ss.requiredBadgeText, { color: tc.primary }]}>REQUIRED</Text>
             </View>
           </View>
           <Text style={[ss.idSectionSub, { color: tc.subheading }]}>
@@ -1125,7 +1115,7 @@ export default function CACScreen({ navigation }) {
               <ImageUpload
                 label={`Upload: ${form.proprietorProofOfAddressType}`}
                 subtitle="Max 1MB · PNG, JPEG or PDF"
-                required={false}
+                required
                 value={form.proprietorProofOfAddress}
                 fileName={form.proprietorProofOfAddressName}
                 fileKB={form.proprietorProofOfAddressKB}
@@ -1146,8 +1136,8 @@ export default function CACScreen({ navigation }) {
           <View style={ss.idSectionHeader}>
             <Ionicons name="business-outline" size={18} color={tc.primary} />
             <Text style={[ss.idSectionTitle, { color: tc.heading }]}>Business Proof of Address</Text>
-            <View style={[ss.optionalBadge, { backgroundColor: `${tc.subtext}15` }]}>
-              <Text style={[ss.requiredBadgeText, { color: tc.subtext }]}>OPTIONAL</Text>
+            <View style={[ss.requiredBadge, { backgroundColor: `${tc.primary}15` }]}>
+              <Text style={[ss.requiredBadgeText, { color: tc.primary }]}>REQUIRED</Text>
             </View>
           </View>
           <Text style={[ss.idSectionSub, { color: tc.subheading }]}>
@@ -1173,7 +1163,7 @@ export default function CACScreen({ navigation }) {
               <ImageUpload
                 label={`Upload: ${form.businessProofOfAddressType}`}
                 subtitle="Max 1MB · PNG, JPEG or PDF"
-                required={false}
+                required
                 value={form.businessProofOfAddress}
                 fileName={form.businessProofOfAddressName}
                 fileKB={form.businessProofOfAddressKB}
@@ -1256,23 +1246,25 @@ export default function CACScreen({ navigation }) {
         <Text style={[ss.stepDesc, { color: tc.subheading }]}>Please verify all information before submitting your registration.</Text>
 
         {/* ── Pre-submission Validation Check ───────────────────────────── */}
-        <View style={[ss.preCheckCard, { backgroundColor: tc.card, borderColor: preCheckPassed ? '#4CAF50' : preCheckDone ? '#EF4444' : tc.border || '#E5E5EA' }]}>
+        <View style={[ss.preCheckCard, { backgroundColor: tc.card, borderColor: preCheckUnavail ? '#FFC107' : preCheckPassed ? '#4CAF50' : preCheckDone ? '#EF4444' : tc.border || '#E5E5EA' }]}>
           <View style={ss.preCheckHeader}>
-            <View style={[ss.preCheckIcon, { backgroundColor: preCheckPassed ? '#4CAF5018' : preCheckDone ? '#EF444418' : `${tc.primary}15` }]}>
+            <View style={[ss.preCheckIcon, { backgroundColor: preCheckUnavail ? '#FFF8E1' : preCheckPassed ? '#4CAF5018' : preCheckDone ? '#EF444418' : `${tc.primary}15` }]}>
               <Ionicons
-                name={preCheckPassed ? 'checkmark-circle' : preCheckDone ? 'alert-circle' : 'shield-checkmark-outline'}
+                name={preCheckUnavail ? 'information-circle-outline' : preCheckPassed ? 'checkmark-circle' : preCheckDone ? 'alert-circle' : 'shield-checkmark-outline'}
                 size={20}
-                color={preCheckPassed ? '#4CAF50' : preCheckDone ? '#EF4444' : tc.primary}
+                color={preCheckUnavail ? '#F59E0B' : preCheckPassed ? '#4CAF50' : preCheckDone ? '#EF4444' : tc.primary}
               />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[ss.preCheckTitle, { color: tc.heading }]}>Pre-Submission Validation</Text>
               <Text style={[ss.preCheckSub, { color: tc.subheading }]}>
-                {preCheckPassed
-                  ? 'All fields validated — you can submit'
-                  : preCheckDone
-                    ? 'Issues found — fix them before submitting'
-                    : 'Run a free check to catch errors before paying'}
+                {preCheckUnavail
+                  ? 'Validation unavailable — you can still submit'
+                  : preCheckPassed
+                    ? 'All fields validated — you can submit'
+                    : preCheckDone
+                      ? 'Issues found — fix them before submitting'
+                      : 'Run a free check to catch errors before paying'}
               </Text>
             </View>
           </View>
@@ -1305,7 +1297,16 @@ export default function CACScreen({ navigation }) {
             </View>
           )}
 
-          {preCheckDone && preCheckPassed && (
+          {preCheckDone && preCheckUnavail && (
+            <View style={[ss.preCheckSuccess, { backgroundColor: '#FFF8E1', borderWidth: 1, borderColor: '#FFC107' }]}>
+              <Ionicons name="information-circle-outline" size={15} color="#F59E0B" />
+              <Text style={[ss.preCheckSuccessText, { color: '#92400E' }]}>
+                {preCheckUnavailMsg}
+              </Text>
+            </View>
+          )}
+
+          {preCheckDone && !preCheckUnavail && preCheckPassed && (
             <View style={[ss.preCheckSuccess, { backgroundColor: '#4CAF5015' }]}>
               <Ionicons name="checkmark-circle" size={15} color="#4CAF50" />
               <Text style={[ss.preCheckSuccessText, { color: '#2E7D32' }]}>
@@ -1474,8 +1475,8 @@ export default function CACScreen({ navigation }) {
         </TouchableOpacity>
       )}
 
-      {/* Content — using render function result, NOT component */}
-      <View style={{ flex: 1 }}>
+      {/* Content — key={step} forces new ScrollView instance on each step, resetting scroll to top */}
+      <View key={step} style={{ flex: 1 }}>
         {stepContent}
       </View>
 

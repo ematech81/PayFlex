@@ -50,7 +50,6 @@ export const COMPLIANCE_MESSAGES = {
 };
 
 export const CAC_PRICING = {
-  standard: 16500,   // BN registration base cost
-  priority: 17000,   // Base + ₦500 priority service add-on
-  priorityFee: 500,  // Priority add-on fee
+  standard: 35000,
+  priority: 38000,
 };

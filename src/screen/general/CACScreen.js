@@ -429,6 +429,28 @@ const ID_TYPES = [
   },
 ];
 
+// ─── Pre-check field metadata ─────────────────────────────────────────────────
+const FIELD_LABEL = {
+  proposedOption1: 'Desired Business Name', proposedOption2: 'Alternative Name',
+  lineOfBusiness: 'Line of Business', businessCommencementDate: 'Commencement Date',
+  proprietorFirstname: 'First Name', proprietorOthername: 'Other Name',
+  proprietorSurname: 'Surname', proprietorGender: 'Gender', proprietorDob: 'Date of Birth',
+  proprietorNationality: 'Nationality', proprietorPhonenumber: 'Phone Number',
+  proprietorEmail: 'Email', proprietorStreetNumber: 'Street Number',
+  proprietorServiceAddress: 'Service Address', proprietorCity: 'City',
+  proprietorState: 'State', proprietorLga: 'LGA', proprietorPostcode: 'Postcode',
+  companyEmail: 'Company Email', companyStreetNumber: 'Company Street No.',
+  companyAddress: 'Company Address', companyCity: 'Company City', companyState: 'Company State',
+};
+const FIELD_STEP = {
+  proposedOption1: 1, proposedOption2: 1, lineOfBusiness: 1, businessCommencementDate: 1,
+  proprietorFirstname: 2, proprietorOthername: 2, proprietorSurname: 2, proprietorGender: 2,
+  proprietorDob: 2, proprietorNationality: 2, proprietorPhonenumber: 2, proprietorEmail: 2,
+  proprietorStreetNumber: 2, proprietorServiceAddress: 2, proprietorCity: 2,
+  proprietorState: 2, proprietorLga: 2, proprietorPostcode: 2,
+  companyEmail: 3, companyStreetNumber: 3, companyAddress: 3, companyCity: 3, companyState: 3,
+};
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 const TAB_LABELS = ['Details', 'Proprietor', 'Address', 'Uploads', 'Review'];
@@ -457,9 +479,12 @@ export default function CACScreen({ navigation }) {
 
   const [step,  setStep]  = useState(1);
   const [form,  setForm]  = useState({ ...EMPTY_FORM });
-  const [pin,   setPin]   = useState('');
-  const [busy,      setBusy]     = useState(false);
-  const [showHint,  setShowHint] = useState(false);
+  const [pin,          setPin]          = useState('');
+  const [busy,         setBusy]         = useState(false);
+  const [showHint,     setShowHint]     = useState(false);
+  const [preChecking,  setPreChecking]  = useState(false);
+  const [preCheckDone, setPreCheckDone] = useState(false);
+  const [preCheckErrors, setPreCheckErrors] = useState({}); // { fieldName: [errors] }
   // n1Stat/n2Stat removed — compliance is now optional via ComplianceChecker
 
 
@@ -514,18 +539,67 @@ export default function CACScreen({ navigation }) {
     if (showHint && canGoNext()) setShowHint(false);
   }, [form, showHint]);
 
+  // ── Pre-submission validation check ─────────────────────────────────────
+  const runPreCheck = async () => {
+    setPreChecking(true);
+    setPreCheckDone(false);
+    setPreCheckErrors({});
+    try {
+      // Build clean payload (exclude images — not needed for validation)
+      const payload = {
+        proposedOption1: form.proposedOption1,
+        proposedOption2: form.proposedOption2,
+        lineOfBusiness: form.lineOfBusiness,
+        businessCommencementDate: form.businessCommencementDate,
+        proprietorFirstname: form.proprietorFirstname,
+        proprietorOthername: form.proprietorOthername,
+        proprietorSurname: form.proprietorSurname,
+        proprietorGender: form.proprietorGender,
+        proprietorDob: form.proprietorDob,
+        proprietorNationality: form.proprietorNationality,
+        proprietorPhonenumber: form.proprietorPhonenumber,
+        proprietorEmail: form.proprietorEmail,
+        proprietorStreetNumber: form.proprietorStreetNumber,
+        proprietorServiceAddress: form.proprietorServiceAddress,
+        proprietorCity: form.proprietorCity,
+        proprietorState: form.proprietorState,
+        proprietorLga: form.proprietorLga,
+        proprietorPostcode: form.proprietorPostcode,
+        companyEmail: form.companyEmail,
+        companyStreetNumber: form.companyStreetNumber,
+        companyAddress: form.companyAddress,
+        companyCity: form.companyCity,
+        companyState: form.companyState,
+      };
+
+      const res = await cacValidatePayload(payload);
+
+      // data object: { fieldName: ["error msg"] } — empty means all good
+      const errors = res?.data || res?.result || {};
+      const errorCount = Object.keys(errors).filter(k => errors[k]?.length > 0).length;
+
+      setPreCheckErrors(errors);
+      setPreCheckDone(true);
+
+      if (errorCount === 0) {
+        // No field errors — validation passed
+      }
+    } catch (e) {
+      Alert.alert('Pre-Check Failed', e.message || 'Could not run validation. Please check your connection.');
+    } finally {
+      setPreChecking(false);
+    }
+  };
+
+  const preCheckPassed = preCheckDone && Object.keys(preCheckErrors).filter(k => preCheckErrors[k]?.length > 0).length === 0;
+
   // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
+    if (!preCheckPassed) { Alert.alert('Run Pre-Check First', 'Please run the free pre-submission check before paying.'); return; }
     if (pin.length !== 4) { Alert.alert('PIN required', 'Enter your 4-digit transaction PIN.'); return; }
     if (bal < fee) { Alert.alert('Insufficient Balance', `You need ${formatCurrency(fee, 'NGN')} to proceed. Please fund your wallet.`); return; }
     setBusy(true);
     try {
-      const valRes = await cacValidatePayload({ ...form });
-      if (!valRes?.success) {
-        Alert.alert('Validation Failed', valRes?.message || 'Please check your details and try again.');
-        setBusy(false);
-        return;
-      }
       const regRes = await cacRegisterBusinessName(pin, form);
       if (!regRes?.success) {
         Alert.alert('Submission Failed', regRes?.message || 'Could not submit. Please try again.');
@@ -898,6 +972,78 @@ export default function CACScreen({ navigation }) {
         <Text style={[ss.stepTitle, { color: tc.heading }]}>Final Review</Text>
         <Text style={[ss.stepDesc, { color: tc.subheading }]}>Please verify all information before submitting your registration.</Text>
 
+        {/* ── Pre-submission Validation Check ───────────────────────────── */}
+        <View style={[ss.preCheckCard, { backgroundColor: tc.card, borderColor: preCheckPassed ? '#4CAF50' : preCheckDone ? '#EF4444' : tc.border || '#E5E5EA' }]}>
+          <View style={ss.preCheckHeader}>
+            <View style={[ss.preCheckIcon, { backgroundColor: preCheckPassed ? '#4CAF5018' : preCheckDone ? '#EF444418' : `${tc.primary}15` }]}>
+              <Ionicons
+                name={preCheckPassed ? 'checkmark-circle' : preCheckDone ? 'alert-circle' : 'shield-checkmark-outline'}
+                size={20}
+                color={preCheckPassed ? '#4CAF50' : preCheckDone ? '#EF4444' : tc.primary}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[ss.preCheckTitle, { color: tc.heading }]}>Pre-Submission Validation</Text>
+              <Text style={[ss.preCheckSub, { color: tc.subheading }]}>
+                {preCheckPassed
+                  ? 'All fields validated — you can submit'
+                  : preCheckDone
+                    ? 'Issues found — fix them before submitting'
+                    : 'Run a free check to catch errors before paying'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Field errors */}
+          {preCheckDone && Object.keys(preCheckErrors).length > 0 && (
+            <View style={ss.preCheckErrors}>
+              {Object.entries(preCheckErrors)
+                .filter(([, errs]) => errs?.length > 0)
+                .map(([field, errs]) => {
+                  const label    = FIELD_LABEL[field] || field;
+                  const stepNum  = FIELD_STEP[field];
+                  return (
+                    <View key={field} style={[ss.preCheckErrorRow, { borderBottomColor: tc.border || '#F0F0F0' }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={ss.preCheckFieldLabel}>{label}</Text>
+                        {errs.map((e, i) => <Text key={i} style={ss.preCheckFieldErr}>• {e}</Text>)}
+                      </View>
+                      {stepNum && (
+                        <TouchableOpacity
+                          style={[ss.goFixBtn, { backgroundColor: `${tc.primary}15` }]}
+                          onPress={() => setStep(stepNum)}
+                        >
+                          <Text style={[ss.goFixBtnText, { color: tc.primary }]}>Step {stepNum}</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })}
+            </View>
+          )}
+
+          {preCheckDone && preCheckPassed && (
+            <View style={[ss.preCheckSuccess, { backgroundColor: '#4CAF5015' }]}>
+              <Ionicons name="checkmark-circle" size={15} color="#4CAF50" />
+              <Text style={[ss.preCheckSuccessText, { color: '#2E7D32' }]}>
+                No issues found. Your payload is valid and ready to submit.
+              </Text>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[ss.preCheckBtn, { backgroundColor: preCheckPassed ? '#4CAF50' : tc.primary, opacity: preChecking ? 0.7 : 1 }]}
+            onPress={runPreCheck}
+            disabled={preChecking}
+            activeOpacity={0.85}
+          >
+            {preChecking
+              ? <><ActivityIndicator size="small" color="#FFF" /><Text style={ss.preCheckBtnText}>Checking…</Text></>
+              : <><Ionicons name="shield-checkmark-outline" size={16} color="#FFF" /><Text style={ss.preCheckBtnText}>{preCheckDone ? 'Re-run Check' : 'Run Pre-Check (Free)'}</Text></>
+            }
+          </TouchableOpacity>
+        </View>
+
         {sections.map((sec) => (
           <View key={sec.title} style={[ss.reviewCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
             <View style={ss.reviewCardHeader}>
@@ -1060,7 +1206,7 @@ export default function CACScreen({ navigation }) {
           {step > 1 && (
             <TouchableOpacity
               style={[ss.prevBtn, { borderColor: tc.border || '#E5E5EA' }]}
-              onPress={() => { setShowHint(false); setStep(n => n - 1); }}
+              onPress={() => { setShowHint(false); setPreCheckDone(false); setPreCheckErrors({}); setStep(n => n - 1); }}
               activeOpacity={0.8}
             >
               <Ionicons name="chevron-back" size={16} color={tc.subheading} />
@@ -1210,6 +1356,22 @@ const ss = StyleSheet.create({
   idUploadCard:    { borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', padding: 14, marginTop: 8 },
   idTipRow:        { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 8, marginBottom: 12 },
   idTipText:       { flex: 1, fontSize: 12, lineHeight: 18, fontWeight: '500' },
+  // Pre-check card (Step 5)
+  preCheckCard:        { borderRadius: 14, borderWidth: 1.5, padding: 14, marginBottom: 16 },
+  preCheckHeader:      { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
+  preCheckIcon:        { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  preCheckTitle:       { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  preCheckSub:         { fontSize: 12, lineHeight: 17 },
+  preCheckErrors:      { marginBottom: 12 },
+  preCheckErrorRow:    { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, gap: 10 },
+  preCheckFieldLabel:  { fontSize: 13, fontWeight: '700', color: '#EF4444', marginBottom: 2 },
+  preCheckFieldErr:    { fontSize: 12, color: '#EF4444', lineHeight: 18 },
+  goFixBtn:            { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  goFixBtnText:        { fontSize: 12, fontWeight: '700' },
+  preCheckSuccess:     { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 8, marginBottom: 10 },
+  preCheckSuccessText: { fontSize: 12, flex: 1, fontWeight: '500' },
+  preCheckBtn:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 10 },
+  preCheckBtnText:     { color: '#FFF', fontSize: 14, fontWeight: '700' },
   unavailBox:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 4 },
   missingBox:   { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 10 },
   missingTitle: { fontSize: 12, fontWeight: '700', color: '#E65100', marginBottom: 2 },

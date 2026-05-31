@@ -353,6 +353,40 @@ const ImageUpload = React.memo(({ label, subtitle, required, value, fileName, fi
   );
 });
 
+// ─── ID Types accepted by Nigeria ─────────────────────────────────────────────
+const ID_TYPES = [
+  {
+    key: 'nin',
+    label: 'NIN (National Identification Number)',
+    icon: 'card-outline',
+    tip: 'Upload a clear photo of your NIN slip or physical NIN card. Ensure all digits are visible.',
+  },
+  {
+    key: 'passport',
+    label: 'International Passport',
+    icon: 'airplane-outline',
+    tip: 'Upload the bio-data page (page 2) of your international passport. Must be within validity period.',
+  },
+  {
+    key: 'drivers_license',
+    label: "Driver's License",
+    icon: 'car-outline',
+    tip: 'Upload the front side of your driver\'s license. Must be a valid, unexpired license.',
+  },
+  {
+    key: 'voters_card',
+    label: 'Permanent Voters Card (PVC)',
+    icon: 'checkmark-circle-outline',
+    tip: 'Upload the front side of your INEC Permanent Voter\'s Card showing your name and photo.',
+  },
+  {
+    key: 'national_id',
+    label: 'National Identity Card',
+    icon: 'person-circle-outline',
+    tip: 'Upload the front side of your NIMC National Identity Card. Both old and new card formats accepted.',
+  },
+];
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 const TAB_LABELS = ['Details', 'Proprietor', 'Address', 'Uploads', 'Review'];
@@ -367,6 +401,7 @@ const EMPTY_FORM = {
   proprietorCity: '', proprietorState: '', proprietorLga: '', proprietorPostcode: '',
   companyEmail: '', companyStreetNumber: '', companyAddress: '',
   companyCity: '', companyState: '',
+  selectedIdType: '',
   passport: null, meansOfId: null, signature: null, supportingDoc: null,
   passportKB: 0, meansOfIdKB: 0, signatureKB: 0, supportingDocKB: 0,
   passportName: '', meansOfIdName: '', signatureName: '', supportingDocName: '',
@@ -421,9 +456,10 @@ export default function CACScreen({ navigation }) {
       if (!form.companyState)    m.push('State');
     }
     if (step === 4) {
-      if (!form.passport)  m.push('Passport Photo');
-      if (!form.meansOfId) m.push('Means of ID');
-      if (!form.signature) m.push('Signature');
+      if (!form.passport)        m.push('Passport Photo');
+      if (!form.selectedIdType)  m.push('Select a Means of Identification');
+      if (!form.meansOfId)       m.push('Upload your selected ID document');
+      if (!form.signature)       m.push('Signature');
       if (form.requiresSupportingDoc && !form.supportingDoc) m.push('Supporting Document (required for your business name)');
     }
     return m;
@@ -660,29 +696,125 @@ export default function CACScreen({ navigation }) {
     </ScrollView>
   );
 
-  const renderStep4 = () => (
-    <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false}>
-      <Text style={[ss.stepTitle, { color: tc.heading }]}>Identity Verification</Text>
-      <Text style={[ss.stepDesc, { color: tc.subheading }]}>Please upload clear copies of the following documents to complete your business registration.</Text>
+  const renderStep4 = () => {
+    const selectedId = ID_TYPES.find(t => t.key === form.selectedIdType);
+    return (
+      <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false}>
+        <Text style={[ss.stepTitle, { color: tc.heading }]}>Identity Verification</Text>
+        <Text style={[ss.stepDesc, { color: tc.subheading }]}>Please upload clear copies of the following documents to complete your business registration.</Text>
 
-      <ImageUpload label="Passport Photo" subtitle="Recent passport-sized photograph" required value={form.passport} fileName={form.passportName} fileKB={form.passportKB}
-        onPick={(b, kb, n) => { setField('passport', b); setField('passportKB', kb); setField('passportName', n); }} tc={tc} />
-      <ImageUpload label="Means of ID" subtitle="National ID, Driver's License or International Passport" required value={form.meansOfId} fileName={form.meansOfIdName} fileKB={form.meansOfIdKB}
-        onPick={(b, kb, n) => { setField('meansOfId', b); setField('meansOfIdKB', kb); setField('meansOfIdName', n); }} tc={tc} />
-      <ImageUpload label="Digital Signature" subtitle="Upload a clear scan of your signature on white paper" required value={form.signature} fileName={form.signatureName} fileKB={form.signatureKB}
-        onPick={(b, kb, n) => { setField('signature', b); setField('signatureKB', kb); setField('signatureName', n); }} tc={tc} />
-      <ImageUpload label="Supporting Document" subtitle="Any additional certification or authorization letters" required={form.requiresSupportingDoc} value={form.supportingDoc} fileName={form.supportingDocName} fileKB={form.supportingDocKB}
-        onPick={(b, kb, n) => { setField('supportingDoc', b); setField('supportingDocKB', kb); setField('supportingDocName', n); }} tc={tc} />
+        {/* 1 — Passport Photo (always shown) */}
+        <ImageUpload
+          label="Passport Photo" subtitle="Recent passport-sized photograph" required
+          value={form.passport} fileName={form.passportName} fileKB={form.passportKB}
+          onPick={(b, kb, n) => { setField('passport', b); setField('passportKB', kb); setField('passportName', n); }}
+          tc={tc}
+        />
 
-      <View style={[ss.fileGuide, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-        <Ionicons name="information-circle-outline" size={16} color={tc.primary} />
-        <View style={{ flex: 1 }}>
-          <Text style={[{ fontSize: 13, fontWeight: '600', color: tc.heading }]}>File Guidelines</Text>
-          <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 2 }]}>Max size 1MB  •  PNG or JPEG only  •  High resolution</Text>
+        {/* 2 — Means of ID: select type first, then upload appears */}
+        <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+          <View style={ss.idSectionHeader}>
+            <Ionicons name="shield-checkmark-outline" size={18} color={tc.primary} />
+            <Text style={[ss.idSectionTitle, { color: tc.heading }]}>Means of Identification</Text>
+            <View style={[ss.requiredBadge, { backgroundColor: `${tc.primary}15` }]}>
+              <Text style={[ss.requiredBadgeText, { color: tc.primary }]}>REQUIRED</Text>
+            </View>
+          </View>
+          <Text style={[ss.idSectionSub, { color: tc.subheading }]}>
+            Select one of the government-issued IDs accepted by CAC Nigeria:
+          </Text>
+
+          {/* ID Type list */}
+          {ID_TYPES.map((idType) => {
+            const isSelected = form.selectedIdType === idType.key;
+            return (
+              <TouchableOpacity
+                key={idType.key}
+                style={[
+                  ss.idTypeRow,
+                  {
+                    backgroundColor: isSelected ? `${tc.primary}10` : tc.background,
+                    borderColor: isSelected ? tc.primary : tc.border || '#E5E5EA',
+                    borderWidth: isSelected ? 1.5 : 1,
+                  },
+                ]}
+                onPress={() => {
+                  // Clear existing upload if switching types
+                  if (form.selectedIdType !== idType.key) {
+                    setField('meansOfId', null);
+                    setField('meansOfIdKB', 0);
+                    setField('meansOfIdName', '');
+                  }
+                  setField('selectedIdType', idType.key);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[ss.idTypeIcon, { backgroundColor: isSelected ? `${tc.primary}20` : `${tc.subtext}12` }]}>
+                  <Ionicons name={idType.icon} size={20} color={isSelected ? tc.primary : tc.subtext} />
+                </View>
+                <Text style={[ss.idTypeLabel, { color: isSelected ? tc.primary : tc.heading, fontWeight: isSelected ? '700' : '500' }]}>
+                  {idType.label}
+                </Text>
+                {isSelected
+                  ? <Ionicons name="checkmark-circle" size={20} color={tc.primary} />
+                  : <Ionicons name="chevron-forward" size={18} color={tc.subtext} />
+                }
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Upload card — appears only after ID type is selected */}
+          {selectedId && (
+            <View style={[ss.idUploadCard, { backgroundColor: tc.background, borderColor: tc.border || '#E5E5EA' }]}>
+              {/* Tip */}
+              <View style={[ss.idTipRow, { backgroundColor: `${tc.primary}10` }]}>
+                <Ionicons name="bulb-outline" size={15} color={tc.primary} />
+                <Text style={[ss.idTipText, { color: tc.primary }]}>{selectedId.tip}</Text>
+              </View>
+
+              <ImageUpload
+                label={`Upload: ${selectedId.label}`}
+                subtitle="Max 1MB · PNG or JPEG · High resolution"
+                required
+                value={form.meansOfId}
+                fileName={form.meansOfIdName}
+                fileKB={form.meansOfIdKB}
+                onPick={(b, kb, n) => { setField('meansOfId', b); setField('meansOfIdKB', kb); setField('meansOfIdName', n); }}
+                tc={tc}
+              />
+            </View>
+          )}
         </View>
-      </View>
-    </ScrollView>
-  );
+
+        {/* 3 — Signature (always shown) */}
+        <ImageUpload
+          label="Digital Signature" subtitle="Upload a clear scan of your signature on white paper" required
+          value={form.signature} fileName={form.signatureName} fileKB={form.signatureKB}
+          onPick={(b, kb, n) => { setField('signature', b); setField('signatureKB', kb); setField('signatureName', n); }}
+          tc={tc}
+        />
+
+        {/* 4 — Supporting Document (conditional) */}
+        <ImageUpload
+          label="Supporting Document"
+          subtitle={form.requiresSupportingDoc ? 'Required — your business name or line of business requires a proficiency certificate' : 'Any additional certification or authorization letters'}
+          required={form.requiresSupportingDoc}
+          value={form.supportingDoc} fileName={form.supportingDocName} fileKB={form.supportingDocKB}
+          onPick={(b, kb, n) => { setField('supportingDoc', b); setField('supportingDocKB', kb); setField('supportingDocName', n); }}
+          tc={tc}
+        />
+
+        {/* File guidelines */}
+        <View style={[ss.fileGuide, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+          <Ionicons name="information-circle-outline" size={16} color={tc.primary} />
+          <View style={{ flex: 1 }}>
+            <Text style={[{ fontSize: 13, fontWeight: '600', color: tc.heading }]}>File Guidelines</Text>
+            <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 2 }]}>Max size 1MB  •  PNG or JPEG only  •  High resolution</Text>
+          </View>
+        </View>
+      </ScrollView>
+    );
+  };
 
   const renderStep5 = () => {
     const sections = [
@@ -1023,6 +1155,19 @@ const ss = StyleSheet.create({
   nextTxt:      { color: '#FFF', fontSize: 15, fontWeight: '700' },
   prevBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
   prevTxt:      { fontSize: 14, fontWeight: '500' },
+  // ID type selector (Step 4)
+  idSection:       { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 14 },
+  idSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  idSectionTitle:  { flex: 1, fontSize: 15, fontWeight: '700' },
+  idSectionSub:    { fontSize: 12, marginBottom: 14, lineHeight: 18 },
+  requiredBadge:   { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  requiredBadgeText: { fontSize: 10, fontWeight: '800' },
+  idTypeRow:       { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: 12, borderWidth: 1, marginBottom: 8 },
+  idTypeIcon:      { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  idTypeLabel:     { flex: 1, fontSize: 14 },
+  idUploadCard:    { borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', padding: 14, marginTop: 8 },
+  idTipRow:        { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 8, marginBottom: 12 },
+  idTipText:       { flex: 1, fontSize: 12, lineHeight: 18, fontWeight: '500' },
   missingBox:   { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 10 },
   missingTitle: { fontSize: 12, fontWeight: '700', color: '#E65100', marginBottom: 2 },
   missingItem:  { fontSize: 12, color: '#E65100', lineHeight: 18 },

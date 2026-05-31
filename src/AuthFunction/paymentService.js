@@ -693,8 +693,43 @@ export const cacValidatePayload = (payload) =>
 export const cacGetPrices = () => makeGeneralGet('/cac/prices');
 
 /** Submit Business Name registration — PIN sent in body (backend verifyPin middleware) */
-export const cacRegisterBusinessName = (pin, payload) =>
-  makeGeneralRequest('/cac/register/business-name', { ...payload, pin });
+export const cacRegisterBusinessName = (pin, form) =>
+  makeGeneralRequest('/cac/register/business-name', {
+    proposedName:    form.proposedOption1,
+    priorityService: !!form.priorityService,
+    pin,
+    registrationData: {
+      proposedOption1:             form.proposedOption1,
+      proposedOption2:             form.proposedOption2,
+      lineOfBusiness:              form.lineOfBusiness,
+      businessCommencementDate:    form.businessCommencementDate,
+      proprietorFirstname:         form.proprietorFirstname,
+      proprietorOthername:         form.proprietorOthername,
+      proprietorSurname:           form.proprietorSurname,
+      proprietorGender:            form.proprietorGender,
+      proprietorDob:               form.proprietorDob,
+      proprietorNationality:       form.proprietorNationality,
+      proprietorPhonenumber:       form.proprietorPhonenumber,
+      proprietorEmail:             form.proprietorEmail,
+      proprietorStreetNumber:      form.proprietorStreetNumber,
+      proprietorServiceAddress:    form.proprietorServiceAddress,
+      proprietorCity:              form.proprietorCity,
+      proprietorState:             form.proprietorState,
+      proprietorLga:               form.proprietorLga,
+      proprietorPostcode:          form.proprietorPostcode,
+      companyEmail:                form.companyEmail,
+      companyStreetNumber:         form.companyStreetNumber,
+      companyAddress:              form.companyAddress,
+      companyCity:                 form.companyCity,
+      companyState:                form.companyState,
+      passport:                    form.passport,
+      meansOfId:                   form.meansOfId,
+      signature:                   form.signature,
+      ...(form.supportingDoc            && { supportingDoc:            form.supportingDoc }),
+      ...(form.proprietorProofOfAddress && { proprietorProofOfAddress: form.proprietorProofOfAddress }),
+      ...(form.businessProofOfAddress   && { businessProofOfAddress:   form.businessProofOfAddress }),
+    },
+  });
 
 /** Poll registration status by transactionRef */
 export const cacGetRegistrationStatus = (transactionRef) =>

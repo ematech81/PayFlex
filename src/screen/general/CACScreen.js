@@ -13,8 +13,10 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity,
-  TextInput, Switch, ActivityIndicator, Modal, FlatList, Image, Alert, Platform,
+  TextInput, ActivityIndicator, Modal, FlatList, Image, Alert, Platform, Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -354,10 +356,11 @@ const ImageUpload = React.memo(({ label, subtitle, required, value, fileName, fi
     if (r.canceled) return;
     const a  = r.assets[0];
     const kb = a.fileSize ? a.fileSize / 1024 : (a.base64?.length * 0.75) / 1024;
-    if (kb > 1024) { setErr('File too large — max 1MB'); return; }
+    if (kb > 1024) { setErr('File too large — max 1MB. Please compress and try again.'); return; }
     setErr('');
     const name = a.fileName || `document_${Date.now()}.jpg`;
-    onPick(`data:image/jpeg;base64,${a.base64}`, Math.round(kb), name);
+    // Pass (base64DataUri, kb, fileName, fileUri) — uri stored separately for draft persistence
+    onPick(`data:image/jpeg;base64,${a.base64}`, Math.round(kb), name, a.uri);
   };
 
   return (
@@ -388,12 +391,74 @@ const ImageUpload = React.memo(({ label, subtitle, required, value, fileName, fi
           <Text style={[ss.uploadLabel, { color: tc.heading }]}>{label}</Text>
           {subtitle && <Text style={[ss.uploadSub, { color: tc.subheading }]}>{subtitle}</Text>}
           <Text style={[ss.uploadRequired, { color: required ? '#EF4444' : tc.subtext }]}>{required ? 'REQUIRED' : 'OPTIONAL'}</Text>
+          <Text style={[ss.uploadHint, { color: tc.subtext }]}>JPG, PNG or PDF  •  Max 1MB</Text>
         </View>
       )}
       {err ? <Text style={[ss.hint, { color: '#EF4444', textAlign: 'center', marginTop: 4 }]}>{err}</Text> : null}
     </TouchableOpacity>
   );
 });
+
+// ─── Proof of address options ─────────────────────────────────────────────────
+const PROOF_OF_ADDRESS_OPTIONS = [
+  'National ID Card (NIN)',
+  'International Passport',
+  "Driver's License",
+  "Voter's Card",
+  'Staff ID Card',
+  'Electricity Bill (PHCN/Disco receipt)',
+  'Water Bill',
+  'Waste Management Bill',
+  'Bank Statement',
+  'DSTV/GOtv Subscription Receipt',
+  'Tax Clearance Certificate',
+  'CAC Certificate (for business address)',
+  'Court Affidavit of Residence',
+  'LASRRA Card (Lagos residents)',
+];
+
+// ─── Draft persistence ────────────────────────────────────────────────────────
+const DRAFT_KEY = 'cac_registration_draft';
+const IMAGE_BASE64_FIELDS = [
+  'passport', 'meansOfId', 'signature', 'supportingDoc',
+  'proprietorProofOfAddress', 'businessProofOfAddress',
+];
+
+async function saveDraft(form) {
+  try {
+    const draft = { ...form };
+    IMAGE_BASE64_FIELDS.forEach(f => delete draft[f]); // keep URIs, drop base64
+    await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Non-fatal — user can still proceed without persistence
+  }
+}
+
+async function loadDraft() {
+  try {
+    const raw = await AsyncStorage.getItem(DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function clearDraft() {
+  try { await AsyncStorage.removeItem(DRAFT_KEY); } catch {}
+}
+
+// Re-read a file URI back to base64 (for images restored from draft)
+async function uriToBase64DataUri(uri) {
+  if (!uri) return null;
+  try {
+    const b64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return `data:image/jpeg;base64,${b64}`;
+  } catch {
+    return null;
+  }
+}
 
 // ─── ID Types accepted by Nigeria ─────────────────────────────────────────────
 const ID_TYPES = [
@@ -466,9 +531,19 @@ const EMPTY_FORM = {
   companyEmail: '', companyStreetNumber: '', companyAddress: '',
   companyCity: '', companyState: '',
   selectedIdType: '',
+  // Document base64 (not persisted to draft — too large)
   passport: null, meansOfId: null, signature: null, supportingDoc: null,
-  passportKB: 0, meansOfIdKB: 0, signatureKB: 0, supportingDocKB: 0,
+  proprietorProofOfAddress: null, businessProofOfAddress: null,
+  // Document metadata
+  passportKB: 0,  meansOfIdKB: 0,  signatureKB: 0,  supportingDocKB: 0,
+  proprietorProofOfAddressKB: 0, businessProofOfAddressKB: 0,
   passportName: '', meansOfIdName: '', signatureName: '', supportingDocName: '',
+  proprietorProofOfAddressName: '', businessProofOfAddressName: '',
+  // File URIs persisted to draft (used to re-encode on resume)
+  passportUri: '', meansOfIdUri: '', signatureUri: '', supportingDocUri: '',
+  proprietorProofOfAddressUri: '', businessProofOfAddressUri: '',
+  // Proof-of-address type selectors
+  proprietorProofOfAddressType: '', businessProofOfAddressType: '',
 };
 
 export default function CACScreen({ navigation }) {
@@ -484,8 +559,33 @@ export default function CACScreen({ navigation }) {
   const [showHint,     setShowHint]     = useState(false);
   const [preChecking,  setPreChecking]  = useState(false);
   const [preCheckDone, setPreCheckDone] = useState(false);
-  const [preCheckErrors, setPreCheckErrors] = useState({}); // { fieldName: [errors] }
-  // n1Stat/n2Stat removed — compliance is now optional via ComplianceChecker
+  const [preCheckErrors, setPreCheckErrors] = useState({});
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [tipExpanded,   setTipExpanded]   = useState(false);
+
+  // Load saved draft on mount; try to re-encode image URIs immediately
+  useEffect(() => {
+    (async () => {
+      const draft = await loadDraft();
+      if (!draft) return;
+      // Attempt to re-read image URIs back to base64 (best-effort — may fail if URI expired)
+      const uriPairs = [
+        ['passport',                 'passportUri'],
+        ['meansOfId',                'meansOfIdUri'],
+        ['signature',                'signatureUri'],
+        ['supportingDoc',            'supportingDocUri'],
+        ['proprietorProofOfAddress', 'proprietorProofOfAddressUri'],
+        ['businessProofOfAddress',   'businessProofOfAddressUri'],
+      ];
+      for (const [b64, uriKey] of uriPairs) {
+        if (draft[uriKey] && !draft[b64]) {
+          draft[b64] = await uriToBase64DataUri(draft[uriKey]); // null if expired
+        }
+      }
+      setForm(prev => ({ ...prev, ...draft }));
+      setDraftRestored(true);
+    })();
+  }, []);
 
 
   // Stable setter — doesn't recreate on every render
@@ -600,12 +700,38 @@ export default function CACScreen({ navigation }) {
     if (bal < fee) { Alert.alert('Insufficient Balance', `You need ${formatCurrency(fee, 'NGN')} to proceed. Please fund your wallet.`); return; }
     setBusy(true);
     try {
-      const regRes = await cacRegisterBusinessName(pin, form);
+      // Re-encode any images that were restored from draft (URI exists but base64 is null)
+      let finalForm = { ...form };
+      const imgFields = [
+        ['passport',                 'passportUri'],
+        ['meansOfId',                'meansOfIdUri'],
+        ['signature',                'signatureUri'],
+        ['supportingDoc',            'supportingDocUri'],
+        ['proprietorProofOfAddress', 'proprietorProofOfAddressUri'],
+        ['businessProofOfAddress',   'businessProofOfAddressUri'],
+      ];
+      for (const [b64Field, uriField] of imgFields) {
+        if (!finalForm[b64Field] && finalForm[uriField]) {
+          const encoded = await uriToBase64DataUri(finalForm[uriField]);
+          if (!encoded) {
+            Alert.alert(
+              'Image Expired',
+              `Could not read ${b64Field === 'passport' ? 'Passport Photo' : b64Field}. Please re-upload it.`
+            );
+            setBusy(false);
+            return;
+          }
+          finalForm[b64Field] = encoded;
+        }
+      }
+
+      const regRes = await cacRegisterBusinessName(pin, finalForm);
       if (!regRes?.success) {
         Alert.alert('Submission Failed', regRes?.message || 'Could not submit. Please try again.');
         setBusy(false);
         return;
       }
+      await clearDraft(); // Only clear on success
       const ref = regRes.data?.transactionRef || regRes.transactionRef;
       navigation.navigate('CACStatus', { transactionRef: ref, businessName: form.proposedOption1 });
     } catch (e) {
@@ -817,15 +943,49 @@ export default function CACScreen({ navigation }) {
     return (
       <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false}>
         <Text style={[ss.stepTitle, { color: tc.heading }]}>Identity Verification</Text>
-        <Text style={[ss.stepDesc, { color: tc.subheading }]}>Please upload clear copies of the following documents to complete your business registration.</Text>
+        <Text style={[ss.stepDesc, { color: tc.subheading }]}>Upload clear copies of the required documents to complete registration.</Text>
 
-        {/* 1 — Passport Photo (always shown) */}
-        <ImageUpload
-          label="Passport Photo" subtitle="Recent passport-sized photograph" required
-          value={form.passport} fileName={form.passportName} fileKB={form.passportKB}
-          onPick={(b, kb, n) => { setField('passport', b); setField('passportKB', kb); setField('passportName', n); }}
-          tc={tc}
-        />
+        {/* ── File Size Tip (collapsible) ─────────────────────────────────── */}
+        <TouchableOpacity
+          style={[ss.tipCard, { backgroundColor: '#FFF8E1', borderColor: '#FFC107' }]}
+          onPress={() => setTipExpanded(v => !v)}
+          activeOpacity={0.8}
+        >
+          <View style={ss.tipCardHeader}>
+            <Ionicons name="information-circle-outline" size={18} color="#F59E0B" />
+            <Text style={[ss.tipCardTitle, { color: '#92400E' }]}>File Size Tip — tap to {tipExpanded ? 'collapse' : 'expand'}</Text>
+            <Ionicons name={tipExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#92400E" />
+          </View>
+          {tipExpanded && (
+            <View style={{ paddingTop: 8, gap: 6 }}>
+              <Text style={[ss.tipText, { color: '#92400E' }]}>All documents must be under 1MB. To compress:</Text>
+              <Text style={[ss.tipText, { color: '#92400E' }]}>• <Text style={{ fontWeight: '700' }}>Canva (free)</Text> — open canva.com, upload your image, resize and download at lower quality</Text>
+              <Text style={[ss.tipText, { color: '#92400E' }]}>• <Text style={{ fontWeight: '700' }}>iLovePDF / Smallpdf</Text> — compress PDF files online</Text>
+              <Text style={[ss.tipText, { color: '#92400E' }]}>• <Text style={{ fontWeight: '700' }}>Camera settings</Text> — reduce photo resolution in your phone camera settings before taking the picture</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        {/* 1 — Passport Photo */}
+        <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+          <View style={ss.idSectionHeader}>
+            <Ionicons name="person-circle-outline" size={18} color={tc.primary} />
+            <Text style={[ss.idSectionTitle, { color: tc.heading }]}>Passport Photograph</Text>
+            <View style={[ss.requiredBadge, { backgroundColor: `${tc.primary}15` }]}>
+              <Text style={[ss.requiredBadgeText, { color: tc.primary }]}>REQUIRED</Text>
+            </View>
+          </View>
+          <Text style={[ss.idSectionSub, { color: tc.subheading }]}>Recent passport-sized photo of the business owner (white background preferred).</Text>
+          <ImageUpload
+            label="Passport Photo" subtitle="Clear face photo, plain background" required
+            value={form.passport} fileName={form.passportName} fileKB={form.passportKB}
+            onPick={(b, kb, n, uri) => {
+              setField('passport', b); setField('passportKB', kb);
+              setField('passportName', n); setField('passportUri', uri || '');
+            }}
+            tc={tc}
+          />
+        </View>
 
         {/* 2 — Means of ID: select type first, then upload appears */}
         <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
@@ -840,26 +1000,20 @@ export default function CACScreen({ navigation }) {
             Select one of the government-issued IDs accepted by CAC Nigeria:
           </Text>
 
-          {/* ID Type list */}
           {ID_TYPES.map((idType) => {
             const isSelected = form.selectedIdType === idType.key;
             return (
               <TouchableOpacity
                 key={idType.key}
-                style={[
-                  ss.idTypeRow,
-                  {
-                    backgroundColor: isSelected ? `${tc.primary}10` : tc.background,
-                    borderColor: isSelected ? tc.primary : tc.border || '#E5E5EA',
-                    borderWidth: isSelected ? 1.5 : 1,
-                  },
-                ]}
+                style={[ss.idTypeRow, {
+                  backgroundColor: isSelected ? `${tc.primary}10` : tc.background,
+                  borderColor: isSelected ? tc.primary : tc.border || '#E5E5EA',
+                  borderWidth: isSelected ? 1.5 : 1,
+                }]}
                 onPress={() => {
-                  // Clear existing upload if switching types
                   if (form.selectedIdType !== idType.key) {
-                    setField('meansOfId', null);
-                    setField('meansOfIdKB', 0);
-                    setField('meansOfIdName', '');
+                    setField('meansOfId', null); setField('meansOfIdKB', 0);
+                    setField('meansOfIdName', ''); setField('meansOfIdUri', '');
                   }
                   setField('selectedIdType', idType.key);
                 }}
@@ -879,55 +1033,176 @@ export default function CACScreen({ navigation }) {
             );
           })}
 
-          {/* Upload card — appears only after ID type is selected */}
           {selectedId && (
             <View style={[ss.idUploadCard, { backgroundColor: tc.background, borderColor: tc.border || '#E5E5EA' }]}>
-              {/* Tip */}
               <View style={[ss.idTipRow, { backgroundColor: `${tc.primary}10` }]}>
                 <Ionicons name="bulb-outline" size={15} color={tc.primary} />
                 <Text style={[ss.idTipText, { color: tc.primary }]}>{selectedId.tip}</Text>
               </View>
-
               <ImageUpload
                 label={`Upload: ${selectedId.label}`}
                 subtitle="Max 1MB · PNG or JPEG · High resolution"
                 required
-                value={form.meansOfId}
-                fileName={form.meansOfIdName}
-                fileKB={form.meansOfIdKB}
-                onPick={(b, kb, n) => { setField('meansOfId', b); setField('meansOfIdKB', kb); setField('meansOfIdName', n); }}
+                value={form.meansOfId} fileName={form.meansOfIdName} fileKB={form.meansOfIdKB}
+                onPick={(b, kb, n, uri) => {
+                  setField('meansOfId', b); setField('meansOfIdKB', kb);
+                  setField('meansOfIdName', n); setField('meansOfIdUri', uri || '');
+                }}
                 tc={tc}
               />
             </View>
           )}
         </View>
 
-        {/* 3 — Signature (always shown) */}
-        <ImageUpload
-          label="Digital Signature" subtitle="Upload a clear scan of your signature on white paper" required
-          value={form.signature} fileName={form.signatureName} fileKB={form.signatureKB}
-          onPick={(b, kb, n) => { setField('signature', b); setField('signatureKB', kb); setField('signatureName', n); }}
-          tc={tc}
-        />
+        {/* 3 — Signature with guidance card */}
+        <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+          <View style={ss.idSectionHeader}>
+            <Ionicons name="create-outline" size={18} color={tc.primary} />
+            <Text style={[ss.idSectionTitle, { color: tc.heading }]}>Proprietor Signature</Text>
+            <View style={[ss.requiredBadge, { backgroundColor: `${tc.primary}15` }]}>
+              <Text style={[ss.requiredBadgeText, { color: tc.primary }]}>REQUIRED</Text>
+            </View>
+          </View>
 
-        {/* 4 — Supporting Document (conditional) */}
+          {/* Permanent signature guidance */}
+          <View style={[ss.sigGuideCard, { backgroundColor: `${tc.primary}08`, borderColor: `${tc.primary}25` }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <Ionicons name="pencil-outline" size={15} color={tc.primary} />
+              <Text style={[{ fontSize: 13, fontWeight: '700', color: tc.primary }]}>How to Upload Your Signature</Text>
+            </View>
+            {[
+              '1. Get a plain white sheet of paper',
+              '2. Sign your signature clearly on the paper',
+              '3. Take a clear photo (good lighting, no shadows)',
+              '4. Crop to show only the signature area',
+              '5. Upload the photo below',
+              '6. Ensure file size is under 1MB',
+            ].map((step, i) => (
+              <Text key={i} style={[{ fontSize: 12, color: tc.subheading, lineHeight: 20 }]}>{step}</Text>
+            ))}
+          </View>
+
+          <ImageUpload
+            label="Digital Signature" subtitle="Signature on plain white paper — see guide above" required
+            value={form.signature} fileName={form.signatureName} fileKB={form.signatureKB}
+            onPick={(b, kb, n, uri) => {
+              setField('signature', b); setField('signatureKB', kb);
+              setField('signatureName', n); setField('signatureUri', uri || '');
+            }}
+            tc={tc}
+          />
+        </View>
+
+        {/* 4 — Proprietor Proof of Address */}
+        <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+          <View style={ss.idSectionHeader}>
+            <Ionicons name="home-outline" size={18} color={tc.primary} />
+            <Text style={[ss.idSectionTitle, { color: tc.heading }]}>Proprietor Proof of Address</Text>
+            <View style={[ss.optionalBadge, { backgroundColor: `${tc.subtext}15` }]}>
+              <Text style={[ss.requiredBadgeText, { color: tc.subtext }]}>OPTIONAL</Text>
+            </View>
+          </View>
+          <Text style={[ss.idSectionSub, { color: tc.subheading }]}>
+            Select the type of document that proves your residential address (must be recent — within 3 months):
+          </Text>
+          <StateDropdown
+            value={form.proprietorProofOfAddressType}
+            options={PROOF_OF_ADDRESS_OPTIONS}
+            placeholder="Select proof of address type"
+            onSelect={v => {
+              if (form.proprietorProofOfAddressType !== v) {
+                setField('proprietorProofOfAddress', null);
+                setField('proprietorProofOfAddressKB', 0);
+                setField('proprietorProofOfAddressName', '');
+                setField('proprietorProofOfAddressUri', '');
+              }
+              setField('proprietorProofOfAddressType', v);
+            }}
+            tc={tc}
+          />
+          {form.proprietorProofOfAddressType ? (
+            <View style={{ marginTop: 12 }}>
+              <ImageUpload
+                label={`Upload: ${form.proprietorProofOfAddressType}`}
+                subtitle="Max 1MB · PNG, JPEG or PDF"
+                required={false}
+                value={form.proprietorProofOfAddress}
+                fileName={form.proprietorProofOfAddressName}
+                fileKB={form.proprietorProofOfAddressKB}
+                onPick={(b, kb, n, uri) => {
+                  setField('proprietorProofOfAddress', b);
+                  setField('proprietorProofOfAddressKB', kb);
+                  setField('proprietorProofOfAddressName', n);
+                  setField('proprietorProofOfAddressUri', uri || '');
+                }}
+                tc={tc}
+              />
+            </View>
+          ) : null}
+        </View>
+
+        {/* 5 — Business Proof of Address */}
+        <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+          <View style={ss.idSectionHeader}>
+            <Ionicons name="business-outline" size={18} color={tc.primary} />
+            <Text style={[ss.idSectionTitle, { color: tc.heading }]}>Business Proof of Address</Text>
+            <View style={[ss.optionalBadge, { backgroundColor: `${tc.subtext}15` }]}>
+              <Text style={[ss.requiredBadgeText, { color: tc.subtext }]}>OPTIONAL</Text>
+            </View>
+          </View>
+          <Text style={[ss.idSectionSub, { color: tc.subheading }]}>
+            Select a document that proves your business/company address:
+          </Text>
+          <StateDropdown
+            value={form.businessProofOfAddressType}
+            options={PROOF_OF_ADDRESS_OPTIONS}
+            placeholder="Select proof of address type"
+            onSelect={v => {
+              if (form.businessProofOfAddressType !== v) {
+                setField('businessProofOfAddress', null);
+                setField('businessProofOfAddressKB', 0);
+                setField('businessProofOfAddressName', '');
+                setField('businessProofOfAddressUri', '');
+              }
+              setField('businessProofOfAddressType', v);
+            }}
+            tc={tc}
+          />
+          {form.businessProofOfAddressType ? (
+            <View style={{ marginTop: 12 }}>
+              <ImageUpload
+                label={`Upload: ${form.businessProofOfAddressType}`}
+                subtitle="Max 1MB · PNG, JPEG or PDF"
+                required={false}
+                value={form.businessProofOfAddress}
+                fileName={form.businessProofOfAddressName}
+                fileKB={form.businessProofOfAddressKB}
+                onPick={(b, kb, n, uri) => {
+                  setField('businessProofOfAddress', b);
+                  setField('businessProofOfAddressKB', kb);
+                  setField('businessProofOfAddressName', n);
+                  setField('businessProofOfAddressUri', uri || '');
+                }}
+                tc={tc}
+              />
+            </View>
+          ) : null}
+        </View>
+
+        {/* 6 — Supporting Document (conditional) */}
         <ImageUpload
           label="Supporting Document"
-          subtitle={form.requiresSupportingDoc ? 'Required — your business name or line of business requires a proficiency certificate' : 'Any additional certification or authorization letters'}
+          subtitle={form.requiresSupportingDoc
+            ? 'Required — proficiency certificate for your business name or line of business'
+            : 'Any additional certification or authorization letters'}
           required={form.requiresSupportingDoc}
           value={form.supportingDoc} fileName={form.supportingDocName} fileKB={form.supportingDocKB}
-          onPick={(b, kb, n) => { setField('supportingDoc', b); setField('supportingDocKB', kb); setField('supportingDocName', n); }}
+          onPick={(b, kb, n, uri) => {
+            setField('supportingDoc', b); setField('supportingDocKB', kb);
+            setField('supportingDocName', n); setField('supportingDocUri', uri || '');
+          }}
           tc={tc}
         />
-
-        {/* File guidelines */}
-        <View style={[ss.fileGuide, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-          <Ionicons name="information-circle-outline" size={16} color={tc.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={[{ fontSize: 13, fontWeight: '600', color: tc.heading }]}>File Guidelines</Text>
-            <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 2 }]}>Max size 1MB  •  PNG or JPEG only  •  High resolution</Text>
-          </View>
-        </View>
       </ScrollView>
     );
   };
@@ -959,10 +1234,18 @@ export default function CACScreen({ navigation }) {
     ];
 
     const docs = [
-      { label: form.passportName || 'passport.jpg',      size: form.passportKB,      uploaded: !!form.passport },
-      { label: form.meansOfIdName || 'id_document.jpg',  size: form.meansOfIdKB,     uploaded: !!form.meansOfId },
-      { label: form.signatureName || 'signature.png',    size: form.signatureKB,     uploaded: !!form.signature },
-      form.supportingDoc && { label: form.supportingDocName || 'supporting.jpg', size: form.supportingDocKB, uploaded: true },
+      { label: form.passportName || 'passport.jpg',                 size: form.passportKB,                   uploaded: !!form.passport || !!form.passportUri },
+      { label: form.meansOfIdName || 'id_document.jpg',             size: form.meansOfIdKB,                  uploaded: !!form.meansOfId || !!form.meansOfIdUri },
+      { label: form.signatureName || 'signature.png',               size: form.signatureKB,                  uploaded: !!form.signature || !!form.signatureUri },
+      form.supportingDoc || form.supportingDocUri
+        ? { label: form.supportingDocName || 'supporting.jpg', size: form.supportingDocKB, uploaded: true }
+        : null,
+      form.proprietorProofOfAddress || form.proprietorProofOfAddressUri
+        ? { label: form.proprietorProofOfAddressName || 'proprietor_address.jpg', size: form.proprietorProofOfAddressKB, uploaded: true }
+        : null,
+      form.businessProofOfAddress || form.businessProofOfAddressUri
+        ? { label: form.businessProofOfAddressName || 'business_address.jpg', size: form.businessProofOfAddressKB, uploaded: true }
+        : null,
     ].filter(Boolean);
 
     const broke = bal < fee;
@@ -1178,10 +1461,33 @@ export default function CACScreen({ navigation }) {
       {/* Step titles (only on step > 1) */}
       {step === 2 && <View style={[ss.pageTitleWrap, { backgroundColor: tc.background }]}><Text style={[ss.pageTitle, { color: tc.heading }]}>Proprietor Details</Text></View>}
 
+      {/* Draft restored banner */}
+      {draftRestored && (
+        <TouchableOpacity
+          style={ss.draftBanner}
+          onPress={() => setDraftRestored(false)}
+          activeOpacity={0.9}
+        >
+          <Ionicons name="checkmark-circle" size={16} color="#2E7D32" />
+          <Text style={ss.draftBannerText}>Your previous progress has been restored. Continue where you left off.</Text>
+          <Ionicons name="close" size={14} color="#2E7D32" />
+        </TouchableOpacity>
+      )}
+
       {/* Content — using render function result, NOT component */}
       <View style={{ flex: 1 }}>
         {stepContent}
       </View>
+
+      {/* "Need Help?" floating button — visible on all steps, clears nav + tab bar */}
+      <TouchableOpacity
+        style={[ss.helpFloat, { bottom: insets.bottom + (step < 5 ? 160 : 100) }]}
+        onPress={() => Linking.openURL('https://wa.me/2349011495230?text=Hello%2C%20I%20need%20help%20with%20my%20CAC%20Business%20Registration%20on%20PayFlex')}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
+        <Text style={ss.helpFloatText}>Need Help?</Text>
+      </TouchableOpacity>
 
       {/* Bottom nav */}
       {step < 5 && (
@@ -1192,6 +1498,7 @@ export default function CACScreen({ navigation }) {
             onPress={() => {
               if (canGoNext()) {
                 setShowHint(false);
+                saveDraft(form); // persist progress on every successful step
                 setStep(n => n + 1);
               } else {
                 setShowHint(true);
@@ -1380,6 +1687,23 @@ const ss = StyleSheet.create({
   tabItem:      { flex: 1, alignItems: 'center', gap: 2, paddingBottom: 4 },
   tabLabel:     { fontSize: 10 },
 
+  // Upload hint
+  uploadHint:     { fontSize: 10, marginTop: 4 },
+  // File size tip card
+  tipCard:        { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 14 },
+  tipCardHeader:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  tipCardTitle:   { flex: 1, fontSize: 13, fontWeight: '600' },
+  tipText:        { fontSize: 12, lineHeight: 18 },
+  // Signature guidance card
+  sigGuideCard:   { borderRadius: 10, borderWidth: 1, padding: 12, marginBottom: 12 },
+  // Optional badge (mirror of requiredBadge)
+  optionalBadge:  { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  // Draft banner
+  draftBanner:    { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#E8F5E9', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#C8E6C9' },
+  draftBannerText:{ flex: 1, fontSize: 12, color: '#2E7D32', fontWeight: '500' },
+  // "Need Help?" floating button
+  helpFloat:      { position: 'absolute', right: 16, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#25D366', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, zIndex: 999 },
+  helpFloatText:  { color: '#FFF', fontSize: 13, fontWeight: '700' },
   // ComplianceChecker
   compCheckerCard:   { borderRadius: 14, borderWidth: 1, marginBottom: 14 },
   compCheckerHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },

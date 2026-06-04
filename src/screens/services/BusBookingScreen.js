@@ -112,18 +112,34 @@ export default function BusBookingScreen({ navigation }) {
     (selectedBus?.price || 0) * Math.max(selectedSeats.length, 1);
 
   // Load states on mount
+  // Response shape: { data: { data: { states: [...] } } }
   useEffect(() => {
     merpiGetStates()
-      .then(r => setStates(r?.data?.data || r?.data || []))
+      .then(r => {
+        const payload = r?.data?.data || r?.data || {};
+        setStates(payload?.states || payload?.data?.states || []);
+      })
       .catch(() => {});
   }, []);
 
   const loadCities = useCallback(async (stateId) => {
     try {
       const r = await merpiGetCities({ state_id: stateId });
-      setCities(r?.data?.data || r?.data || []);
+      const payload = r?.data?.data || r?.data || {};
+      setCities(payload?.cities || payload?.data?.cities || []);
     } catch {}
   }, []);
+
+  // Extract list from nested MERPI response: { data: { data: { <key>: [...] } } }
+  const extractList = (r, ...keys) => {
+    const payload = r?.data?.data || r?.data || {};
+    for (const k of keys) {
+      if (Array.isArray(payload[k])) return payload[k];
+      if (Array.isArray(payload?.data?.[k])) return payload.data[k];
+    }
+    // fallback: if payload itself is an array
+    return Array.isArray(payload) ? payload : [];
+  };
 
   const searchRoutes = async () => {
     if (!fromCity || !toCity || !depDate) {
@@ -137,7 +153,7 @@ export default function BusBookingScreen({ navigation }) {
         to:   toCity.id   || toCity.name,
         departure_date: depDate,
       });
-      const list = r?.data?.data || r?.data || [];
+      const list = extractList(r, 'routes', 'data');
       if (!list.length) {
         Alert.alert('No routes found', 'No available routes for the selected cities and date.');
         return;
@@ -156,7 +172,7 @@ export default function BusBookingScreen({ navigation }) {
     setBusy(true);
     try {
       const r = await merpiGetBuses({ route_id: route.id });
-      setBuses(r?.data?.data || r?.data || []);
+      setBuses(extractList(r, 'buses', 'data'));
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not load buses.');
     } finally {
@@ -169,7 +185,7 @@ export default function BusBookingScreen({ navigation }) {
     setBusy(true);
     try {
       const r = await merpiGetSchedules({ route_id: selectedRoute?.id, departure_date: depDate });
-      setSchedules(r?.data?.data || r?.data || []);
+      setSchedules(extractList(r, 'schedules', 'data'));
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not load schedules.');
     } finally {
@@ -182,7 +198,7 @@ export default function BusBookingScreen({ navigation }) {
     setBusy(true);
     try {
       const r = await merpiGetSeats({ bus_id: selectedBus?.id, schedule_id: schedule.id });
-      setSeats(r?.data?.data || r?.data || []);
+      setSeats(extractList(r, 'seats', 'data'));
       setStep(3);
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not load seats.');

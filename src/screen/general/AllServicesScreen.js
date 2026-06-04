@@ -88,11 +88,27 @@ const services = [
   },
   {
     id: 'bus',
-    label: 'Bus',
+    label: 'Bus Tickets',
     icon: 'bus',
     iconLib: Ionicons,
-    screen: null, // Coming Soon — Travu integration pending
+    screen: 'BusBooking',
     color: '#DDA0DD',
+  },
+  {
+    id: 'events',
+    label: 'Events',
+    icon: 'calendar',
+    iconLib: Ionicons,
+    screen: 'Events',
+    color: '#FD79A8',
+  },
+  {
+    id: 'cinema',
+    label: 'Cinema',
+    icon: 'film',
+    iconLib: Ionicons,
+    screen: 'Cinema',
+    color: '#6C5CE7',
   },
   {
     id: 'waec',

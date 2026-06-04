@@ -742,6 +742,48 @@ export const cacSearchBusiness = (pin, validationType, searchParam) =>
 /** CAC registration + validation history */
 export const cacGetHistory = () => makeGeneralGet('/cac/history');
 
+// ─── GET helper with query params ────────────────────────────────────────────
+const makeGeneralGetQuery = async (path, params = {}) => {
+  const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+  if (!token) throw new Error('Authentication required. Please log in again.');
+  const query = Object.keys(params).filter(k => params[k] != null)
+    .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('&');
+  const url = `${GENERAL_BASE}${path}${query ? `?${query}` : ''}`;
+  const response = await fetchWithTimeout(url, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+  });
+  return handleResponse(response);
+};
+
+// ─── MERPI / Syticks — Bus Tickets ───────────────────────────────────────────
+export const merpiGetStates    = ()           => makeGeneralGet('/merpi/bus/states');
+export const merpiGetCities    = (params)     => makeGeneralGetQuery('/merpi/bus/cities', params);
+export const merpiGetRoutes    = (params)     => makeGeneralGetQuery('/merpi/bus/routes', params);
+export const merpiGetBuses     = (params)     => makeGeneralGetQuery('/merpi/bus/buses', params);
+export const merpiGetSingleBus = (busId)      => makeGeneralGet(`/merpi/bus/buses/${busId}`);
+export const merpiGetSchedules = (params)     => makeGeneralGetQuery('/merpi/bus/schedules', params);
+export const merpiGetSeats     = (params)     => makeGeneralGetQuery('/merpi/bus/seats', params);
+export const merpiBuyBusTicket = (pin, data)  => makeGeneralRequest('/merpi/bus/buy', { ...data, pin });
+
+// ─── MERPI / Syticks — Events ─────────────────────────────────────────────────
+export const merpiGetEvents          = (params) => makeGeneralGetQuery('/merpi/events', params);
+export const merpiGetEventDetails    = (id)     => makeGeneralGet(`/merpi/events/${id}`);
+export const merpiGetEventTickets    = (id)     => makeGeneralGet(`/merpi/events/${id}/tickets`);
+export const merpiBuyEventTickets    = (pin, data) => makeGeneralRequest('/merpi/events/buy', { ...data, pin });
+
+// ─── MERPI / Syticks — Cinema ─────────────────────────────────────────────────
+export const merpiGetMovies          = (params) => makeGeneralGetQuery('/merpi/cinema', params);
+export const merpiGetCinemaDetails   = (id)     => makeGeneralGet(`/merpi/cinema/${id}`);
+export const merpiGetCinemaDates     = (id)     => makeGeneralGet(`/merpi/cinema/${id}/dates`);
+export const merpiGetCinemaTickets   = (id)     => makeGeneralGet(`/merpi/cinema/${id}/tickets`);
+export const merpiBuyCinemaTickets   = (pin, data) => makeGeneralRequest('/merpi/cinema/buy', { ...data, pin });
+
+// ─── MERPI / Syticks — General ────────────────────────────────────────────────
+export const merpiGetCategories  = ()          => makeGeneralGet('/merpi/categories');
+export const merpiGetBusinesses  = (params)    => makeGeneralGetQuery('/merpi/businesses', params);
+export const merpiGetTransaction = (reference) => makeGeneralGet(`/merpi/transactions/${reference}`);
+
 // Export the service
 export default {
   // Basic services

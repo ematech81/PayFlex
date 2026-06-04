@@ -91,12 +91,12 @@ export default function BusBookingScreen({ navigation }) {
   const [pin, setPin]   = useState('');
 
   // Step 1 — search
-  const [states, setStates]           = useState([]);
-  const [cities, setCities]           = useState([]);
-  const [fromState, setFromState]     = useState(null);
-  const [fromCity, setFromCity]       = useState(null);
-  const [toState, setToState]         = useState(null);
-  const [toCity, setToCity]           = useState(null);
+  const [states,    setStates]    = useState([]);
+  const [allCities, setAllCities] = useState([]); // full list — filter client-side by state
+  const [fromState, setFromState] = useState(null);
+  const [fromCity,  setFromCity]  = useState(null);
+  const [toState,   setToState]   = useState(null);
+  const [toCity,    setToCity]    = useState(null);
   const [depDate, setDepDate]         = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -125,24 +125,25 @@ export default function BusBookingScreen({ navigation }) {
   const totalPrice = selectedSeats.reduce((sum, s) => sum + (s.price || 0), 0) ||
     (selectedBus?.price || 0) * Math.max(selectedSeats.length, 1);
 
-  // Load states on mount
-  // Response shape: { data: { data: { states: [...] } } }
+  // Load states + all cities on mount (cities API returns full list, no server-side filter)
   useEffect(() => {
-    merpiGetStates()
-      .then(r => {
-        const payload = r?.data?.data || r?.data || {};
-        setStates(payload?.states || payload?.data?.states || []);
+    const extract = (r, key) => {
+      const payload = r?.data?.data || r?.data || {};
+      return payload?.[key] || payload?.data?.[key] || [];
+    };
+    Promise.all([merpiGetStates(), merpiGetCities({})])
+      .then(([sr, cr]) => {
+        setStates(extract(sr, 'states'));
+        setAllCities(extract(cr, 'cities'));
       })
       .catch(() => {});
   }, []);
 
-  const loadCities = useCallback(async (stateId) => {
-    try {
-      const r = await merpiGetCities({ state_id: stateId });
-      const payload = r?.data?.data || r?.data || {};
-      setCities(payload?.cities || payload?.data?.cities || []);
-    } catch {}
-  }, []);
+  // Client-side filter: cities whose state.id matches selected state
+  const citiesForState = useCallback((stateObj) => {
+    if (!stateObj) return [];
+    return allCities.filter(c => c.state?.id === stateObj.id);
+  }, [allCities]);
 
   // Extract list from nested MERPI response: { data: { data: { <key>: [...] } } }
   const extractList = (r, ...keys) => {
@@ -280,13 +281,13 @@ export default function BusBookingScreen({ navigation }) {
         <SelectDropdown
           value={fromState?.name} placeholder="Select origin state" tc={tc}
           onPress={() => setSheet({ key: 'fromState', title: 'Origin State', data: states,
-            onSelect: (s) => { setFromState(s); setFromCity(null); loadCities(s.id); } })}
+            onSelect: (s) => { setFromState(s); setFromCity(null); } })}
         />
         <FieldLabel text="City" tc={tc} />
         <SelectDropdown
           value={fromCity?.name} placeholder="Select origin city" tc={tc}
           onPress={() => fromState
-            ? setSheet({ key: 'fromCity', title: 'Origin City', data: cities,
+            ? setSheet({ key: 'fromCity', title: 'Origin City', data: citiesForState(fromState),
                 onSelect: setFromCity })
             : Alert.alert('Select state first', 'Please select your origin state first.')}
         />
@@ -298,13 +299,13 @@ export default function BusBookingScreen({ navigation }) {
         <SelectDropdown
           value={toState?.name} placeholder="Select destination state" tc={tc}
           onPress={() => setSheet({ key: 'toState', title: 'Destination State', data: states,
-            onSelect: (s) => { setToState(s); setToCity(null); loadCities(s.id); } })}
+            onSelect: (s) => { setToState(s); setToCity(null); } })}
         />
         <FieldLabel text="City" tc={tc} />
         <SelectDropdown
           value={toCity?.name} placeholder="Select destination city" tc={tc}
           onPress={() => toState
-            ? setSheet({ key: 'toCity', title: 'Destination City', data: cities,
+            ? setSheet({ key: 'toCity', title: 'Destination City', data: citiesForState(toState),
                 onSelect: setToCity })
             : Alert.alert('Select state first', 'Please select your destination state first.')}
         />

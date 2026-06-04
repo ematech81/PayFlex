@@ -131,7 +131,7 @@ export default function BusBookingScreen({ navigation }) {
       const payload = r?.data?.data || r?.data || {};
       return payload?.[key] || payload?.data?.[key] || [];
     };
-    Promise.all([merpiGetStates(), merpiGetCities({})])
+    Promise.all([merpiGetStates({ per_page: 50 }), merpiGetCities({ per_page: 200 })])
       .then(([sr, cr]) => {
         setStates(extract(sr, 'states'));
         setAllCities(extract(cr, 'cities'));

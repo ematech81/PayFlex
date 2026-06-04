@@ -47,21 +47,35 @@ const SelectDropdown = ({ value, placeholder, onPress, tc }) => (
 const BottomSheet = ({ visible, title, data, keyFn, labelFn, onSelect, onClose, tc }) => {
   if (!visible) return null;
   return (
-    <TouchableOpacity style={ss.overlay} onPress={onClose} activeOpacity={1}>
-      <TouchableOpacity style={[ss.sheet, { backgroundColor: tc.card }]} activeOpacity={1}>
+    <View style={ss.overlay}>
+      {/* dim backdrop — tap to close */}
+      <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
+      {/* sheet panel */}
+      <View style={[ss.sheet, { backgroundColor: tc.card }]}>
         <View style={[ss.sheetHandle, { backgroundColor: tc.border || '#E5E5EA' }]} />
         <Text style={[ss.sheetTitle, { color: tc.heading }]}>{title}</Text>
         <FlatList
-          data={data} keyExtractor={keyFn}
+          data={data}
+          keyExtractor={keyFn}
+          style={ss.sheetList}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
-            <TouchableOpacity style={[ss.sheetRow, { borderBottomColor: tc.border || '#F0F0F0' }]}
-              onPress={() => { onSelect(item); onClose(); }}>
+            <TouchableOpacity
+              style={[ss.sheetRow, { borderBottomColor: tc.border || '#F0F0F0' }]}
+              onPress={() => { onSelect(item); onClose(); }}
+              activeOpacity={0.7}
+            >
               <Text style={[{ fontSize: 15, color: tc.heading }]}>{labelFn(item)}</Text>
             </TouchableOpacity>
           )}
+          ListEmptyComponent={
+            <View style={{ padding: 24, alignItems: 'center' }}>
+              <Text style={[{ fontSize: 14, color: tc.subtext }]}>No items found</Text>
+            </View>
+          }
         />
-      </TouchableOpacity>
-    </TouchableOpacity>
+      </View>
+    </View>
   );
 };
 
@@ -667,9 +681,10 @@ const ss = StyleSheet.create({
   warnBox:      { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: 10, marginBottom: 12 },
   primaryBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, marginTop: 8 },
   primaryBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  overlay:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet:        { borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '65%', paddingTop: 8 },
+  overlay:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end', zIndex: 1000 },
+  sheet:        { borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '60%', paddingTop: 8 },
+  sheetList:    { flex: 1 },
   sheetHandle:  { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-  sheetTitle:   { fontSize: 16, fontWeight: '700', paddingHorizontal: 20, paddingBottom: 12 },
+  sheetTitle:   { fontSize: 16, fontWeight: '700', paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F0F0F0' },
   sheetRow:     { paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: StyleSheet.hairlineWidth },
 });

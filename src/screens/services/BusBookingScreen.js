@@ -160,7 +160,7 @@ export default function BusBookingScreen({ navigation }) {
   // Client-side filter: cities whose state.id matches selected state
   const citiesForState = useCallback((stateObj) => {
     if (!stateObj) return [];
-    return allCities.filter(c => c.state?.id === stateObj.id);
+    return allCities.filter(c => String(c.state?.id) === String(stateObj.id));
   }, [allCities]);
 
   // Extract list from nested MERPI response: { data: { data: { <key>: [...] } } }

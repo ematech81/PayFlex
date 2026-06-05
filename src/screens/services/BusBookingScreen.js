@@ -89,6 +89,7 @@ export default function BusBookingScreen({ navigation }) {
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [pin, setPin]   = useState('');
+  const [loadError, setLoadError] = useState(null);
 
   // Step 1 — search
   const [states,    setStates]    = useState([]);
@@ -128,15 +129,32 @@ export default function BusBookingScreen({ navigation }) {
   // Load states + all cities on mount (cities API returns full list, no server-side filter)
   useEffect(() => {
     const extract = (r, key) => {
-      const payload = r?.data?.data || r?.data || {};
-      return payload?.[key] || payload?.data?.[key] || [];
+      // Backend wraps: { success, data: <merpi_body> }
+      // Merpi body: { data: { <key>: [...] } }  OR  { <key>: [...] }
+      const d1 = r?.data;          // backend's data field = merpi response body
+      const d2 = d1?.data;         // merpi's nested data field
+      return (
+        (Array.isArray(d2?.[key]) && d2[key]) ||
+        (Array.isArray(d1?.[key]) && d1[key]) ||
+        (Array.isArray(r?.[key])  && r[key])  ||
+        []
+      );
     };
-    Promise.all([merpiGetStates({ per_page: 50 }), merpiGetCities({ per_page: 200 })])
+    Promise.all([merpiGetStates(), merpiGetCities({ per_page: 200 })])
       .then(([sr, cr]) => {
-        setStates(extract(sr, 'states'));
-        setAllCities(extract(cr, 'cities'));
+        console.log('[MERPI] states response:', JSON.stringify(sr)?.slice(0, 300));
+        console.log('[MERPI] cities response:', JSON.stringify(cr)?.slice(0, 200));
+        const stateList = extract(sr, 'states');
+        const cityList  = extract(cr, 'cities');
+        console.log('[MERPI] states count:', stateList.length, '| cities count:', cityList.length);
+        setStates(stateList);
+        setAllCities(cityList);
+        if (!stateList.length) setLoadError('Could not load states. Tap to retry.');
       })
-      .catch(() => {});
+      .catch((e) => {
+        console.error('[MERPI] load failed:', e.message);
+        setLoadError('Failed to load locations: ' + (e.message || 'Network error'));
+      });
   }, []);
 
   // Client-side filter: cities whose state.id matches selected state
@@ -270,6 +288,15 @@ export default function BusBookingScreen({ navigation }) {
 
   const renderStep1 = () => (
     <ScrollView contentContainerStyle={ss.sc} keyboardShouldPersistTaps="handled">
+      {loadError && (
+        <TouchableOpacity
+          style={{ backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+          onPress={() => { setLoadError(null); }}
+        >
+          <Ionicons name="warning-outline" size={16} color="#EF4444" />
+          <Text style={{ color: '#EF4444', fontSize: 13, flex: 1 }}>{loadError}</Text>
+        </TouchableOpacity>
+      )}
       <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
         <View style={ss.cardHeader}>
           <Ionicons name="bus-outline" size={20} color={tc.primary} />

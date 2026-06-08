@@ -152,22 +152,34 @@ export default function BusBookingScreen({ navigation }) {
   useEffect(() => {
     const extract = (r, key) => {
       // Backend wraps: { success, data: <merpi_body> }
-      // Merpi body: { data: { <key>: [...] } }  OR  { <key>: [...] }
+      // Merpi body: { data: { <key>: [...], next_page, ... } }  OR  { <key>: [...] }
       const d1 = r?.data;          // backend's data field = merpi response body
       const d2 = d1?.data;         // merpi's nested data field
-      return (
-        (Array.isArray(d2?.[key]) && d2[key]) ||
-        (Array.isArray(d1?.[key]) && d1[key]) ||
-        (Array.isArray(r?.[key])  && r[key])  ||
-        []
-      );
+      const container = Array.isArray(d2?.[key]) ? d2 : Array.isArray(d1?.[key]) ? d1 : r;
+      return {
+        list:     Array.isArray(container?.[key]) ? container[key] : [],
+        nextPage: container?.next_page ?? null,
+      };
     };
-    Promise.all([merpiGetStates(), merpiGetCities({ per_page: 200 })])
-      .then(([sr, cr]) => {
-        console.log('[MERPI] states response:', JSON.stringify(sr)?.slice(0, 300));
-        console.log('[MERPI] cities response:', JSON.stringify(cr)?.slice(0, 200));
-        const stateList = extract(sr, 'states');
-        const cityList  = extract(cr, 'cities');
+
+    // Cities are paginated — a single page only covers a handful of states,
+    // so walk every page and accumulate until next_page is null.
+    const fetchAllCities = async () => {
+      let all = [];
+      let page = 1;
+      for (let guard = 0; guard < 50; guard++) {
+        const cr = await merpiGetCities({ per_page: 200, page });
+        const { list, nextPage } = extract(cr, 'cities');
+        all = all.concat(list);
+        if (!nextPage || !list.length) break;
+        page = Number(nextPage);
+      }
+      return all;
+    };
+
+    Promise.all([merpiGetStates(), fetchAllCities()])
+      .then(([sr, cityList]) => {
+        const { list: stateList } = extract(sr, 'states');
         console.log('[MERPI] states count:', stateList.length, '| cities count:', cityList.length);
         setStates(stateList);
         setAllCities(cityList);

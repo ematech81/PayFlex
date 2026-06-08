@@ -24,6 +24,12 @@ const toYMD = (d) => {
   const dt = typeof d === 'string' ? new Date(d) : d;
   return dt.toISOString().split('T')[0];
 };
+// MERPI schedules endpoint expects 'DD-MM-YYYY' (e.g. '25-08-2024')
+const toDMY = (ymd) => {
+  if (!ymd) return '';
+  const [y, m, d] = ymd.split('-');
+  return `${d}-${m}-${y}`;
+};
 const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
@@ -219,7 +225,7 @@ export default function BusBookingScreen({ navigation }) {
     setSelectedSchedule(null);
     setBusy(true);
     try {
-      const r = await merpiGetSchedules({ route_id: route.id, departure_date: depDate });
+      const r = await merpiGetSchedules({ route_id: route.id, terminal_id: route.terminal?.id, date: toDMY(depDate) });
       setSchedules(extractList(r, 'schedules', 'data'));
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not load schedules.');
@@ -475,12 +481,15 @@ export default function BusBookingScreen({ navigation }) {
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="time-outline" size={16} color={tc.primary} style={{ marginRight: 8 }} />
-                <Text style={[{ flex: 1, fontSize: 14, color: tc.heading }]}>
-                  {sch.departure_time} {sch.arrival_time ? `→ ${sch.arrival_time}` : ''}
-                </Text>
-                <Text style={[{ fontSize: 13, color: tc.subheading }]}>
-                  {sch.available_seats} seats left
-                </Text>
+                <View style={{ flex: 1 }}>
+                  {!!sch.name && (
+                    <Text style={[{ fontSize: 13, fontWeight: '700', color: tc.heading }]}>{sch.name}</Text>
+                  )}
+                  <Text style={[{ fontSize: 13, color: tc.subheading, marginTop: sch.name ? 2 : 0 }]}>
+                    {sch.time?.departure || 'Time TBC'} {sch.time?.arrival ? `→ ${sch.time.arrival}` : ''}
+                  </Text>
+                </View>
+                {selectedSchedule?.id === sch.id && <Ionicons name="checkmark-circle" size={20} color={tc.primary} />}
               </View>
             </TouchableOpacity>
           ))}
@@ -606,7 +615,7 @@ export default function BusBookingScreen({ navigation }) {
           ['Route',     `${placeLabel(selectedRoute?.from)} → ${placeLabel(selectedRoute?.to)}`],
           ['Operator',  selectedRoute?.business?.name],
           ['Terminal',  selectedRoute?.terminal?.name],
-          ['Departure', `${depDate ? fmtDate(depDate) : ''} ${selectedSchedule?.departure_time || ''}`],
+          ['Departure', `${depDate ? fmtDate(depDate) : ''} ${selectedSchedule?.time?.departure || ''}`],
           ['Seats',     selectedSeats.map(s => s.seat_number || s.number).join(', ')],
         ]},
         { title: 'Passenger', icon: 'person-outline', rows: [

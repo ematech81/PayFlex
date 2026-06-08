@@ -101,7 +101,7 @@ export default function BusTicketConfirmationScreen({ navigation, route }) {
           <InfoRow label="Route"      value={tripRoute ? `${placeLabel(tripRoute.from)} → ${placeLabel(tripRoute.to)}` : null} />
           <InfoRow label="Operator"   value={tripRoute?.business?.name} />
           <InfoRow label="Terminal"   value={tripRoute?.terminal?.name} />
-          <InfoRow label="Departure"  value={schedule?.departure_time} />
+          <InfoRow label="Departure"  value={schedule?.time?.departure} />
           <InfoRow label="Seats"      value={seats?.map(s => s.seat_number || s.number).join(', ')} />
           <InfoRow label="Passenger"  value={passenger?.fullName} />
           <InfoRow label="Phone"      value={passenger?.phone} />

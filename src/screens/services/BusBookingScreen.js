@@ -373,43 +373,87 @@ export default function BusBookingScreen({ navigation }) {
     </ScrollView>
   );
 
-  const renderStep2 = () => (
+  const renderStep2 = () => {
+    const originLabel = placeLabel(routes[0]?.from) || fromCity?.name || '';
+    const destLabel   = placeLabel(routes[0]?.to)   || toCity?.name   || '';
+
+    return (
     <ScrollView contentContainerStyle={ss.sc}>
-      {/* Routes — each is a business's offering: price, terminal & company included */}
-      <Text style={[ss.sectionLabel, { color: tc.subheading }]}>AVAILABLE ROUTES</Text>
-      {routes.map((route) => (
-        <TouchableOpacity key={route.id}
-          style={[ss.card, { backgroundColor: selectedRoute?.id === route.id ? `${tc.primary}12` : tc.card,
-            borderColor: selectedRoute?.id === route.id ? tc.primary : tc.border || '#E5E5EA' }]}
-          onPress={() => selectRoute(route)} activeOpacity={0.8}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Ionicons name="navigate-outline" size={18} color={tc.primary} />
-            <Text style={[{ flex: 1, fontSize: 14, fontWeight: '600', color: tc.heading }]} numberOfLines={1}>
-              {placeLabel(route.from)} → {placeLabel(route.to)}
-            </Text>
-            {selectedRoute?.id === route.id && <Ionicons name="checkmark-circle" size={20} color={tc.primary} />}
+      {/* Trip header */}
+      <Text style={[ss.rideRoute, { color: tc.subheading }]} numberOfLines={1}>
+        {originLabel.toUpperCase()} TO {destLabel.toUpperCase()}
+      </Text>
+      <Text style={[ss.rideTitle, { color: tc.heading }]}>Available Rides</Text>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+        {!!depDate && (
+          <View style={[ss.pill, { backgroundColor: '#DCFCE7' }]}>
+            <Ionicons name="calendar-outline" size={13} color="#16A34A" />
+            <Text style={[ss.pillText, { color: '#16A34A' }]}>{fmtDate(depDate)}</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={[{ fontSize: 13, fontWeight: '700', color: tc.heading }]}>{route.business?.name}</Text>
-              {route.terminal?.name && (
-                <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 2 }]} numberOfLines={1}>
-                  <Ionicons name="location-outline" size={11} /> {route.terminal.name}
+        )}
+        <View style={[ss.pill, { backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border || '#E5E5EA' }]}>
+          <Ionicons name="people-outline" size={13} color={tc.subheading} />
+          <Text style={[ss.pillText, { color: tc.subheading }]}>1 Passenger</Text>
+        </View>
+      </View>
+
+      {/* Routes — each is a business's ride offering: price, terminal & company included */}
+      {routes.map((route) => {
+        const isSel = selectedRoute?.id === route.id;
+        const badgeIsLuxury = /luxury|vip|executive/i.test(route.business?.type || route.schedule_type || '');
+        return (
+          <TouchableOpacity key={route.id}
+            style={[ss.rideCard, { backgroundColor: tc.card, borderColor: isSel ? tc.primary : tc.border || '#EFEFF4' }]}
+            onPress={() => selectRoute(route)} activeOpacity={0.8}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+              <View style={[ss.rideIconBox, { backgroundColor: `${tc.primary}12` }]}>
+                <Ionicons name="bus" size={22} color={tc.primary} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[ss.rideOperator, { color: tc.heading }]} numberOfLines={1}>{route.business?.name || 'Bus Operator'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <View style={[ss.typeBadge, { backgroundColor: badgeIsLuxury ? '#FCE7DC' : '#DCFCE7' }]}>
+                    <Text style={[ss.typeBadgeText, { color: badgeIsLuxury ? '#C2410C' : '#15803D' }]}>
+                      {badgeIsLuxury ? 'Luxury' : 'Standard'}
+                    </Text>
+                  </View>
+                  {route.terminal?.name && (
+                    <Text style={[{ fontSize: 12, color: tc.subheading }]} numberOfLines={1}>
+                      <Ionicons name="location-outline" size={11} /> {route.terminal.name}
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[ss.ridePrice, { color: tc.primary }]}>
+                  {route.price != null ? formatCurrency(route.price, 'NGN') : ''}
                 </Text>
-              )}
+                <Text style={[ss.ridePriceSub, { color: tc.subtext }]}>per seat</Text>
+              </View>
             </View>
-            <Text style={[{ fontSize: 16, fontWeight: '800', color: tc.primary }]}>
-              {route.price != null ? formatCurrency(route.price, 'NGN') : ''}
-            </Text>
-          </View>
-        </TouchableOpacity>
-      ))}
+
+            <View style={[ss.rideDivider, { backgroundColor: tc.border || '#F0F0F0' }]} />
+
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[ss.rideCity, { color: tc.heading }]} numberOfLines={1}>{placeLabel(route.from)}</Text>
+                <Text style={[ss.rideAddr, { color: tc.subheading }]} numberOfLines={1}>{route.from?.address || ''}</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={16} color={tc.subtext} style={{ marginHorizontal: 8 }} />
+              <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                <Text style={[ss.rideCity, { color: tc.heading }]} numberOfLines={1}>{placeLabel(route.to)}</Text>
+                <Text style={[ss.rideAddr, { color: tc.subheading, textAlign: 'right' }]} numberOfLines={1}>{route.to?.address || ''}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
 
       {/* Schedules */}
       {schedules.length > 0 && (
         <>
-          <Text style={[ss.sectionLabel, { color: tc.subheading, marginTop: 8 }]}>SELECT SCHEDULE</Text>
+          <Text style={[ss.sectionLabel, { color: tc.subheading, marginTop: 8 }]}>SELECT DEPARTURE TIME</Text>
           {schedules.map((sch) => (
             <TouchableOpacity key={sch.id}
               style={[ss.card, { backgroundColor: selectedSchedule?.id === sch.id ? `${tc.primary}12` : tc.card,
@@ -430,9 +474,18 @@ export default function BusBookingScreen({ navigation }) {
         </>
       )}
 
+      {/* Special offer banner */}
+      <View style={ss.offerCard}>
+        <Text style={ss.offerLabel}>SPECIAL OFFER</Text>
+        <Text style={ss.offerTitle}>Get 10% Off with PayFlex</Text>
+        <Text style={ss.offerSub}>Book this ride and pay via PayFlex wallet to instantly save 10%.</Text>
+        <Ionicons name="ticket-outline" size={64} color="rgba(255,255,255,0.15)" style={ss.offerIcon} />
+      </View>
+
       {busy && <ActivityIndicator color={tc.primary} style={{ marginVertical: 20 }} />}
     </ScrollView>
   );
+  };
 
   const renderStep3 = () => (
     <ScrollView contentContainerStyle={ss.sc}>
@@ -702,4 +755,25 @@ const ss = StyleSheet.create({
   sheetHandle:  { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
   sheetTitle:   { fontSize: 16, fontWeight: '700', paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F0F0F0' },
   sheetRow:     { paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: StyleSheet.hairlineWidth },
+
+  // Route ("Select Bus") step
+  rideRoute:    { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 4 },
+  rideTitle:    { fontSize: 20, fontWeight: '800', marginBottom: 12 },
+  pill:         { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
+  pillText:     { fontSize: 12, fontWeight: '600' },
+  rideCard:     { borderRadius: 16, borderWidth: 1.5, padding: 16, marginBottom: 14 },
+  rideIconBox:  { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  rideOperator: { fontSize: 15, fontWeight: '700' },
+  typeBadge:    { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  typeBadgeText:{ fontSize: 11, fontWeight: '700' },
+  ridePrice:    { fontSize: 17, fontWeight: '800' },
+  ridePriceSub: { fontSize: 11, marginTop: 1 },
+  rideDivider:  { height: 1, marginVertical: 12 },
+  rideCity:     { fontSize: 14, fontWeight: '700' },
+  rideAddr:     { fontSize: 12, marginTop: 2 },
+  offerCard:    { borderRadius: 16, backgroundColor: '#7C3AED', padding: 18, marginTop: 4, marginBottom: 12, overflow: 'hidden' },
+  offerLabel:   { fontSize: 11, fontWeight: '800', letterSpacing: 1, color: 'rgba(255,255,255,0.8)', marginBottom: 6 },
+  offerTitle:   { fontSize: 17, fontWeight: '800', color: '#FFF', marginBottom: 6 },
+  offerSub:     { fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 19, maxWidth: '80%' },
+  offerIcon:    { position: 'absolute', right: -8, bottom: -10 },
 });

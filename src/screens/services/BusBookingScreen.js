@@ -216,7 +216,7 @@ export default function BusBookingScreen({ navigation }) {
     setSelectedRoute(route);
     setBusy(true);
     try {
-      const r = await merpiGetBuses({ route_id: route.id });
+      const r = await merpiGetBuses({ route_id: route.id, departure_date: depDate });
       setBuses(extractList(r, 'buses', 'data'));
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not load buses.');

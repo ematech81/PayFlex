@@ -23,6 +23,9 @@ const placeLabel = (v) => {
   return String(v);
 };
 
+// Seat cells have no seat_number — derive an airline-style code from row/column (1A, 2C, …)
+const seatLabel = (seat) => `${seat.row}${String.fromCharCode(64 + seat.column)}`;
+
 export default function BusTicketConfirmationScreen({ navigation, route }) {
   const { reference, booking, route: tripRoute, schedule, bus, seats, passenger, amount } = route.params || {};
   const dark = useThem(), tc = dark ? colors.dark : colors.light;
@@ -103,7 +106,7 @@ export default function BusTicketConfirmationScreen({ navigation, route }) {
           <InfoRow label="Terminal"   value={tripRoute?.terminal?.name} />
           <InfoRow label="Departure"  value={schedule?.time?.departure} />
           <InfoRow label="Bus"        value={bus ? `${bus.name} (${bus.seats} seats)` : null} />
-          <InfoRow label="Seats"      value={seats?.map(s => s.seat_number || s.number).join(', ')} />
+          <InfoRow label="Seats"      value={seats?.map(seatLabel).join(', ')} />
           <InfoRow label="Passenger"  value={passenger?.fullName} />
           <InfoRow label="Phone"      value={passenger?.phone} />
           <InfoRow label="Amount"     value={amount ? formatCurrency(amount, 'NGN') : null} />

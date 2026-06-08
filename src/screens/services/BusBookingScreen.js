@@ -45,6 +45,9 @@ const placeLabel = (v) => {
   return String(v);
 };
 
+// Seat cells have no seat_number — derive an airline-style code from row/column (1A, 2C, …)
+const seatLabel = (seat) => `${seat.row}${String.fromCharCode(64 + seat.column)}`;
+
 // ─── Small reusable atoms ─────────────────────────────────────────────────────
 
 const FieldLabel = ({ text, tc }) => (
@@ -258,8 +261,11 @@ export default function BusBookingScreen({ navigation }) {
     setSelectedBus(bus);
     setBusy(true);
     try {
-      const r = await merpiGetSeats({ bus_id: bus.id, schedule_id: selectedSchedule?.id });
-      setSeats(extractList(r, 'seats', 'data'));
+      const r = await merpiGetSeats(selectedSchedule?.id, bus.id, depDate);
+      // API returns a 2D seat grid (rows of cells); only cells with seat:true are bookable —
+      // the rest are aisle/walkway placeholders.
+      const grid = extractList(r, 'seats', 'data');
+      setSeats(grid.flat().filter((c) => c?.seat));
       setStep(3);
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not load seats.');
@@ -269,7 +275,7 @@ export default function BusBookingScreen({ navigation }) {
   };
 
   const toggleSeat = (seat) => {
-    if (seat.status === 'booked') return;
+    if (!seat.available) return;
     setSelectedSeats(prev =>
       prev.find(s => s.id === seat.id)
         ? prev.filter(s => s.id !== seat.id)
@@ -559,25 +565,25 @@ export default function BusBookingScreen({ navigation }) {
       <View style={[ss.infoCard, { backgroundColor: `${tc.primary}10` }]}>
         <Ionicons name="information-circle-outline" size={14} color={tc.primary} />
         <Text style={[{ fontSize: 12, color: tc.primary, flex: 1 }]}>
-          Tap available seats to select them. Green = available, Red = booked, Blue = selected.
+          Tap available seats to select them. Green = available, Red = taken, Blue = selected.
         </Text>
       </View>
       <View style={ss.seatGrid}>
         {seats.map((seat) => {
           const isSelected = selectedSeats.find(s => s.id === seat.id);
-          const isBooked   = seat.status === 'booked';
+          const isTaken    = !seat.available;
           return (
             <TouchableOpacity
               key={seat.id}
               style={[ss.seatCell, {
-                backgroundColor: isBooked ? '#EF4444' : isSelected ? tc.primary : '#4CAF50',
-                opacity: isBooked ? 0.5 : 1,
+                backgroundColor: isTaken ? '#EF4444' : isSelected ? tc.primary : '#4CAF50',
+                opacity: isTaken ? 0.5 : 1,
               }]}
               onPress={() => toggleSeat(seat)}
-              disabled={isBooked}
+              disabled={isTaken}
               activeOpacity={0.7}
             >
-              <Text style={[ss.seatLabel, { color: '#FFF' }]}>{seat.seat_number || seat.number}</Text>
+              <Text style={[ss.seatLabel, { color: '#FFF' }]}>{seatLabel(seat)}</Text>
             </TouchableOpacity>
           );
         })}
@@ -586,7 +592,7 @@ export default function BusBookingScreen({ navigation }) {
       {selectedSeats.length > 0 && (
         <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
           <Text style={[{ fontSize: 13, fontWeight: '700', color: tc.heading, marginBottom: 6 }]}>
-            Selected: {selectedSeats.map(s => s.seat_number || s.number).join(', ')}
+            Selected: {selectedSeats.map(seatLabel).join(', ')}
           </Text>
           <Text style={[{ fontSize: 16, fontWeight: '800', color: tc.primary }]}>
             Total: {formatCurrency(totalPrice, 'NGN')}
@@ -662,7 +668,7 @@ export default function BusBookingScreen({ navigation }) {
           ['Terminal',  selectedRoute?.terminal?.name],
           ['Departure', `${depDate ? fmtDate(depDate) : ''} ${selectedSchedule?.time?.departure || ''}`],
           ['Bus',       selectedBus ? `${selectedBus.name} (${selectedBus.seats} seats)` : null],
-          ['Seats',     selectedSeats.map(s => s.seat_number || s.number).join(', ')],
+          ['Seats',     selectedSeats.map(seatLabel).join(', ')],
         ]},
         { title: 'Passenger', icon: 'person-outline', rows: [
           ['Name',          passenger.fullName],

@@ -24,7 +24,7 @@ const placeLabel = (v) => {
 };
 
 export default function BusTicketConfirmationScreen({ navigation, route }) {
-  const { reference, booking, route: tripRoute, bus, schedule, seats, passenger, amount } = route.params || {};
+  const { reference, booking, route: tripRoute, schedule, seats, passenger, amount } = route.params || {};
   const dark = useThem(), tc = dark ? colors.dark : colors.light;
   const insets = useSafeAreaInsets();
 
@@ -98,8 +98,9 @@ export default function BusTicketConfirmationScreen({ navigation, route }) {
             <Ionicons name="bus-outline" size={16} color={tc.primary} />
             <Text style={[ss.detailCardTitle, { color: tc.subheading }]}>TRIP DETAILS</Text>
           </View>
-          <InfoRow label="Route"      value={tripRoute ? `${placeLabel(tripRoute.from_city || tripRoute.from)} → ${placeLabel(tripRoute.to_city || tripRoute.to)}` : null} />
-          <InfoRow label="Bus"        value={bus?.company_name || bus?.name} />
+          <InfoRow label="Route"      value={tripRoute ? `${placeLabel(tripRoute.from)} → ${placeLabel(tripRoute.to)}` : null} />
+          <InfoRow label="Operator"   value={tripRoute?.business?.name} />
+          <InfoRow label="Terminal"   value={tripRoute?.terminal?.name} />
           <InfoRow label="Departure"  value={schedule?.departure_time} />
           <InfoRow label="Seats"      value={seats?.map(s => s.seat_number || s.number).join(', ')} />
           <InfoRow label="Passenger"  value={passenger?.fullName} />

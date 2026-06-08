@@ -78,36 +78,3 @@ export const semanticColors = {
 
 
 
-// export const colors = {
-//   light: {
-//     primary: '#5403f5ff',
-//     background: '#f6f6f8',
-//     buttonBackground: 'rgba(84, 3, 245, 0.1)', 
-//     card: '#FFFFFF',
-//     heading: '#333',
-//     subheading: '#666',
-//     subtext: '#999',
-//     destructive: '#ff3b30',
-//     button: '#007AFF',
-//     border: '#ccc',
-//     processing: '#f9fc77ff',
-
-//     // neutral: 'rgba(74,0,224,0.08)',
-//   },
-  
-  
-//   dark: {
-//     primary: '#6b5bff',
-//     background: '#171e28',
-//     buttonBackground: 'rgba(107, 91, 255, 0.3)',
-//     card: '#1c252c',
-//     heading: '#fff',
-//     subheading: '#ccc',
-//     subtext: '#999',
-//     destructive: '#ff6b6b',
-//     button: '#4a90e2',
-//     processing: '#eef108ff',
-
-//     neutral: 'rgba(74,0,224,0.03)',
-//   },
-// };

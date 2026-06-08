@@ -13,7 +13,7 @@ import { useWallet } from 'context/WalletContext';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import {
   merpiGetStates, merpiGetCities, merpiGetRoutes,
-  merpiGetBuses, merpiGetSchedules, merpiGetSeats,
+  merpiGetSchedules, merpiGetSeats,
   merpiBuyBusTicket,
 } from 'AuthFunction/paymentService';
 
@@ -116,11 +116,9 @@ export default function BusBookingScreen({ navigation }) {
   // Sheet
   const [sheet, setSheet] = useState(null); // { key, title, data, onSelect }
 
-  // Step 2 — route & bus
+  // Step 2 — route (route already includes business/price/terminal — no separate "bus" concept)
   const [routes,    setRoutes]    = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const [buses,     setBuses]     = useState([]);
-  const [selectedBus, setSelectedBus]     = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
 
@@ -136,7 +134,7 @@ export default function BusBookingScreen({ navigation }) {
   const bal = wallet?.user?.walletBalance || 0;
 
   const totalPrice = selectedSeats.reduce((sum, s) => sum + (s.price || 0), 0) ||
-    (selectedBus?.price || 0) * Math.max(selectedSeats.length, 1);
+    (selectedRoute?.price || 0) * Math.max(selectedSeats.length, 1);
 
   // Load states + all cities on mount (cities API returns full list, no server-side filter)
   useEffect(() => {
@@ -194,13 +192,12 @@ export default function BusBookingScreen({ navigation }) {
     setBusy(true);
     try {
       const r = await merpiGetRoutes({
-        from: fromCity.id || fromCity.name,
-        to:   toCity.id   || toCity.name,
-        departure_date: depDate,
+        from_city_id: fromCity.id,
+        to_city_id:   toCity.id,
       });
       const list = extractList(r, 'routes', 'data');
       if (!list.length) {
-        Alert.alert('No routes found', 'No available routes for the selected cities and date.');
+        Alert.alert('No routes found', 'No available routes for the selected cities.');
         return;
       }
       setRoutes(list);
@@ -212,24 +209,16 @@ export default function BusBookingScreen({ navigation }) {
     }
   };
 
+  // A "route" already represents one business's offering (price, terminal, business
+  // all included) — selecting it loads its schedules for the chosen departure date.
   const selectRoute = async (route) => {
     setSelectedRoute(route);
+    setSelectedBus(null);
+    setSchedules([]);
+    setSelectedSchedule(null);
     setBusy(true);
     try {
-      const r = await merpiGetBuses({ route_id: route.id, departure_date: depDate });
-      setBuses(extractList(r, 'buses', 'data'));
-    } catch (e) {
-      Alert.alert('Error', e.message || 'Could not load buses.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const selectBus = async (bus) => {
-    setSelectedBus(bus);
-    setBusy(true);
-    try {
-      const r = await merpiGetSchedules({ route_id: selectedRoute?.id, departure_date: depDate });
+      const r = await merpiGetSchedules({ route_id: route.id, departure_date: depDate });
       setSchedules(extractList(r, 'schedules', 'data'));
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not load schedules.');
@@ -242,7 +231,7 @@ export default function BusBookingScreen({ navigation }) {
     setSelectedSchedule(schedule);
     setBusy(true);
     try {
-      const r = await merpiGetSeats({ bus_id: selectedBus?.id, schedule_id: schedule.id });
+      const r = await merpiGetSeats({ route_id: selectedRoute?.id, schedule_id: schedule.id });
       setSeats(extractList(r, 'seats', 'data'));
       setStep(3);
     } catch (e) {
@@ -268,7 +257,6 @@ export default function BusBookingScreen({ navigation }) {
     try {
       const res = await merpiBuyBusTicket(pin, {
         route_id:    selectedRoute?.id,
-        bus_id:      selectedBus?.id,
         schedule_id: selectedSchedule?.id,
         seat_ids:    selectedSeats.map(s => s.id),
         amount:      totalPrice,
@@ -283,7 +271,6 @@ export default function BusBookingScreen({ navigation }) {
         reference:  res.reference,
         booking:    res.booking,
         route:      selectedRoute,
-        bus:        selectedBus,
         schedule:   selectedSchedule,
         seats:      selectedSeats,
         passenger,
@@ -388,7 +375,7 @@ export default function BusBookingScreen({ navigation }) {
 
   const renderStep2 = () => (
     <ScrollView contentContainerStyle={ss.sc}>
-      {/* Routes */}
+      {/* Routes — each is a business's offering: price, terminal & company included */}
       <Text style={[ss.sectionLabel, { color: tc.subheading }]}>AVAILABLE ROUTES</Text>
       {routes.map((route) => (
         <TouchableOpacity key={route.id}
@@ -398,41 +385,26 @@ export default function BusBookingScreen({ navigation }) {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Ionicons name="navigate-outline" size={18} color={tc.primary} />
-            <Text style={[{ flex: 1, fontSize: 14, fontWeight: '600', color: tc.heading }]}>
-              {placeLabel(route.from_city || route.from)} → {placeLabel(route.to_city || route.to)}
+            <Text style={[{ flex: 1, fontSize: 14, fontWeight: '600', color: tc.heading }]} numberOfLines={1}>
+              {placeLabel(route.from)} → {placeLabel(route.to)}
             </Text>
             {selectedRoute?.id === route.id && <Ionicons name="checkmark-circle" size={20} color={tc.primary} />}
           </View>
-          {route.distance != null && typeof route.distance !== 'object' && (
-            <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 4 }]}>{route.distance}</Text>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={[{ fontSize: 13, fontWeight: '700', color: tc.heading }]}>{route.business?.name}</Text>
+              {route.terminal?.name && (
+                <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 2 }]} numberOfLines={1}>
+                  <Ionicons name="location-outline" size={11} /> {route.terminal.name}
+                </Text>
+              )}
+            </View>
+            <Text style={[{ fontSize: 16, fontWeight: '800', color: tc.primary }]}>
+              {route.price != null ? formatCurrency(route.price, 'NGN') : ''}
+            </Text>
+          </View>
         </TouchableOpacity>
       ))}
-
-      {/* Buses */}
-      {buses.length > 0 && (
-        <>
-          <Text style={[ss.sectionLabel, { color: tc.subheading, marginTop: 8 }]}>SELECT BUS</Text>
-          {buses.map((bus) => (
-            <TouchableOpacity key={bus.id}
-              style={[ss.card, { backgroundColor: selectedBus?.id === bus.id ? `${tc.primary}12` : tc.card,
-                borderColor: selectedBus?.id === bus.id ? tc.primary : tc.border || '#E5E5EA' }]}
-              onPress={() => selectBus(bus)} activeOpacity={0.8}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[{ fontSize: 14, fontWeight: '700', color: tc.heading }]}>{bus.company_name || bus.name}</Text>
-                  <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 2 }]}>{bus.bus_type || bus.type}</Text>
-                  {bus.departure_time && <Text style={[{ fontSize: 12, color: tc.primary, marginTop: 2 }]}>Departs: {bus.departure_time}</Text>}
-                </View>
-                <Text style={[{ fontSize: 16, fontWeight: '800', color: tc.primary }]}>
-                  {bus.price ? formatCurrency(bus.price, 'NGN') : ''}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </>
-      )}
 
       {/* Schedules */}
       {schedules.length > 0 && (
@@ -565,8 +537,9 @@ export default function BusBookingScreen({ navigation }) {
       {/* Trip summary */}
       {[
         { title: 'Trip Details', icon: 'bus-outline', rows: [
-          ['Route',     `${placeLabel(selectedRoute?.from_city || selectedRoute?.from)} → ${placeLabel(selectedRoute?.to_city || selectedRoute?.to)}`],
-          ['Bus',       selectedBus?.company_name || selectedBus?.name],
+          ['Route',     `${placeLabel(selectedRoute?.from)} → ${placeLabel(selectedRoute?.to)}`],
+          ['Operator',  selectedRoute?.business?.name],
+          ['Terminal',  selectedRoute?.terminal?.name],
           ['Departure', `${depDate ? fmtDate(depDate) : ''} ${selectedSchedule?.departure_time || ''}`],
           ['Seats',     selectedSeats.map(s => s.seat_number || s.number).join(', ')],
         ]},

@@ -4,6 +4,7 @@ import {
   TextInput, ActivityIndicator, Alert, FlatList, Platform,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
@@ -296,6 +297,18 @@ export default function BusBookingScreen({ navigation }) {
           <Text style={{ color: '#EF4444', fontSize: 13, flex: 1 }}>{loadError}</Text>
         </TouchableOpacity>
       )}
+
+      {/* Hero banner */}
+      <LinearGradient
+        colors={['#2D1B69', '#6D28D9', '#DB7093']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={ss.hero}
+      >
+        <Ionicons name="bus" size={84} color="rgba(255,255,255,0.16)" style={ss.heroIcon} />
+        <Text style={ss.heroTitle}>Find Your Route</Text>
+        <Text style={ss.heroSub}>Secure your seats with PayFlex speed</Text>
+      </LinearGradient>
+
       <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
         <View style={ss.cardHeader}>
           <Ionicons name="bus-outline" size={20} color={tc.primary} />
@@ -755,6 +768,12 @@ const ss = StyleSheet.create({
   sheetHandle:  { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
   sheetTitle:   { fontSize: 16, fontWeight: '700', paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F0F0F0' },
   sheetRow:     { paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: StyleSheet.hairlineWidth },
+
+  // Hero banner (Step 1)
+  hero:         { borderRadius: 18, padding: 20, marginBottom: 16, minHeight: 140, justifyContent: 'flex-end', overflow: 'hidden' },
+  heroIcon:     { position: 'absolute', right: -10, top: -10 },
+  heroTitle:    { fontSize: 22, fontWeight: '800', color: '#FFF', marginBottom: 4 },
+  heroSub:      { fontSize: 13, color: 'rgba(255,255,255,0.85)' },
 
   // Route ("Select Bus") step
   rideRoute:    { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 4 },

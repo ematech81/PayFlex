@@ -11,6 +11,18 @@ import { StatusBarComponent } from 'component/StatusBar';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { merpiGetTransaction } from 'AuthFunction/paymentService';
 
+// MERPI route endpoints can come back as strings or objects like
+// { address, city: { id, name } } — always reduce to a displayable string.
+const placeLabel = (v) => {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') {
+    const city = typeof v.city === 'object' ? v.city?.name : v.city;
+    return city || v.name || v.address || '';
+  }
+  return String(v);
+};
+
 export default function BusTicketConfirmationScreen({ navigation, route }) {
   const { reference, booking, route: tripRoute, bus, schedule, seats, passenger, amount } = route.params || {};
   const dark = useThem(), tc = dark ? colors.dark : colors.light;
@@ -86,7 +98,7 @@ export default function BusTicketConfirmationScreen({ navigation, route }) {
             <Ionicons name="bus-outline" size={16} color={tc.primary} />
             <Text style={[ss.detailCardTitle, { color: tc.subheading }]}>TRIP DETAILS</Text>
           </View>
-          <InfoRow label="Route"      value={tripRoute ? `${tripRoute.from_city || tripRoute.from} → ${tripRoute.to_city || tripRoute.to}` : null} />
+          <InfoRow label="Route"      value={tripRoute ? `${placeLabel(tripRoute.from_city || tripRoute.from)} → ${placeLabel(tripRoute.to_city || tripRoute.to)}` : null} />
           <InfoRow label="Bus"        value={bus?.company_name || bus?.name} />
           <InfoRow label="Departure"  value={schedule?.departure_time} />
           <InfoRow label="Seats"      value={seats?.map(s => s.seat_number || s.number).join(', ')} />

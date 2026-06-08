@@ -26,6 +26,18 @@ const toYMD = (d) => {
 const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
+// MERPI route endpoints can come back as strings or objects like
+// { address, city: { id, name } } — always reduce to a displayable string.
+const placeLabel = (v) => {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') {
+    const city = typeof v.city === 'object' ? v.city?.name : v.city;
+    return city || v.name || v.address || '';
+  }
+  return String(v);
+};
+
 // ─── Small reusable atoms ─────────────────────────────────────────────────────
 
 const FieldLabel = ({ text, tc }) => (
@@ -387,11 +399,13 @@ export default function BusBookingScreen({ navigation }) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Ionicons name="navigate-outline" size={18} color={tc.primary} />
             <Text style={[{ flex: 1, fontSize: 14, fontWeight: '600', color: tc.heading }]}>
-              {route.from_city || route.from} → {route.to_city || route.to}
+              {placeLabel(route.from_city || route.from)} → {placeLabel(route.to_city || route.to)}
             </Text>
             {selectedRoute?.id === route.id && <Ionicons name="checkmark-circle" size={20} color={tc.primary} />}
           </View>
-          {route.distance && <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 4 }]}>{route.distance}</Text>}
+          {route.distance != null && typeof route.distance !== 'object' && (
+            <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 4 }]}>{route.distance}</Text>
+          )}
         </TouchableOpacity>
       ))}
 
@@ -551,7 +565,7 @@ export default function BusBookingScreen({ navigation }) {
       {/* Trip summary */}
       {[
         { title: 'Trip Details', icon: 'bus-outline', rows: [
-          ['Route',     `${selectedRoute?.from_city || selectedRoute?.from} → ${selectedRoute?.to_city || selectedRoute?.to}`],
+          ['Route',     `${placeLabel(selectedRoute?.from_city || selectedRoute?.from)} → ${placeLabel(selectedRoute?.to_city || selectedRoute?.to)}`],
           ['Bus',       selectedBus?.company_name || selectedBus?.name],
           ['Departure', `${depDate ? fmtDate(depDate) : ''} ${selectedSchedule?.departure_time || ''}`],
           ['Seats',     selectedSeats.map(s => s.seat_number || s.number).join(', ')],

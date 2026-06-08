@@ -760,8 +760,8 @@ const makeGeneralGetQuery = async (path, params = {}) => {
 export const merpiGetStates    = ()           => makeGeneralGet('/merpi/bus/states');
 export const merpiGetCities    = (params)     => makeGeneralGetQuery('/merpi/bus/cities', params);
 export const merpiGetRoutes    = (params)     => makeGeneralGetQuery('/merpi/bus/routes', params);
-export const merpiGetBuses     = (params)     => makeGeneralGetQuery('/merpi/bus/buses', params);
-export const merpiGetSingleBus = (busId)      => makeGeneralGet(`/merpi/bus/buses/${busId}`);
+// Buses are physical vehicles assigned to a schedule — fetched by schedule_id path param
+export const merpiGetBuses     = (scheduleId) => makeGeneralGet(`/merpi/bus/buses/${scheduleId}`);
 export const merpiGetSchedules = (params)     => makeGeneralGetQuery('/merpi/bus/schedules', params);
 export const merpiGetSeats     = (params)     => makeGeneralGetQuery('/merpi/bus/seats', params);
 export const merpiBuyBusTicket = (pin, data)  => makeGeneralRequest('/merpi/bus/buy', { ...data, pin });

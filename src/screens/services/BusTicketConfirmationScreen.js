@@ -24,7 +24,7 @@ const placeLabel = (v) => {
 };
 
 export default function BusTicketConfirmationScreen({ navigation, route }) {
-  const { reference, booking, route: tripRoute, schedule, seats, passenger, amount } = route.params || {};
+  const { reference, booking, route: tripRoute, schedule, bus, seats, passenger, amount } = route.params || {};
   const dark = useThem(), tc = dark ? colors.dark : colors.light;
   const insets = useSafeAreaInsets();
 
@@ -102,6 +102,7 @@ export default function BusTicketConfirmationScreen({ navigation, route }) {
           <InfoRow label="Operator"   value={tripRoute?.business?.name} />
           <InfoRow label="Terminal"   value={tripRoute?.terminal?.name} />
           <InfoRow label="Departure"  value={schedule?.time?.departure} />
+          <InfoRow label="Bus"        value={bus ? `${bus.name} (${bus.seats} seats)` : null} />
           <InfoRow label="Seats"      value={seats?.map(s => s.seat_number || s.number).join(', ')} />
           <InfoRow label="Passenger"  value={passenger?.fullName} />
           <InfoRow label="Phone"      value={passenger?.phone} />

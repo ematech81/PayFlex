@@ -14,7 +14,7 @@ import { useWallet } from 'context/WalletContext';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import {
   merpiGetStates, merpiGetCities, merpiGetRoutes,
-  merpiGetSchedules, merpiGetSeats,
+  merpiGetSchedules, merpiGetBuses, merpiGetSeats,
   merpiBuyBusTicket,
 } from 'AuthFunction/paymentService';
 
@@ -123,11 +123,13 @@ export default function BusBookingScreen({ navigation }) {
   // Sheet
   const [sheet, setSheet] = useState(null); // { key, title, data, onSelect }
 
-  // Step 2 — route (route already includes business/price/terminal — no separate "bus" concept)
+  // Step 2 — route (operator/price/terminal) → schedule (day/time) → bus (physical vehicle)
   const [routes,    setRoutes]    = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [schedules, setSchedules] = useState([]);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const [buses,     setBuses]     = useState([]);
+  const [selectedBus, setSelectedBus] = useState(null);
 
   // Step 3 — seats
   const [seats,        setSeats]        = useState([]);
@@ -217,12 +219,14 @@ export default function BusBookingScreen({ navigation }) {
   };
 
   // A "route" already represents one business's offering (price, terminal, business
-  // all included) — selecting it loads its schedules for the chosen departure date.
+  // all included) — selecting it loads its schedules for the chosen departure date,
+  // then the physical buses assigned to the chosen schedule.
   const selectRoute = async (route) => {
     setSelectedRoute(route);
-    setSelectedBus(null);
     setSchedules([]);
     setSelectedSchedule(null);
+    setBuses([]);
+    setSelectedBus(null);
     setBusy(true);
     try {
       const r = await merpiGetSchedules({ route_id: route.id, terminal_id: route.terminal?.id, date: toDMY(depDate) });
@@ -234,11 +238,27 @@ export default function BusBookingScreen({ navigation }) {
     }
   };
 
+  // A schedule can be served by one or more physical vehicles — load those next.
   const selectSchedule = async (schedule) => {
     setSelectedSchedule(schedule);
+    setSelectedBus(null);
+    setBuses([]);
     setBusy(true);
     try {
-      const r = await merpiGetSeats({ route_id: selectedRoute?.id, schedule_id: schedule.id });
+      const r = await merpiGetBuses(schedule.id);
+      setBuses(extractList(r, 'buses', 'data'));
+    } catch (e) {
+      Alert.alert('Error', e.message || 'Could not load buses.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const selectBus = async (bus) => {
+    setSelectedBus(bus);
+    setBusy(true);
+    try {
+      const r = await merpiGetSeats({ bus_id: bus.id, schedule_id: selectedSchedule?.id });
       setSeats(extractList(r, 'seats', 'data'));
       setStep(3);
     } catch (e) {
@@ -265,6 +285,7 @@ export default function BusBookingScreen({ navigation }) {
       const res = await merpiBuyBusTicket(pin, {
         route_id:    selectedRoute?.id,
         schedule_id: selectedSchedule?.id,
+        bus_id:      selectedBus?.id,
         seat_ids:    selectedSeats.map(s => s.id),
         amount:      totalPrice,
         passenger_name:      passenger.fullName,
@@ -279,6 +300,7 @@ export default function BusBookingScreen({ navigation }) {
         booking:    res.booking,
         route:      selectedRoute,
         schedule:   selectedSchedule,
+        bus:        selectedBus,
         seats:      selectedSeats,
         passenger,
         amount:     totalPrice,
@@ -496,6 +518,29 @@ export default function BusBookingScreen({ navigation }) {
         </>
       )}
 
+      {/* Buses — physical vehicles assigned to the chosen schedule */}
+      {buses.length > 0 && (
+        <>
+          <Text style={[ss.sectionLabel, { color: tc.subheading, marginTop: 8 }]}>SELECT BUS</Text>
+          {buses.map((bus) => (
+            <TouchableOpacity key={bus.id}
+              style={[ss.card, { backgroundColor: selectedBus?.id === bus.id ? `${tc.primary}12` : tc.card,
+                borderColor: selectedBus?.id === bus.id ? tc.primary : tc.border || '#E5E5EA' }]}
+              onPress={() => selectBus(bus)} activeOpacity={0.8}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="bus-outline" size={18} color={tc.primary} style={{ marginRight: 10 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ fontSize: 14, fontWeight: '600', color: tc.heading }]}>{bus.name}</Text>
+                  <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 2 }]}>{bus.seats} seats</Text>
+                </View>
+                {selectedBus?.id === bus.id && <Ionicons name="checkmark-circle" size={20} color={tc.primary} />}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </>
+      )}
+
       {/* Special offer banner */}
       <View style={ss.offerCard}>
         <Text style={ss.offerLabel}>SPECIAL OFFER</Text>
@@ -616,6 +661,7 @@ export default function BusBookingScreen({ navigation }) {
           ['Operator',  selectedRoute?.business?.name],
           ['Terminal',  selectedRoute?.terminal?.name],
           ['Departure', `${depDate ? fmtDate(depDate) : ''} ${selectedSchedule?.time?.departure || ''}`],
+          ['Bus',       selectedBus ? `${selectedBus.name} (${selectedBus.seats} seats)` : null],
           ['Seats',     selectedSeats.map(s => s.seat_number || s.number).join(', ')],
         ]},
         { title: 'Passenger', icon: 'person-outline', rows: [

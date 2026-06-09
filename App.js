@@ -431,7 +431,7 @@ function AppContent({ initialRoute, navigationRef }) {
               <Stack.Screen name="BusTicketConfirmation" component={BusTicketConfirmationScreen} options={{ gestureEnabled: false }} />
               <Stack.Screen name="TripDetail"           component={TripDetailScreen} />
               <Stack.Screen name="PassengerForm"        component={PassengerFormScreen} />
-              <Stack.Screen name="SeatSelection"        component={BusSeatSelectionScreen} />
+              <Stack.Screen name="BusSeatSelection"     component={BusSeatSelectionScreen} />
               <Stack.Screen name="BookingSummary"       component={BookingSummaryScreen} />
               <Stack.Screen name="Events"               component={EventsScreen} />
               <Stack.Screen name="EventDetail"          component={EventDetailScreen} />

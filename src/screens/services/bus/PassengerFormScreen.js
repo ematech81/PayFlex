@@ -70,7 +70,7 @@ export default function PassengerFormScreen({ navigation, route: navRoute }) {
       Alert.alert('Incomplete form', 'Please fix the errors and try again.');
       return;
     }
-    navigation.navigate('SeatSelection', {
+    navigation.navigate('BusSeatSelection', {
       passengerCount: count,
       passengers,
       emergencyContact: emergency,

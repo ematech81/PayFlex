@@ -71,7 +71,9 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
           },
         } : {}),
       };
-      const departureDate = buildDepartureDate(depDate, schedule?.time?.departure);
+      const timedDepartureDate = buildDepartureDate(depDate, schedule?.time?.departure);
+      // Random schedules expect plain "YYYY-MM-DD"; time is sent separately in departure_time
+      const randomDepartureDate = depDate ? depDate.slice(0, 10) : timedDepartureDate.slice(0, 10);
 
       const payload = isRandom
         ? {
@@ -80,15 +82,15 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
             bus_id:           bus?.id,
             no_of_passengers: seatCount,
             departure_time:   to24Hour(schedule?.time?.departure),
-            departure_date:   departureDate,
+            departure_date:   randomDepartureDate,
             customer_info:    customerInfo,
             amount:           totalPrice,
           }
         : {
-            schedule_type: 'timed',
-            schedule_id:   schedule?.id,
-            seats:         seats.map(s => s.id),
-            departure_date: departureDate,
+            schedule_type:  'timed',
+            schedule_id:    schedule?.id,
+            seats:          seats.map(s => s.id),
+            departure_date: timedDepartureDate,
             customer_info:  customerInfo,
             amount:         totalPrice,
           };

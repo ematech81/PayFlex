@@ -13,7 +13,7 @@ import { SEAT_COLORS } from 'CONSTANT/bookingConstants';
 import BookingStepIndicator from 'component/bus/BookingStepIndicator';
 import TripSummaryBar from 'component/bus/TripSummaryBar';
 import { merpiGetSeats } from 'AuthFunction/paymentService';
-import { seatLabel, extractList } from 'utility/busHelpers';
+import { seatLabel, extractList, buildDepartureDate } from 'utility/busHelpers';
 
 export default function SeatSelectionScreen({ navigation, route: navRoute }) {
   const {
@@ -24,24 +24,15 @@ export default function SeatSelectionScreen({ navigation, route: navRoute }) {
   const dark = useThem(), tc = dark ? colors.dark : colors.light;
   const insets = useSafeAreaInsets();
 
-  const [seatGrid, setSeatGrid] = useState([]);   // 2D array from API
-  const [selected, setSelected] = useState([]);   // flat array of selected seat objects
+  const [seatGrid, setSeatGrid] = useState([]);
+  const [selected, setSelected] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
-
-  const formatDepartureDate = (dateStr, timeStr) => {
-    const date = new Date(dateStr);
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    const time = timeStr ? timeStr.substring(0, 5) : '00:00';
-    return `${yyyy}-${mm}-${dd} ${time}`;
-  };
 
   useEffect(() => {
     const load = async () => {
       try {
-        const formattedDate = formatDepartureDate(depDate, schedule?.time?.departure);
+        const formattedDate = buildDepartureDate(depDate, schedule?.time?.departure);
         const r = await merpiGetSeats(schedule?.id, bus?.id, formattedDate);
         const raw = r?.data?.data?.seats || r?.data?.seats || extractList(r, 'seats', 'data');
         // raw may already be 2D or flat — normalise to 2D

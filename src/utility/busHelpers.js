@@ -30,6 +30,28 @@ export const toDMY = (ymd) => {
   return `${d}-${m}-${y}`;
 };
 
+// Convert "HH:MM AM/PM" or "HH:MM" to 24-hour "HH:MM"
+export const to24Hour = (timeStr) => {
+  if (!timeStr) return '00:00';
+  const match = timeStr.match(/(\d{1,2}):(\d{2})(?:\s*(AM|PM))?/i);
+  if (!match) return '00:00';
+  let hours = parseInt(match[1], 10);
+  const mins = match[2];
+  const period = match[3]?.toUpperCase();
+  if (period === 'PM' && hours !== 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+  return `${String(hours).padStart(2, '0')}:${mins}`;
+};
+
+// Combine YYYY-MM-DD date + time string → "YYYY-MM-DD HH:MM" (V2 API format)
+export const buildDepartureDate = (dateStr, timeStr) => {
+  const date = new Date(dateStr);
+  const yyyy = date.getFullYear();
+  const mm   = String(date.getMonth() + 1).padStart(2, '0');
+  const dd   = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${to24Hour(timeStr)}`;
+};
+
 // Extract nested list from MERPI/backend response
 export const extractList = (r, ...keys) => {
   const payload = r?.data?.data || r?.data || {};

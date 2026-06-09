@@ -69,12 +69,23 @@ export default function PassengerFormScreen({ navigation, route: navRoute }) {
       Alert.alert('Incomplete form', 'Please fix the errors and try again.');
       return;
     }
-    navigation.navigate('BusSeatSelection', {
-      passengerCount: count,
-      passengers,
-      emergencyContact: emergency,
-      route, schedule, bus, depDate, pricePerSeat,
-    });
+    const isRandom = schedule?.route?.schedule_type === 'random';
+    if (isRandom) {
+      navigation.navigate('BookingSummary', {
+        passengerCount: count,
+        passengers,
+        emergencyContact: emergency,
+        selectedSeats: [],
+        route, schedule, bus, depDate, pricePerSeat,
+      });
+    } else {
+      navigation.navigate('BusSeatSelection', {
+        passengerCount: count,
+        passengers,
+        emergencyContact: emergency,
+        route, schedule, bus, depDate, pricePerSeat,
+      });
+    }
   };
 
   return (

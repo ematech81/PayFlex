@@ -14,7 +14,7 @@ import PassengerCard from 'component/bus/PassengerCard';
 import EditPassengerModal from 'component/bus/EditPassengerModal';
 import { merpiBuyBusTicket } from 'AuthFunction/paymentService';
 import { useWallet } from 'context/WalletContext';
-import { placeLabel, fmtDate, seatLabel } from 'utility/busHelpers';
+import { placeLabel, fmtDate, seatLabel, buildDepartureDate, to24Hour } from 'utility/busHelpers';
 
 const genLocalRef = () => `PAY-BUS-${Date.now()}`;
 
@@ -37,9 +37,12 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
   const [busy, setBusy]                 = useState(false);
   const [localRef]                      = useState(genLocalRef);
 
-  const walletBal   = wallet?.user?.walletBalance || 0;
-  const totalPrice  = pricePerSeat * selectedSeats.length;
-  const sufficient  = walletBal >= totalPrice;
+  const isRandom   = schedule?.route?.schedule_type === 'random';
+  const seats      = selectedSeats || [];
+  const seatCount  = isRandom ? (passengerCount || 1) : seats.length;
+  const walletBal  = wallet?.user?.walletBalance || 0;
+  const totalPrice = (pricePerSeat || 0) * seatCount;
+  const sufficient = walletBal >= totalPrice;
 
   const savePassenger = (updated) => {
     setPassengers(prev => prev.map((p, i) => i === editIdx ? updated : p));
@@ -53,31 +56,50 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
     if (!sufficient) { Alert.alert('Insufficient balance', 'Please fund your wallet before paying.'); return; }
     setBusy(true);
     try {
-      const primary = passengers[0];
-      const res = await merpiBuyBusTicket(pin, {
-        route_id:            route?.id,
-        schedule_id:         schedule?.id,
-        bus_id:              bus?.id,
-        seat_ids:            selectedSeats.map(s => s.id),
-        amount:              totalPrice,
-        passenger_name:      primary?.fullName,
-        passenger_phone:     primary?.phone,
-        passenger_email:     primary?.email,
-        next_of_kin_name:    emergency?.name,
-        next_of_kin_phone:   emergency?.phone,
-        departure_date:      depDate,
-        transactionRef:      localRef,
-        passengers:          passengers,
-      });
+      const primary      = passengers[0];
+      const kinParts     = (emergency?.name || '').trim().split(/\s+/);
+      const customerInfo = {
+        name:         primary?.fullName || '',
+        email:        primary?.email   || '',
+        phone_number: primary?.phone   || '',
+        ...(emergency?.name ? {
+          kin: {
+            first_name:   kinParts[0] || '',
+            last_name:    kinParts.slice(1).join(' ') || '',
+            phone_number: emergency?.phone || '',
+          },
+        } : {}),
+      };
+      const departureDate = buildDepartureDate(depDate, schedule?.time?.departure);
+
+      const payload = isRandom
+        ? {
+            schedule_type:    'random',
+            route_id:         schedule?.route?.id || route?.id,
+            bus_id:           bus?.id,
+            no_of_passengers: seatCount,
+            departure_time:   to24Hour(schedule?.time?.departure),
+            departure_date:   departureDate,
+            customer_info:    customerInfo,
+            amount:           totalPrice,
+          }
+        : {
+            schedule_type: 'timed',
+            schedule_id:   schedule?.id,
+            seats:         seats.map(s => s.id),
+            departure_date: departureDate,
+            customer_info:  customerInfo,
+            amount:         totalPrice,
+          };
+
+      const res = await merpiBuyBusTicket(pin, payload);
       navigation.replace('BusTicketConfirmation', {
-        reference:  res.reference || localRef,
-        booking:    res.booking,
-        route,
-        schedule,
-        bus,
-        seats:      selectedSeats,
-        passenger:  primary,
-        amount:     totalPrice,
+        reference: res.reference || localRef,
+        booking:   res.booking,
+        route, schedule, bus,
+        seats,
+        passenger: primary,
+        amount:    totalPrice,
       });
     } catch (e) {
       Alert.alert('Booking Failed', e.message || 'Could not complete booking. Your wallet was not charged.');
@@ -114,7 +136,10 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
           <InfoRow label="Operator"   value={route?.business?.name}           tc={tc} />
           <InfoRow label="Bus"        value={bus?.name}                       tc={tc} />
           <InfoRow label="Terminal"   value={route?.terminal?.name}           tc={tc} />
-          <InfoRow label="Seats"      value={selectedSeats.map(seatLabel).join(', ')} tc={tc} />
+          {isRandom
+            ? <InfoRow label="Passengers" value={`${seatCount} passenger${seatCount !== 1 ? 's' : ''}`} tc={tc} />
+            : <InfoRow label="Seats" value={seats.map(seatLabel).join(', ')} tc={tc} />
+          }
           <View style={[ss.refBox, { backgroundColor: `${tc.primary}10` }]}>
             <Text style={[ss.refLabel, { color: tc.subheading }]}>Local Reference</Text>
             <Text style={[ss.refValue, { color: tc.primary }]}>{localRef}</Text>
@@ -154,7 +179,7 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
         {/* Payment summary */}
         <View style={[ss.payCard, { backgroundColor: '#3B0CB0' }]}>
           <SectionHeader icon="wallet-outline" title="PAYMENT SUMMARY" light />
-          <PayRow label={`${formatCurrency(pricePerSeat, 'NGN')} × ${selectedSeats.length} seat${selectedSeats.length > 1 ? 's' : ''}`} value={formatCurrency(totalPrice, 'NGN')} />
+          <PayRow label={`${formatCurrency(pricePerSeat, 'NGN')} × ${seatCount} seat${seatCount !== 1 ? 's' : ''}`} value={formatCurrency(totalPrice, 'NGN')} />
           <View style={ss.payDivider} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
             <Text style={ss.payTotalLabel}>Total</Text>

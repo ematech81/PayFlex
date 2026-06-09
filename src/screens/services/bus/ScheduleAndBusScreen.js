@@ -158,9 +158,22 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
                 </View>
 
                 <View style={ss.scheduleBottom}>
-                  {!!sch.name && (
-                    <Text style={[ss.scheduleName, { color: tc.subheading }]}>{sch.name}</Text>
-                  )}
+                  {/* Operator row */}
+                  <View style={ss.operatorRow}>
+                    {sch.business?.photo ? (
+                      <Image source={{ uri: sch.business.photo }} style={ss.operatorAvatar} />
+                    ) : (
+                      <View style={[ss.operatorAvatarPlaceholder, { backgroundColor: `${tc.primary}14` }]}>
+                        <Ionicons name="business-outline" size={12} color={tc.primary} />
+                      </View>
+                    )}
+                    <Text style={[ss.operatorName, { color: tc.subheading }]} numberOfLines={1}>
+                      {sch.business?.name || 'Operator'}
+                    </Text>
+                    {!!sch.name && (
+                      <Text style={[ss.scheduleName, { color: tc.subtext }]}>· {sch.name}</Text>
+                    )}
+                  </View>
                   {!!depDate && (
                     <View style={ss.datePill}>
                       <Ionicons name="calendar-outline" size={11} color="#16A34A" />
@@ -190,7 +203,8 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
             ) : (
               buses.map(bus => {
                 const sel = selectedBus?.id === bus.id;
-                const imageUri = bus.image || bus.image_url || bus.photo || null;
+                const imageUri = bus.image || bus.image_url || bus.photo
+                  || selectedSchedule?.business?.photo || null;
                 return (
                   <TouchableOpacity
                     key={bus.id}
@@ -302,9 +316,13 @@ const ss = StyleSheet.create({
   timeLabel:          { fontSize: 11, marginTop: 2 },
   timeArrow:          { alignItems: 'center', paddingHorizontal: 8 },
   timeLine:           { width: 24, height: 1, marginBottom: 4 },
-  scheduleBottom:     { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' },
+  scheduleBottom:     { marginTop: 10, gap: 6 },
+  operatorRow:        { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  operatorAvatar:     { width: 20, height: 20, borderRadius: 10 },
+  operatorAvatarPlaceholder: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  operatorName:       { fontSize: 12, fontWeight: '600', flex: 1 },
   scheduleName:       { fontSize: 12 },
-  datePill:           { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  datePill:           { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, alignSelf: 'flex-start' },
   datePillText:       { fontSize: 11, fontWeight: '600', color: '#16A34A' },
 
   busCard:            { borderRadius: 14, borderWidth: 1.5, overflow: 'hidden', marginBottom: 12 },

@@ -55,7 +55,6 @@ export default function PassengerFormScreen({ navigation, route: navRoute }) {
       if (!p.fullName?.trim()) e[`p${i}_fullName`] = 'Required';
       if (!p.age) e[`p${i}_age`] = 'Required';
       else if (isPrimary && Number(p.age) < 18) e[`p${i}_age`] = 'Must be 18+';
-      if (isPrimary && !p.email?.trim()) e[`p${i}_email`] = 'Required';
       if (isPrimary && !p.phone?.trim()) e[`p${i}_phone`] = 'Required';
     });
     if (!emergency.name?.trim()) e.em_name = 'Required';
@@ -185,7 +184,7 @@ export default function PassengerFormScreen({ navigation, route: navRoute }) {
             onPress={proceed}
             activeOpacity={0.85}
           >
-            <Ionicons name="seat-outline" size={18} color="#FFF" />
+            <Ionicons name="grid-outline" size={18} color="#FFF" />
             <Text style={ss.ctaText}>Select Seats</Text>
             <Ionicons name="arrow-forward" size={18} color="#FFF" />
           </TouchableOpacity>
@@ -202,7 +201,7 @@ export default function PassengerFormScreen({ navigation, route: navRoute }) {
             <Text style={[ss.modalTitle, { color: tc.heading }]}>Terms & Conditions</Text>
             <ScrollView style={{ maxHeight: 300 }}>
               <Text style={[ss.tncText, { color: tc.subheading }]}>
-                {`1. Tickets are non-refundable once purchased.\n\n2. Passengers must arrive at the terminal at least 30 minutes before scheduled departure.\n\n3. Valid government-issued ID is required at boarding.\n\n4. PayFlex is not responsible for delays caused by third-party operators.\n\n5. Seat selection is subject to availability at time of booking.\n\n6. In the event of a missed departure, no refund or rescheduling is guaranteed.\n\n7. Passengers travelling with items exceeding standard luggage allowance may incur additional charges.\n\n8. PayFlex reserves the right to cancel or modify bookings in exceptional circumstances with appropriate notice.`}
+                {`1. Tickets are non-refundable once purchased.\n\n2. Passengers must arrive at the terminal at least 30 minutes before scheduled departure.\n\n3. PayFlex is not responsible for delays caused by third-party operators.\n\n4. Seat selection is subject to availability at time of booking.\n\n5. In the event of a missed departure, no refund or rescheduling is guaranteed.\n\n6. Passengers travelling with items exceeding standard luggage allowance may incur additional charges.\n\n7. PayFlex reserves the right to cancel or modify bookings in exceptional circumstances with appropriate notice.`}
               </Text>
             </ScrollView>
             <TouchableOpacity style={[ss.cta, { backgroundColor: tc.primary, marginHorizontal: 0, marginTop: 16 }]} onPress={() => { setAgreed(true); setShowTnC(false); }} activeOpacity={0.85}>
@@ -284,12 +283,10 @@ function PassengerForm({ index, passenger, errors, onChange, tc }) {
       </View>
 
       <FieldInput
-        label="Email Address"
+        label="Email (optional)"
         value={passenger.email}
         onChange={v => onChange(index, 'email', v)}
-        error={errors[`p${index}_email`]}
         keyboardType="email-address"
-        required={isPrimary}
         tc={tc}
       />
       <FieldInput

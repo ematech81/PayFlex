@@ -29,10 +29,20 @@ export default function SeatSelectionScreen({ navigation, route: navRoute }) {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
 
+  const formatDepartureDate = (dateStr, timeStr) => {
+    const date = new Date(dateStr);
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const time = timeStr ? timeStr.substring(0, 5) : '00:00';
+    return `${yyyy}-${mm}-${dd} ${time}`;
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
-        const r = await merpiGetSeats(schedule?.id, bus?.id, depDate);
+        const formattedDate = formatDepartureDate(depDate, schedule?.time?.departure);
+        const r = await merpiGetSeats(schedule?.id, bus?.id, formattedDate);
         const raw = r?.data?.data?.seats || r?.data?.seats || extractList(r, 'seats', 'data');
         // raw may already be 2D or flat — normalise to 2D
         const grid = Array.isArray(raw?.[0]) ? raw : [raw];

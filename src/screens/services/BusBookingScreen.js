@@ -13,7 +13,6 @@ import { StatusBarComponent } from 'component/StatusBar';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import {
   merpiGetStates, merpiGetCities, merpiGetRoutes,
-  merpiGetSchedules, merpiGetBuses,
 } from 'AuthFunction/paymentService';
 
 const STEPS = ['Search', 'Select'];
@@ -122,13 +121,8 @@ export default function BusBookingScreen({ navigation }) {
   // Sheet
   const [sheet, setSheet] = useState(null); // { key, title, data, onSelect }
 
-  // Step 2 — route (operator/price/terminal) → schedule (day/time) → bus (physical vehicle)
-  const [routes,    setRoutes]    = useState([]);
-  const [selectedRoute, setSelectedRoute] = useState(null);
-  const [schedules, setSchedules] = useState([]);
-  const [selectedSchedule, setSelectedSchedule] = useState(null);
-  const [buses,     setBuses]     = useState([]);
-  const [selectedBus, setSelectedBus] = useState(null);
+  // Step 2 — route cards (operator/price/terminal)
+  const [routes, setRoutes] = useState([]);
 
   // Load states + all cities on mount (cities API returns full list, no server-side filter)
   useEffect(() => {
@@ -215,52 +209,8 @@ export default function BusBookingScreen({ navigation }) {
     }
   };
 
-  // A "route" already represents one business's offering (price, terminal, business
-  // all included) — selecting it loads its schedules for the chosen departure date,
-  // then the physical buses assigned to the chosen schedule.
-  const selectRoute = async (route) => {
-    setSelectedRoute(route);
-    setSchedules([]);
-    setSelectedSchedule(null);
-    setBuses([]);
-    setSelectedBus(null);
-    setBusy(true);
-    try {
-      const r = await merpiGetSchedules({ route_id: route.id, terminal_id: route.terminal?.id, date: toDMY(depDate) });
-      setSchedules(extractList(r, 'schedules', 'data'));
-    } catch (e) {
-      Alert.alert('Error', e.message || 'Could not load schedules.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // A schedule can be served by one or more physical vehicles — load those next.
-  const selectSchedule = async (schedule) => {
-    setSelectedSchedule(schedule);
-    setSelectedBus(null);
-    setBuses([]);
-    setBusy(true);
-    try {
-      const r = await merpiGetBuses(schedule.id);
-      setBuses(extractList(r, 'buses', 'data'));
-    } catch (e) {
-      Alert.alert('Error', e.message || 'Could not load buses.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const selectBus = (bus) => {
-    setSelectedBus(bus);
-    navigation.navigate('TripDetail', {
-      route: selectedRoute,
-      schedule: selectedSchedule,
-      bus,
-      depDate,
-      fromCity,
-      toCity,
-    });
+  const selectRoute = (route) => {
+    navigation.navigate('ScheduleAndBus', { route, depDate, fromCity, toCity });
   };
 
   // ── Step renderers ──────────────────────────────────────────────────────────
@@ -391,11 +341,10 @@ export default function BusBookingScreen({ navigation }) {
 
       {/* Routes — each is a business's ride offering: price, terminal & company included */}
       {routes.map((route) => {
-        const isSel = selectedRoute?.id === route.id;
         const badgeIsLuxury = /luxury|vip|executive/i.test(route.business?.type || route.schedule_type || '');
         return (
           <TouchableOpacity key={route.id}
-            style={[ss.rideCard, { backgroundColor: tc.card, borderColor: isSel ? tc.primary : tc.border || '#EFEFF4' }]}
+            style={[ss.rideCard, { backgroundColor: tc.card, borderColor: tc.border || '#EFEFF4' }]}
             onPress={() => selectRoute(route)} activeOpacity={0.8}
           >
             <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
@@ -442,56 +391,6 @@ export default function BusBookingScreen({ navigation }) {
         );
       })}
 
-      {/* Schedules */}
-      {schedules.length > 0 && (
-        <>
-          <Text style={[ss.sectionLabel, { color: tc.subheading, marginTop: 8 }]}>SELECT DEPARTURE TIME</Text>
-          {schedules.map((sch) => (
-            <TouchableOpacity key={sch.id}
-              style={[ss.card, { backgroundColor: selectedSchedule?.id === sch.id ? `${tc.primary}12` : tc.card,
-                borderColor: selectedSchedule?.id === sch.id ? tc.primary : tc.border || '#E5E5EA' }]}
-              onPress={() => selectSchedule(sch)} activeOpacity={0.8}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="time-outline" size={16} color={tc.primary} style={{ marginRight: 8 }} />
-                <View style={{ flex: 1 }}>
-                  {!!sch.name && (
-                    <Text style={[{ fontSize: 13, fontWeight: '700', color: tc.heading }]}>{sch.name}</Text>
-                  )}
-                  <Text style={[{ fontSize: 13, color: tc.subheading, marginTop: sch.name ? 2 : 0 }]}>
-                    {sch.time?.departure || 'Time TBC'} {sch.time?.arrival ? `→ ${sch.time.arrival}` : ''}
-                  </Text>
-                </View>
-                {selectedSchedule?.id === sch.id && <Ionicons name="checkmark-circle" size={20} color={tc.primary} />}
-              </View>
-            </TouchableOpacity>
-          ))}
-        </>
-      )}
-
-      {/* Buses — physical vehicles assigned to the chosen schedule */}
-      {buses.length > 0 && (
-        <>
-          <Text style={[ss.sectionLabel, { color: tc.subheading, marginTop: 8 }]}>SELECT BUS</Text>
-          {buses.map((bus) => (
-            <TouchableOpacity key={bus.id}
-              style={[ss.card, { backgroundColor: selectedBus?.id === bus.id ? `${tc.primary}12` : tc.card,
-                borderColor: selectedBus?.id === bus.id ? tc.primary : tc.border || '#E5E5EA' }]}
-              onPress={() => selectBus(bus)} activeOpacity={0.8}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="bus-outline" size={18} color={tc.primary} style={{ marginRight: 10 }} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[{ fontSize: 14, fontWeight: '600', color: tc.heading }]}>{bus.name}</Text>
-                  <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 2 }]}>{bus.seats} seats</Text>
-                </View>
-                {selectedBus?.id === bus.id && <Ionicons name="checkmark-circle" size={20} color={tc.primary} />}
-              </View>
-            </TouchableOpacity>
-          ))}
-        </>
-      )}
-
       {/* Special offer banner */}
       <View style={ss.offerCard}>
         <Text style={ss.offerLabel}>SPECIAL OFFER</Text>
@@ -500,7 +399,6 @@ export default function BusBookingScreen({ navigation }) {
         <Ionicons name="ticket-outline" size={64} color="rgba(255,255,255,0.15)" style={ss.offerIcon} />
       </View>
 
-      {busy && <ActivityIndicator color={tc.primary} style={{ marginVertical: 20 }} />}
     </ScrollView>
   );
   };

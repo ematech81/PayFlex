@@ -73,6 +73,7 @@ import CACScreen from 'screen/general/CACScreen';
 import CACStatusScreen from 'screens/services/CACStatusScreen';
 import BusBookingScreen from 'screens/services/BusBookingScreen';
 import BusTicketConfirmationScreen from 'screens/services/BusTicketConfirmationScreen';
+import ScheduleAndBusScreen from 'screens/services/bus/ScheduleAndBusScreen';
 import TripDetailScreen from 'screens/services/bus/TripDetailScreen';
 import PassengerFormScreen from 'screens/services/bus/PassengerFormScreen';
 import BusSeatSelectionScreen from 'screens/services/bus/SeatSelectionScreen';
@@ -429,6 +430,7 @@ function AppContent({ initialRoute, navigationRef }) {
               {/* ── MERPI / Syticks ── */}
               <Stack.Screen name="BusBooking"           component={BusBookingScreen} />
               <Stack.Screen name="BusTicketConfirmation" component={BusTicketConfirmationScreen} options={{ gestureEnabled: false }} />
+              <Stack.Screen name="ScheduleAndBus"       component={ScheduleAndBusScreen} />
               <Stack.Screen name="TripDetail"           component={TripDetailScreen} />
               <Stack.Screen name="PassengerForm"        component={PassengerFormScreen} />
               <Stack.Screen name="BusSeatSelection"     component={BusSeatSelectionScreen} />

@@ -75,7 +75,7 @@ import BusBookingScreen from 'screens/services/BusBookingScreen';
 import BusTicketConfirmationScreen from 'screens/services/BusTicketConfirmationScreen';
 import TripDetailScreen from 'screens/services/bus/TripDetailScreen';
 import PassengerFormScreen from 'screens/services/bus/PassengerFormScreen';
-import SeatSelectionScreen from 'screens/services/bus/SeatSelectionScreen';
+import BusSeatSelectionScreen from 'screens/services/bus/SeatSelectionScreen';
 import BookingSummaryScreen from 'screens/services/bus/BookingSummaryScreen';
 import EventsScreen from 'screens/services/EventsScreen';
 import EventDetailScreen from 'screens/services/EventDetailScreen';
@@ -431,7 +431,7 @@ function AppContent({ initialRoute, navigationRef }) {
               <Stack.Screen name="BusTicketConfirmation" component={BusTicketConfirmationScreen} options={{ gestureEnabled: false }} />
               <Stack.Screen name="TripDetail"           component={TripDetailScreen} />
               <Stack.Screen name="PassengerForm"        component={PassengerFormScreen} />
-              <Stack.Screen name="SeatSelection"        component={SeatSelectionScreen} />
+              <Stack.Screen name="SeatSelection"        component={BusSeatSelectionScreen} />
               <Stack.Screen name="BookingSummary"       component={BookingSummaryScreen} />
               <Stack.Screen name="Events"               component={EventsScreen} />
               <Stack.Screen name="EventDetail"          component={EventDetailScreen} />

@@ -29,13 +29,14 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
   const insets = useSafeAreaInsets();
   const { wallet } = useWallet();
 
-  const [passengers, setPassengers]     = useState(initPassengers || []);
-  const [emergency, setEmergency]       = useState(initEmergency || {});
-  const [editIdx, setEditIdx]           = useState(null);
+  const [passengers, setPassengers]       = useState(initPassengers || []);
+  const [emergency, setEmergency]         = useState(initEmergency || {});
+  const [editIdx, setEditIdx]             = useState(null);
   const [editEmergency, setEditEmergency] = useState(false);
-  const [pin, setPin]                   = useState('');
-  const [busy, setBusy]                 = useState(false);
-  const [localRef]                      = useState(genLocalRef);
+  const [pin, setPin]                     = useState('');
+  const [busy, setBusy]                   = useState(false);
+  const [localRef]                        = useState(genLocalRef);
+  const [showPinSheet, setShowPinSheet]   = useState(false);
 
   const isRandom   = schedule?.route?.schedule_type === 'random';
   const seats      = selectedSeats || [];
@@ -102,7 +103,12 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
         amount:    totalPrice,
       });
     } catch (e) {
-      Alert.alert('Booking Failed', e.message || 'Could not complete booking. Your wallet was not charged.');
+      const msg = e.message || '';
+      if (msg.toLowerCase().includes('transaction pin not set') || msg.toLowerCase().includes('pin not set')) {
+        setShowPinSheet(true);
+      } else {
+        Alert.alert('Booking Failed', msg || 'Could not complete booking. Your wallet was not charged.');
+      }
     } finally {
       setBusy(false);
     }
@@ -235,6 +241,41 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
         onClose={() => setEditIdx(null)}
         tc={tc}
       />
+
+      {/* PIN not set sheet */}
+      {showPinSheet && (
+        <View style={[ss.emergencyModal, { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
+          <View style={[ss.emergencySheet, { backgroundColor: tc.card }]}>
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <Ionicons name="lock-closed" size={36} color="#EF4444" />
+            </View>
+            <Text style={[ss.sectionTitle, { color: tc.heading, textAlign: 'center', marginBottom: 8 }]}>
+              Transaction PIN Not Set
+            </Text>
+            <Text style={[{ color: tc.subheading, fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 24 }]}>
+              You need a 4-digit transaction PIN to make payments. Set one now to continue with your booking.
+            </Text>
+            <TouchableOpacity
+              style={[ss.payBtn, { backgroundColor: tc.primary }]}
+              onPress={() => {
+                setShowPinSheet(false);
+                navigation.navigate('SetTransactionPin', { fromScreen: 'BookingSummary' });
+              }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="shield-checkmark-outline" size={18} color="#FFF" />
+              <Text style={ss.payBtnText}>Set Transaction PIN Now</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ alignItems: 'center', paddingVertical: 14 }}
+              onPress={() => setShowPinSheet(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: tc.subheading, fontSize: 14 }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Edit emergency modal (inline) */}
       {editEmergency && (

@@ -47,14 +47,11 @@ export default function SetLoginPinScreen({ route, navigation }) {
 
       if (res.success) {
         await AsyncStorage.setItem(STORAGE_KEYS.PHONE, phone);
-        Alert.alert('Success', 'PIN set successfully!', [
+        Alert.alert('Login PIN Set!', 'Next, create a 4-digit transaction PIN to secure your payments.', [
           {
-            text: 'OK',
+            text: 'Continue',
             onPress: () =>
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              }),
+              navigation.navigate('SetTransactionPin', { fromRegistration: true, phone }),
           },
         ]);
       } else {

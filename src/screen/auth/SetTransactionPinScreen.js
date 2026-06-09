@@ -25,7 +25,7 @@ import { STORAGE_KEYS } from 'utility/storageKeys';
 const BASE_URL = ApiIPAddress;
 
 export default function SetTransactionPinScreen({ navigation, route }) {
-  const { fromScreen } = route.params || {};
+  const { fromScreen, fromRegistration } = route.params || {};
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
   const { wallet, updateTransactionPinStatus } = useWallet();
@@ -72,26 +72,24 @@ export default function SetTransactionPinScreen({ navigation, route }) {
         await updateTransactionPinStatus(true);
         console.log('✅ Local PIN status updated to true');
 
-        // Show success and navigate back
-        Alert.alert(
-          'Success', 
-          'Transaction PIN created successfully!', 
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // ✅ FIX: Navigate back with fromPinSetup flag
-                if (fromScreen) {
-                  navigation.navigate(fromScreen, { 
-                    fromPinSetup: true 
-                  });
-                } else {
-                  navigation.goBack();
-                }
-              },
+        // Show success and navigate
+        const successMsg = fromRegistration
+          ? 'You\'re all set! Log in with your credentials to get started.'
+          : 'Transaction PIN created successfully!';
+        Alert.alert('PIN Created!', successMsg, [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (fromRegistration) {
+                navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+              } else if (fromScreen) {
+                navigation.navigate(fromScreen, { fromPinSetup: true });
+              } else {
+                navigation.goBack();
+              }
             },
-          ]
-        );
+          },
+        ]);
       } else {
         setError(data.message || 'Failed to set PIN');
         console.error('❌ Server returned failure:', data.message);
@@ -115,10 +113,9 @@ export default function SetTransactionPinScreen({ navigation, route }) {
 
         <AuthHeader
           title="Set Transaction PIN"
-          subtitle="Create a 4-digit PIN to secure your transactions"
-          showBack
+          subtitle={fromRegistration ? 'One last step — secure your payments with a 4-digit PIN' : 'Create a 4-digit PIN to secure your transactions'}
+          showBack={!fromRegistration}
           onBack={() => navigation.goBack()}
-          // style={{paddingHorizontal: 16}}
         />
 
         <ScrollView
@@ -289,6 +286,29 @@ export default function SetTransactionPinScreen({ navigation, route }) {
               Your PIN is encrypted and securely stored. Never share your PIN with anyone.
             </Text>
           </View>
+
+          {fromRegistration && (
+            <TouchableOpacity
+              style={styles.skipBtn}
+              onPress={() =>
+                Alert.alert(
+                  'Skip Transaction PIN?',
+                  'You can set it later from Settings, but you won\'t be able to make payments until it\'s created.',
+                  [
+                    { text: 'Go Back', style: 'cancel' },
+                    {
+                      text: 'Skip for Now',
+                      style: 'destructive',
+                      onPress: () => navigation.reset({ index: 0, routes: [{ name: 'Login' }] }),
+                    },
+                  ]
+                )
+              }
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.skipText, { color: themeColors.subtext }]}>Skip for now</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
@@ -400,5 +420,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     lineHeight: 16,
+  },
+  skipBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  skipText: {
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 });

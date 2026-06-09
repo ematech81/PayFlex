@@ -160,13 +160,7 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
                 <View style={ss.scheduleBottom}>
                   {/* Operator row */}
                   <View style={ss.operatorRow}>
-                    {sch.business?.photo ? (
-                      <Image source={{ uri: sch.business.photo }} style={ss.operatorAvatar} />
-                    ) : (
-                      <View style={[ss.operatorAvatarPlaceholder, { backgroundColor: `${tc.primary}14` }]}>
-                        <Ionicons name="business-outline" size={12} color={tc.primary} />
-                      </View>
-                    )}
+                    <OperatorAvatar uri={sch.business?.photo} primaryColor={tc.primary} />
                     <Text style={[ss.operatorName, { color: tc.subheading }]} numberOfLines={1}>
                       {sch.business?.name || 'Operator'}
                     </Text>
@@ -215,14 +209,7 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
                     onPress={() => setSelectedBus(bus)}
                     activeOpacity={0.8}
                   >
-                    {/* Bus image */}
-                    {imageUri ? (
-                      <Image source={{ uri: imageUri }} style={ss.busImage} resizeMode="cover" />
-                    ) : (
-                      <View style={[ss.busImagePlaceholder, { backgroundColor: `${tc.primary}10` }]}>
-                        <Ionicons name="bus" size={36} color={tc.primary} style={{ opacity: 0.55 }} />
-                      </View>
-                    )}
+                    <BusImage uri={imageUri} primaryColor={tc.primary} />
 
                     <View style={ss.busInfo}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -276,6 +263,43 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+  );
+}
+
+function BusImage({ uri, primaryColor }) {
+  const [failed, setFailed] = useState(false);
+  if (uri && !failed) {
+    return (
+      <Image
+        source={{ uri }}
+        style={ss.busImage}
+        resizeMode="cover"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <View style={[ss.busImagePlaceholder, { backgroundColor: `${primaryColor}10` }]}>
+      <Ionicons name="bus" size={36} color={primaryColor} style={{ opacity: 0.55 }} />
+    </View>
+  );
+}
+
+function OperatorAvatar({ uri, primaryColor }) {
+  const [failed, setFailed] = useState(false);
+  if (uri && !failed) {
+    return (
+      <Image
+        source={{ uri }}
+        style={ss.operatorAvatar}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <View style={[ss.operatorAvatarPlaceholder, { backgroundColor: `${primaryColor}14` }]}>
+      <Ionicons name="business-outline" size={12} color={primaryColor} />
+    </View>
   );
 }
 

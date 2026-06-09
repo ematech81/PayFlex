@@ -267,38 +267,31 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
 }
 
 function BusImage({ uri, primaryColor }) {
-  const [failed, setFailed] = useState(false);
-  if (uri && !failed) {
-    return (
-      <Image
-        source={{ uri }}
-        style={ss.busImage}
-        resizeMode="cover"
-        onError={() => setFailed(true)}
-      />
-    );
-  }
   return (
-    <View style={[ss.busImagePlaceholder, { backgroundColor: `${primaryColor}10` }]}>
-      <Ionicons name="bus" size={36} color={primaryColor} style={{ opacity: 0.55 }} />
+    <View style={[ss.busImagePlaceholder, { backgroundColor: `${primaryColor}22`, overflow: 'hidden' }]}>
+      <Ionicons name="bus" size={44} color={primaryColor} style={{ opacity: 0.5 }} />
+      {!!uri && (
+        <Image
+          source={{ uri }}
+          style={StyleSheet.absoluteFillObject}
+          resizeMode="cover"
+        />
+      )}
     </View>
   );
 }
 
 function OperatorAvatar({ uri, primaryColor }) {
-  const [failed, setFailed] = useState(false);
-  if (uri && !failed) {
-    return (
-      <Image
-        source={{ uri }}
-        style={ss.operatorAvatar}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
   return (
-    <View style={[ss.operatorAvatarPlaceholder, { backgroundColor: `${primaryColor}14` }]}>
+    <View style={[ss.operatorAvatarPlaceholder, { backgroundColor: `${primaryColor}22`, overflow: 'hidden' }]}>
       <Ionicons name="business-outline" size={12} color={primaryColor} />
+      {!!uri && (
+        <Image
+          source={{ uri }}
+          style={StyleSheet.absoluteFillObject}
+          resizeMode="cover"
+        />
+      )}
     </View>
   );
 }

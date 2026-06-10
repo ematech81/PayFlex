@@ -38,7 +38,7 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
   const [localRef]                        = useState(genLocalRef);
   const [showPinSheet, setShowPinSheet]   = useState(false);
 
-  const isRandom   = schedule?.route?.schedule_type === 'random';
+  const isRandom   = (route?.schedule_type || schedule?.route?.schedule_type) === 'random';
   const seats      = selectedSeats || [];
   const seatCount  = isRandom ? (passengerCount || 1) : seats.length;
   const walletBal  = wallet?.user?.walletBalance || 0;
@@ -66,8 +66,11 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
         ...(emergency?.name ? {
           kin: {
             first_name:   kinParts[0] || '',
-            last_name:    kinParts.slice(1).join(' ') || '',
+            last_name:    kinParts.length > 1 ? kinParts.slice(1).join(' ') : kinParts[0] || '',
             phone_number: emergency?.phone || '',
+            email:        emergency?.email || '',
+            gender:       (emergency?.gender || '').toLowerCase(),
+            relationship: (emergency?.relationship || '').toLowerCase(),
           },
         } : {}),
       };
@@ -180,8 +183,11 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
             <Ionicons name="pencil" size={16} color={tc.primary} />
           </View>
           <View style={[ss.divider, { backgroundColor: tc.border || '#F0F0F0' }]} />
-          <InfoRow label="Name"  value={emergency.name}  tc={tc} />
-          <InfoRow label="Phone" value={emergency.phone} tc={tc} />
+          <InfoRow label="Name"         value={emergency.name}         tc={tc} />
+          <InfoRow label="Phone"        value={emergency.phone}        tc={tc} />
+          <InfoRow label="Email"        value={emergency.email}        tc={tc} />
+          <InfoRow label="Gender"       value={emergency.gender}       tc={tc} />
+          <InfoRow label="Relationship" value={emergency.relationship} tc={tc} />
         </TouchableOpacity>
 
         {/* Payment summary */}
@@ -292,13 +298,57 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
               placeholderTextColor={tc.subtext}
             />
             <TextInput
-              style={[ss.pinInp, { borderColor: tc.border || '#E5E5EA', color: tc.heading, backgroundColor: tc.background }]}
+              style={[ss.pinInp, { borderColor: tc.border || '#E5E5EA', color: tc.heading, backgroundColor: tc.background, marginBottom: 12 }]}
               value={emergency.phone}
               onChangeText={v => setEmergency(e => ({ ...e, phone: v }))}
               placeholder="Contact Phone"
               placeholderTextColor={tc.subtext}
               keyboardType="phone-pad"
             />
+            <TextInput
+              style={[ss.pinInp, { borderColor: tc.border || '#E5E5EA', color: tc.heading, backgroundColor: tc.background, marginBottom: 12 }]}
+              value={emergency.email}
+              onChangeText={v => setEmergency(e => ({ ...e, email: v }))}
+              placeholder="Contact Email"
+              placeholderTextColor={tc.subtext}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {['Male', 'Female'].map(g => {
+                const sel = emergency.gender === g;
+                return (
+                  <TouchableOpacity
+                    key={g}
+                    style={[
+                      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1.5, borderRadius: 10, paddingVertical: 10 },
+                      { borderColor: sel ? tc.primary : tc.border || '#E5E5EA', backgroundColor: sel ? `${tc.primary}18` : tc.background },
+                    ]}
+                    onPress={() => setEmergency(e => ({ ...e, gender: g }))}
+                  >
+                    <Ionicons name={g === 'Male' ? 'male' : 'female'} size={14} color={sel ? tc.primary : tc.subheading} />
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: sel ? tc.primary : tc.subheading }}>{g}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+              {['Parent', 'Spouse', 'Sibling', 'Child', 'Friend', 'Other'].map(r => {
+                const sel = emergency.relationship === r;
+                return (
+                  <TouchableOpacity
+                    key={r}
+                    style={[
+                      { borderWidth: 1.5, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+                      { borderColor: sel ? tc.primary : tc.border || '#E5E5EA', backgroundColor: sel ? `${tc.primary}18` : tc.background },
+                    ]}
+                    onPress={() => setEmergency(e => ({ ...e, relationship: r }))}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: sel ? tc.primary : tc.subheading }}>{r}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
             <TouchableOpacity style={[ss.payBtn, { backgroundColor: tc.primary, marginTop: 16 }]} onPress={saveEmergency} activeOpacity={0.85}>
               <Text style={ss.payBtnText}>Save</Text>
             </TouchableOpacity>

@@ -138,14 +138,14 @@ export default function BusBookingScreen({ navigation }) {
       };
     };
 
-    // Cities are paginated — a single page only covers a handful of states,
-    // so walk every page and accumulate until next_page is null.
-    const fetchAllCities = async () => {
+    // States and cities are both paginated — a single page only covers a handful
+    // of entries, so walk every page and accumulate until next_page is null.
+    const fetchAllPages = async (fetchFn, key) => {
       let all = [];
       let page = 1;
       for (let guard = 0; guard < 50; guard++) {
-        const cr = await merpiGetCities({ per_page: 200, page });
-        const { list, nextPage } = extract(cr, 'cities');
+        const r = await fetchFn({ per_page: 200, page });
+        const { list, nextPage } = extract(r, key);
         all = all.concat(list);
         if (!nextPage || !list.length) break;
         page = Number(nextPage);
@@ -153,9 +153,11 @@ export default function BusBookingScreen({ navigation }) {
       return all;
     };
 
-    Promise.all([merpiGetStates(), fetchAllCities()])
-      .then(([sr, cityList]) => {
-        const { list: stateList } = extract(sr, 'states');
+    Promise.all([
+      fetchAllPages(merpiGetStates, 'states'),
+      fetchAllPages(merpiGetCities, 'cities'),
+    ])
+      .then(([stateList, cityList]) => {
         console.log('[MERPI] states count:', stateList.length, '| cities count:', cityList.length);
         setStates(stateList);
         setAllCities(cityList);

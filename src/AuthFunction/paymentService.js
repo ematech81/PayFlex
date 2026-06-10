@@ -757,7 +757,7 @@ const makeGeneralGetQuery = async (path, params = {}) => {
 };
 
 // ─── MERPI / Syticks — Bus Tickets ───────────────────────────────────────────
-export const merpiGetStates    = ()           => makeGeneralGet('/merpi/bus/states');
+export const merpiGetStates    = (params)     => makeGeneralGetQuery('/merpi/bus/states', params);
 export const merpiGetCities    = (params)     => makeGeneralGetQuery('/merpi/bus/cities', params);
 export const merpiGetRoutes    = (params)     => makeGeneralGetQuery('/merpi/bus/routes', params);
 // Buses are physical vehicles assigned to a schedule — fetched by schedule_id path param

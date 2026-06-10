@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity,
   TextInput, Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
@@ -12,6 +13,9 @@ import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { MAX_PASSENGERS_PER_BOOKING, PASSENGER_TITLES } from 'CONSTANT/bookingConstants';
 import BookingStepIndicator from 'component/bus/BookingStepIndicator';
 import TripSummaryBar from 'component/bus/TripSummaryBar';
+
+const SAVED_PASSENGER_KEY = 'bus_saved_passenger';
+const SAVED_EMERGENCY_KEY = 'bus_saved_emergency';
 
 const emptyPassenger = () => ({ title: '', fullName: '', age: '', email: '', phone: '', gender: '' });
 
@@ -22,10 +26,33 @@ export default function PassengerFormScreen({ navigation, route: navRoute }) {
 
   const [count, setCount] = useState(1);
   const [passengers, setPassengers] = useState([emptyPassenger()]);
-  const [emergency, setEmergency] = useState({ name: '', phone: '' });
+  const [emergency, setEmergency] = useState({ name: '', phone: '', email: '', gender: '', relationship: '' });
   const [agreed, setAgreed] = useState(false);
   const [showTnC, setShowTnC] = useState(false);
   const [errors, setErrors] = useState({});
+  const [savedLoaded, setSavedLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadSaved = async () => {
+      try {
+        const [pStr, eStr] = await Promise.all([
+          AsyncStorage.getItem(SAVED_PASSENGER_KEY),
+          AsyncStorage.getItem(SAVED_EMERGENCY_KEY),
+        ]);
+        let loaded = false;
+        if (pStr) {
+          setPassengers([JSON.parse(pStr)]);
+          loaded = true;
+        }
+        if (eStr) {
+          setEmergency(JSON.parse(eStr));
+          loaded = true;
+        }
+        if (loaded) setSavedLoaded(true);
+      } catch (_) {}
+    };
+    loadSaved();
+  }, []);
 
   const totalPrice = (pricePerSeat || 0) * count;
 
@@ -59,17 +86,30 @@ export default function PassengerFormScreen({ navigation, route: navRoute }) {
     });
     if (!emergency.name?.trim()) e.em_name = 'Required';
     if (!emergency.phone?.trim()) e.em_phone = 'Required';
+    if (!emergency.email?.trim()) e.em_email = 'Required';
+    else if (!/^\S+@\S+\.\S+$/.test(emergency.email.trim())) e.em_email = 'Invalid email';
+    if (!emergency.gender) e.em_gender = 'Required';
+    if (!emergency.relationship) e.em_relationship = 'Required';
     if (!agreed) e.agreed = 'You must agree to the Terms & Conditions';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const proceed = () => {
+  const proceed = async () => {
     if (!validate()) {
       Alert.alert('Incomplete form', 'Please fix the errors and try again.');
       return;
     }
-    const isRandom = schedule?.route?.schedule_type === 'random';
+    // Persist primary passenger and emergency contact for next booking
+    try {
+      await Promise.all([
+        AsyncStorage.setItem(SAVED_PASSENGER_KEY, JSON.stringify(passengers[0])),
+        AsyncStorage.setItem(SAVED_EMERGENCY_KEY, JSON.stringify(emergency)),
+      ]);
+    } catch (_) {}
+
+    const scheduleType = route?.schedule_type || schedule?.route?.schedule_type;
+    const isRandom = scheduleType === 'random';
     if (isRandom) {
       navigation.navigate('BookingSummary', {
         passengerCount: count,
@@ -106,6 +146,25 @@ export default function PassengerFormScreen({ navigation, route: navRoute }) {
         <ScrollView contentContainerStyle={ss.sc} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
           <TripSummaryBar route={route} depDate={depDate} pricePerSeat={pricePerSeat} tc={tc} />
+
+          {savedLoaded && (
+            <View style={[ss.savedBanner, { backgroundColor: `${tc.primary}12`, borderColor: `${tc.primary}30` }]}>
+              <Ionicons name="checkmark-circle-outline" size={15} color={tc.primary} />
+              <Text style={[ss.savedText, { color: tc.primary }]}>
+                Primary passenger &amp; emergency contact pre-filled from last booking
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setPassengers([emptyPassenger()]);
+                  setEmergency({ name: '', phone: '', email: '', gender: '', relationship: '' });
+                  setSavedLoaded(false);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={[{ color: tc.primary, fontSize: 12, fontWeight: '700' }]}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Passenger count */}
           <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
@@ -170,6 +229,60 @@ export default function PassengerFormScreen({ navigation, route: navRoute }) {
               required
               tc={tc}
             />
+            <FieldInput
+              label="Contact Email"
+              value={emergency.email}
+              onChange={v => updateEmergency('email', v)}
+              error={errors.em_email}
+              keyboardType="email-address"
+              required
+              tc={tc}
+            />
+
+            {/* Gender */}
+            <Text style={[ss.fieldLabel, { color: tc.subheading }]}>
+              Contact Gender <Text style={{ color: '#EF4444' }}>*</Text>
+            </Text>
+            <View style={ss.genderRow}>
+              {['Male', 'Female'].map(g => {
+                const sel = emergency.gender === g;
+                return (
+                  <TouchableOpacity
+                    key={g}
+                    style={[ss.genderBtn, { borderColor: sel ? tc.primary : tc.border || '#E5E5EA', backgroundColor: sel ? `${tc.primary}18` : tc.background }]}
+                    onPress={() => updateEmergency('gender', g)}
+                  >
+                    <Ionicons name={g === 'Male' ? 'male' : 'female'} size={14} color={sel ? tc.primary : tc.subheading} />
+                    <Text style={[ss.genderText, { color: sel ? tc.primary : tc.subheading }]}>{g}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {errors.em_gender ? (
+              <Text style={ss.errText}>{errors.em_gender}</Text>
+            ) : null}
+
+            {/* Relationship */}
+            <Text style={[ss.fieldLabel, { color: tc.subheading, marginTop: 4 }]}>
+              Relationship to Passenger <Text style={{ color: '#EF4444' }}>*</Text>
+            </Text>
+            <View style={ss.relationshipRow}>
+              {['Parent', 'Spouse', 'Sibling', 'Child', 'Friend', 'Other'].map(r => {
+                const sel = emergency.relationship === r;
+                return (
+                  <TouchableOpacity
+                    key={r}
+                    style={[ss.relationshipBtn, { borderColor: sel ? tc.primary : tc.border || '#E5E5EA', backgroundColor: sel ? `${tc.primary}18` : tc.background }]}
+                    onPress={() => updateEmergency('relationship', r)}
+                  >
+                    <Text style={[ss.relationshipText, { color: sel ? tc.primary : tc.subheading }]}>{r}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {errors.em_relationship ? (
+              <Text style={ss.errText}>{errors.em_relationship}</Text>
+            ) : null}
           </View>
 
           {/* T&C */}
@@ -354,6 +467,9 @@ const ss = StyleSheet.create({
   genderRow:    { flexDirection: 'row', gap: 10, marginBottom: 12 },
   genderBtn:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1.5, borderRadius: 10, paddingVertical: 10 },
   genderText:   { fontSize: 14, fontWeight: '600' },
+  relationshipRow:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  relationshipBtn:  { borderWidth: 1.5, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  relationshipText: { fontSize: 13, fontWeight: '600' },
   checkRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   checkbox:     { width: 22, height: 22, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   checkText:    { flex: 1, fontSize: 13, lineHeight: 20 },
@@ -364,4 +480,6 @@ const ss = StyleSheet.create({
   modalHandle:  { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   modalTitle:   { fontSize: 18, fontWeight: '800', marginBottom: 16 },
   tncText:      { fontSize: 14, lineHeight: 22 },
+  savedBanner:  { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 12 },
+  savedText:    { flex: 1, fontSize: 12, fontWeight: '500' },
 });

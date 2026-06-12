@@ -13,7 +13,7 @@ import { merpiGetMovies } from 'AuthFunction/paymentService';
 const pad = (n) => String(n).padStart(2, '0');
 const toYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-const DATE_STRIP_DAYS = 14;
+const DATE_STRIP_DAYS = 60;
 const dateStrip = Array.from({ length: DATE_STRIP_DAYS }, (_, i) => {
   const d = new Date();
   d.setDate(d.getDate() + i);
@@ -162,6 +162,7 @@ export default function CinemaScreen({ navigation }) {
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => toYMD(item)}
+        extraData={selectedDate}
         contentContainerStyle={ss.dateStripContent}
         style={[ss.dateStripRow, { backgroundColor: tc.background, borderBottomColor: tc.border || '#E5E5EA' }]}
         renderItem={({ item }) => {

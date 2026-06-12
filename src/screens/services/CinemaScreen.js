@@ -20,13 +20,43 @@ const dateStrip = Array.from({ length: DATE_STRIP_DAYS }, (_, i) => {
   return d;
 });
 
-// Treat a movie as "showing" on a date if it falls within its start/end window.
-// Movies without these fields are assumed to be showing (no info to exclude them).
+// Gather every date / weekday a cinema experience is known to show on, from
+// cinema_info.specific_dates and the days_with_times matrices (shared or per-location).
+const collectShowingInfo = (info) => {
+  const dates = new Set();
+  const days = new Set();
+
+  (info.specific_dates || []).forEach((d) => dates.add(d));
+
+  const collectFromList = (list) => {
+    (list || []).forEach((d) => {
+      if (d.date) dates.add(d.date);
+      if (d.day != null) days.add(d.day);
+    });
+  };
+
+  collectFromList(info.days_with_times);
+  (info.locations || []).forEach((loc) => collectFromList(loc.days_with_times));
+
+  return { dates, days };
+};
+
+// Treat a movie as "showing" on a date based on its cinema_info schedule.
+// Movies without any schedule info are assumed to be showing every day.
 const isShowingOnDate = (item, dateStr) => {
-  const start = item.start_date?.slice(0, 10);
-  const end   = item.end_date?.slice(0, 10);
-  if (end && end < dateStr) return false;
-  if (start && start > dateStr) return false;
+  const info = item.cinema_info;
+  if (!info) return true;
+
+  const { dates, days } = collectShowingInfo(info);
+
+  if (dates.size > 0) return dates.has(dateStr);
+
+  if (days.size > 0) {
+    const jsDay = new Date(`${dateStr}T00:00:00`).getDay();
+    const docDay = jsDay === 0 ? 7 : jsDay;
+    return days.has(docDay);
+  }
+
   return true;
 };
 

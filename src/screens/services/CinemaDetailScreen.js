@@ -56,6 +56,7 @@ export default function CinemaDetailScreen({ navigation, route }) {
   const [displayMonth,   setDisplayMonth]   = useState(() => { const d = new Date(); d.setDate(1); return d; });
   const [availDates,     setAvailDates]     = useState([]);
   const [datesLoading,   setDatesLoading]   = useState(false);
+  const [datesError,     setDatesError]     = useState('');
   const [attendanceDate, setAttendanceDate] = useState('');
 
   const [showtimes,      setShowtimes]      = useState([]);
@@ -98,11 +99,13 @@ export default function CinemaDetailScreen({ navigation, route }) {
   // Load available dates whenever the displayed month or location changes
   const loadDates = useCallback(async () => {
     setDatesLoading(true);
+    setDatesError('');
     try {
       const res = await merpiGetCinemaDates(movieId, monthName(displayMonth));
       setAvailDates(res?.data || []);
     } catch (e) {
       setAvailDates([]);
+      setDatesError(e.message || 'Could not load available dates.');
     } finally {
       setDatesLoading(false);
     }
@@ -304,6 +307,8 @@ export default function CinemaDetailScreen({ navigation, route }) {
               );
             }}
           />
+        ) : datesError ? (
+          <Text style={[{ fontSize: 13, color: '#EF4444', paddingHorizontal: 16, marginBottom: 12 }]}>{datesError}</Text>
         ) : (
           <Text style={[{ fontSize: 13, color: tc.subtext, paddingHorizontal: 16, marginBottom: 12 }]}>No showings available this month.</Text>
         )}

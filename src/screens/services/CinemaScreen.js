@@ -10,6 +10,26 @@ import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 import { merpiGetMovies } from 'AuthFunction/paymentService';
 
+const pad = (n) => String(n).padStart(2, '0');
+const toYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+const DATE_STRIP_DAYS = 14;
+const dateStrip = Array.from({ length: DATE_STRIP_DAYS }, (_, i) => {
+  const d = new Date();
+  d.setDate(d.getDate() + i);
+  return d;
+});
+
+// Treat a movie as "showing" on a date if it falls within its start/end window.
+// Movies without these fields are assumed to be showing (no info to exclude them).
+const isShowingOnDate = (item, dateStr) => {
+  const start = item.start_date?.slice(0, 10);
+  const end   = item.end_date?.slice(0, 10);
+  if (end && end < dateStr) return false;
+  if (start && start > dateStr) return false;
+  return true;
+};
+
 export default function CinemaScreen({ navigation }) {
   const dark = useThem(), tc = dark ? colors.dark : colors.light;
   const insets = useSafeAreaInsets();
@@ -19,6 +39,7 @@ export default function CinemaScreen({ navigation }) {
   const [refreshing,setRefreshing]= useState(false);
   const [error,     setError]     = useState('');
   const [search,    setSearch]    = useState('');
+  const [selectedDate, setSelectedDate] = useState(() => toYMD(new Date()));
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -36,6 +57,8 @@ export default function CinemaScreen({ navigation }) {
 
   useEffect(() => { load(); }, []);
   const onRefresh = () => { setRefreshing(true); load(true); };
+
+  const filteredMovies = movies.filter((m) => isShowingOnDate(m, selectedDate));
 
   const renderMovie = ({ item }) => (
     <TouchableOpacity
@@ -103,6 +126,31 @@ export default function CinemaScreen({ navigation }) {
         </View>
       </View>
 
+      {/* Date strip */}
+      <FlatList
+        data={dateStrip}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => toYMD(item)}
+        contentContainerStyle={ss.dateStripContent}
+        style={[ss.dateStripRow, { backgroundColor: tc.background, borderBottomColor: tc.border || '#E5E5EA' }]}
+        renderItem={({ item }) => {
+          const ymd = toYMD(item);
+          const active = ymd === selectedDate;
+          return (
+            <TouchableOpacity
+              style={[ss.dateStripCard, { backgroundColor: active ? tc.primary : tc.card, borderColor: active ? tc.primary : tc.border || '#E5E5EA' }]}
+              onPress={() => setSelectedDate(ymd)}
+              activeOpacity={0.8}
+            >
+              <Text style={[ss.dateStripMonth, { color: active ? '#FFF' : tc.subheading }]}>{item.toLocaleString('en-US', { month: 'short' })}</Text>
+              <Text style={[ss.dateStripDay, { color: active ? '#FFF' : tc.heading }]}>{item.getDate()}</Text>
+              <Text style={[ss.dateStripWeekday, { color: active ? '#FFF' : tc.subheading }]}>{item.toLocaleString('en-US', { weekday: 'short' })}</Text>
+            </TouchableOpacity>
+          );
+        }}
+      />
+
       {loading ? (
         <View style={ss.centered}>
           <ActivityIndicator size="large" color={tc.primary} />
@@ -118,7 +166,7 @@ export default function CinemaScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
-          data={movies}
+          data={filteredMovies}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderMovie}
           numColumns={2}
@@ -129,7 +177,11 @@ export default function CinemaScreen({ navigation }) {
           ListEmptyComponent={
             <View style={ss.centered}>
               <Ionicons name="film-outline" size={48} color={tc.subtext} />
-              <Text style={[{ fontSize: 14, color: tc.subheading, marginTop: 12 }]}>No movies found</Text>
+              <Text style={[{ fontSize: 14, color: tc.subheading, marginTop: 12, textAlign: 'center', paddingHorizontal: 24 }]}>
+                {movies.length > 0
+                  ? `No movies showing on ${new Date(`${selectedDate}T00:00:00`).toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long' })}`
+                  : 'No movies found'}
+              </Text>
             </View>
           }
         />
@@ -145,6 +197,12 @@ const ss = StyleSheet.create({
   searchRow:       { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
   searchBox:       { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
   searchInput:     { flex: 1, fontSize: 14 },
+  dateStripRow:    { borderBottomWidth: 1, flexGrow: 0 },
+  dateStripContent:{ paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
+  dateStripCard:   { width: 56, paddingVertical: 10, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  dateStripMonth:  { fontSize: 11, fontWeight: '600' },
+  dateStripDay:    { fontSize: 18, fontWeight: '800' },
+  dateStripWeekday:{ fontSize: 11, fontWeight: '600' },
   listContent:     { paddingHorizontal: 12, paddingTop: 12, paddingBottom: 24 },
   columnWrapper:   { gap: 10, marginBottom: 10 },
   movieCard:       { flex: 1, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },

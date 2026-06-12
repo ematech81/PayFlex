@@ -228,7 +228,7 @@ const ss = StyleSheet.create({
   searchRow:       { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
   searchBox:       { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
   searchInput:     { flex: 1, fontSize: 14 },
-  dateStripRow:    { borderBottomWidth: 1, flexGrow: 0 },
+  dateStripRow:    { height: 110, borderBottomWidth: 1, flexGrow: 0 },
   dateStripContent:{ paddingHorizontal: 12, paddingVertical: 10, gap: 8 },
   dateStripCard:   { width: 64, height: 90, paddingVertical: 14, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
   dateStripMonth:  { fontSize: 12, fontWeight: '600' },

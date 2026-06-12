@@ -25,7 +25,7 @@ export default function CinemaScreen({ navigation }) {
     setError('');
     try {
       const res = await merpiGetMovies({ search: search || undefined });
-      setMovies(res?.data?.data?.experiences || []);
+      setMovies(res?.data?.experiences || []);
     } catch (e) {
       setError(e.message || 'Could not load movies.');
     } finally {

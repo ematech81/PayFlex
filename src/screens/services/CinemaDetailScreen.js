@@ -77,7 +77,7 @@ export default function CinemaDetailScreen({ navigation, route }) {
       setLoading(true);
       try {
         const res = await merpiGetCinemaDetails(movieId);
-        const data = res?.data?.data || initialMovie;
+        const data = res?.data || initialMovie;
         setMovie(data);
 
         const locs = data?.cinema_info?.locations || [];
@@ -100,7 +100,7 @@ export default function CinemaDetailScreen({ navigation, route }) {
     setDatesLoading(true);
     try {
       const res = await merpiGetCinemaDates(movieId, monthName(displayMonth));
-      setAvailDates(res?.data?.data || []);
+      setAvailDates(res?.data || []);
     } catch (e) {
       setAvailDates([]);
     } finally {
@@ -136,7 +136,7 @@ export default function CinemaDetailScreen({ navigation, route }) {
     setTimeId(selectedTimeId);
     try {
       const res = await merpiGetCinemaTickets(movieId, locationId);
-      const list = res?.data?.data?.tickets || [];
+      const list = res?.data?.tickets || [];
       setTickets(list);
       const init = {};
       list.forEach((t) => { init[t.id] = 0; });

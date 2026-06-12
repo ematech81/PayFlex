@@ -349,7 +349,11 @@ export default function CinemaDetailScreen({ navigation, route }) {
               <View key={ticket.id} style={[ss.ticketRow, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={[{ fontSize: 14, fontWeight: '700', color: tc.heading }]}>{ticket.title}</Text>
-                  {ticket.price_breakdown && <Text style={[{ fontSize: 11, color: tc.subheading, marginTop: 2 }]} numberOfLines={2}>{ticket.price_breakdown}</Text>}
+                  {ticket.price_breakdown?.convenience_fee > 0 && (
+                    <Text style={[{ fontSize: 11, color: tc.subheading, marginTop: 2 }]}>
+                      Includes {formatCurrency(ticket.price_breakdown.convenience_fee, 'NGN')} convenience fee
+                    </Text>
+                  )}
                   <Text style={[{ fontSize: 15, fontWeight: '800', color: tc.primary, marginTop: 4 }]}>{formatCurrency(ticket.price || 0, 'NGN')}</Text>
                 </View>
                 <View style={ss.qtyRow}>

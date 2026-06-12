@@ -390,10 +390,10 @@ export const AuthService = {
         };
       }
   
-      if (!/^\d{6}$/.test(otp.trim())) {
+      if (!/^[A-Z0-9]{6}$/i.test(otp.trim())) {
         return {
           success: false,
-          message: 'OTP must be exactly 6 digits',
+          message: 'Access key must be exactly 6 characters',
         };
       }
   

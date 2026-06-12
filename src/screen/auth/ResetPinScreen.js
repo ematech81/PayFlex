@@ -42,9 +42,9 @@ export default function ResetPinScreen({ navigation, route }) {
       );
       if (response.data.success) {
         setOtpSent(true);
-        Alert.alert('Success', 'OTP sent to your phone');
+        Alert.alert('Success', 'Your access key has been sent. It may take up to 2 minutes to arrive.');
       } else {
-        setError(response.data.message || 'Failed to send OTP');
+        setError(response.data.message || 'Failed to send access key');
       }
     } catch (error) {
       setError(error.response?.data?.message || 'Network error');
@@ -55,8 +55,8 @@ export default function ResetPinScreen({ navigation, route }) {
 
   const handleResetPin = async () => {
     const pinLength = pinType === 'transaction' ? 4 : 6;
-    if (!otp || !/^\d{6}$/.test(otp)) {
-      setError('OTP must be 6 digits');
+    if (!otp || !/^[A-Z0-9]{6}$/i.test(otp)) {
+      setError('Access key must be exactly 6 characters');
       return;
     }
     if (!pin || !new RegExp(`^\\d{${pinLength}}$`).test(pin)) {
@@ -118,7 +118,7 @@ export default function ResetPinScreen({ navigation, route }) {
       {!otpSent ? (
         <>
           <Text style={[styles.label, { color: themeColors.heading }]}>
-            Request OTP to reset your{' '}
+            Request an access key to reset your{' '}
             {pinType === 'transaction' ? 'transaction' : 'login'} PIN
           </Text>
           <TouchableOpacity
@@ -139,7 +139,7 @@ export default function ResetPinScreen({ navigation, route }) {
               <Text
                 style={[styles.submitButtonText, { color: themeColors.card }]}
               >
-                Send OTP
+                Send Access Key
               </Text>
             )}
           </TouchableOpacity>
@@ -147,7 +147,7 @@ export default function ResetPinScreen({ navigation, route }) {
       ) : (
         <>
           <Text style={[styles.label, { color: themeColors.heading }]}>
-            Enter OTP
+            Enter your access key
           </Text>
           <TextInput
             style={[
@@ -156,11 +156,13 @@ export default function ResetPinScreen({ navigation, route }) {
             ]}
             placeholder="******"
             placeholderTextColor={themeColors.subtext}
-            keyboardType="numeric"
+            keyboardType="default"
+            autoCapitalize="characters"
+            autoCorrect={false}
             maxLength={6}
             value={otp}
-            onChangeText={setOtp}
-            accessibilityLabel="OTP input"
+            onChangeText={(v) => setOtp(v.toUpperCase())}
+            accessibilityLabel="Access key input"
           />
           <Text style={[styles.label, { color: themeColors.heading }]}>
             Enter New {pinType === 'transaction' ? '4-Digit' : '6-Digit'} PIN

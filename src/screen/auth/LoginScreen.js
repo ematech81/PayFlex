@@ -230,7 +230,7 @@ export default function LoginScreen({ navigation }) {
 
         Alert.alert(
           'New Device Detected',
-          res.message || 'We sent a verification code to your phone for security.',
+          res.message || 'Your access key has been sent. It may take up to 2 minutes to arrive.',
           [
             {
               text: 'Verify',
@@ -289,7 +289,7 @@ export default function LoginScreen({ navigation }) {
   const verifyResetCode = async () => {
     const code = resetOtp.join('');
     if (code.length !== 6) {
-      return Alert.alert('Error', 'Enter the 6-digit code');
+      return Alert.alert('Error', 'Enter your 6-character access key');
     }
 
     try {
@@ -346,10 +346,10 @@ export default function LoginScreen({ navigation }) {
 
   // Handle OTP input for reset flow
   const handleResetOtpChange = (value, index) => {
-    if (!/^\d?$/.test(value)) return;
+    if (!/^[A-Za-z0-9]?$/.test(value)) return;
 
     const updated = [...resetOtp];
-    updated[index] = value;
+    updated[index] = value.toUpperCase();
     setResetOtp(updated);
 
     if (value && index < 5) {
@@ -510,14 +510,14 @@ export default function LoginScreen({ navigation }) {
                   marginBottom: 8,
                   color: theme.heading 
                 }}>
-                  Enter Reset Code
+                  Enter Access Key
                 </Text>
-                <Text style={{ 
-                  fontSize: 14, 
-                  color: theme.subtext, 
-                  marginBottom: 16 
+                <Text style={{
+                  fontSize: 14,
+                  color: theme.subtext,
+                  marginBottom: 16
                 }}>
-                  We sent a 6-digit code to {resetPhone}
+                  We sent an access key to {resetPhone}
                 </Text>
                 
                 <View style={{ 
@@ -532,7 +532,9 @@ export default function LoginScreen({ navigation }) {
                       style={otpBox(theme)}
                       value={d}
                       onChangeText={(v) => handleResetOtpChange(v, i)}
-                      keyboardType="number-pad"
+                      keyboardType="default"
+                      autoCapitalize="characters"
+                      autoCorrect={false}
                       maxLength={1}
                     />
                   ))}
@@ -542,7 +544,7 @@ export default function LoginScreen({ navigation }) {
                   style={btnStyle(theme)} 
                   onPress={verifyResetCode}
                 >
-                  <Text style={btnText(theme)}>Verify Code</Text>
+                  <Text style={btnText(theme)}>Verify Access Key</Text>
                 </TouchableOpacity>
               </>
             )}

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert,
+  TextInput, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
@@ -14,7 +15,7 @@ import PassengerCard from 'component/bus/PassengerCard';
 import EditPassengerModal from 'component/bus/EditPassengerModal';
 import { merpiBuyBusTicket } from 'AuthFunction/paymentService';
 import { useWallet } from 'context/WalletContext';
-import { placeLabel, fmtDate, seatLabel, buildDepartureDate, to24Hour } from 'utility/busHelpers';
+import { placeLabel, fmtDate, seatLabel, buildDepartureDate, timeToMinutes, minutesToHHMM } from 'utility/busHelpers';
 
 const genLocalRef = () => `PAY-BUS-${Date.now()}`;
 
@@ -44,6 +45,38 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
   const walletBal  = wallet?.user?.walletBalance || 0;
   const totalPrice = (pricePerSeat || 0) * seatCount;
   const sufficient = walletBal >= totalPrice;
+
+  // Random schedules operate within a daily window (e.g. 06:45–21:45) — the
+  // user must pick a departure time inside it, not the bus's display time.
+  // The window is per-bus (schedule.buses[].start_time/end_time from the
+  // packages endpoint), with operating_hours as a schedule-level fallback.
+  const windowStartMin = isRandom ? timeToMinutes(bus?.start_time || schedule?.operating_hours?.start) : null;
+  const windowEndMin   = isRandom ? timeToMinutes(bus?.end_time   || schedule?.operating_hours?.end)   : null;
+
+  const defaultRandomMinutes = () => {
+    if (windowStartMin == null) return 0;
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    if (windowEndMin != null && nowMin >= windowStartMin && nowMin <= windowEndMin) return nowMin;
+    return windowStartMin;
+  };
+
+  const [randomMinutes, setRandomMinutes] = useState(defaultRandomMinutes);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const onRandomTimeChange = (_, selectedDate) => {
+    setShowTimePicker(Platform.OS === 'ios');
+    if (!selectedDate) return;
+    const mins = selectedDate.getHours() * 60 + selectedDate.getMinutes();
+    if (windowStartMin != null && windowEndMin != null && (mins < windowStartMin || mins > windowEndMin)) {
+      Alert.alert(
+        'Outside operating hours',
+        `Please select a time between ${minutesToHHMM(windowStartMin)} and ${minutesToHHMM(windowEndMin)}.`
+      );
+      return;
+    }
+    setRandomMinutes(mins);
+  };
 
   const savePassenger = (updated) => {
     setPassengers(prev => prev.map((p, i) => i === editIdx ? updated : p));
@@ -82,9 +115,9 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
         ? {
             schedule_type:    'random',
             route_id:         schedule?.route?.id || route?.id,
-            bus_id:           bus?.id,
+            bus_id:           bus?.bus_id,
             no_of_passengers: seatCount,
-            departure_time:   to24Hour(schedule?.time?.departure),
+            departure_time:   minutesToHHMM(randomMinutes),
             departure_date:   randomDepartureDate,
             customer_info:    customerInfo,
             amount:           totalPrice,
@@ -143,14 +176,47 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
           <SectionHeader icon="bus-outline" title="TRIP DETAILS" tc={tc} />
           <InfoRow label="Route"      value={`${origin} → ${dest}`}           tc={tc} />
           <InfoRow label="Date"       value={fmtDate(depDate)}                tc={tc} />
-          <InfoRow label="Departure"  value={schedule?.time?.departure}       tc={tc} />
+          {isRandom ? null : (
+            <InfoRow label="Departure" value={schedule?.time?.departure} tc={tc} />
+          )}
           <InfoRow label="Operator"   value={route?.business?.name}           tc={tc} />
-          <InfoRow label="Bus"        value={bus?.name}                       tc={tc} />
+          <InfoRow label="Bus"        value={isRandom ? (bus?.bus_type || 'Bus') : bus?.name} tc={tc} />
           <InfoRow label="Terminal"   value={route?.terminal?.name}           tc={tc} />
           {isRandom
             ? <InfoRow label="Passengers" value={`${seatCount} passenger${seatCount !== 1 ? 's' : ''}`} tc={tc} />
             : <InfoRow label="Seats" value={seats.map(seatLabel).join(', ')} tc={tc} />
           }
+
+          {isRandom && (
+            <>
+              <Text style={[ss.fieldLabel, { color: tc.subheading, marginTop: 12 }]}>
+                Preferred Departure Time
+              </Text>
+              <TouchableOpacity
+                style={[ss.timeInp, { borderColor: tc.border || '#E5E5EA', backgroundColor: tc.background, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                onPress={() => setShowTimePicker(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 15, color: tc.heading, fontWeight: '600' }}>
+                  {minutesToHHMM(randomMinutes)}
+                </Text>
+                <Ionicons name="time-outline" size={18} color={tc.subtext} />
+              </TouchableOpacity>
+              {windowStartMin != null && windowEndMin != null && (
+                <Text style={[ss.hintText, { color: tc.subtext }]}>
+                  This bus operates between {minutesToHHMM(windowStartMin)} and {minutesToHHMM(windowEndMin)}.
+                </Text>
+              )}
+              {showTimePicker && (
+                <DateTimePicker
+                  value={(() => { const d = new Date(); d.setHours(Math.floor(randomMinutes / 60), randomMinutes % 60, 0, 0); return d; })()}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={onRandomTimeChange}
+                />
+              )}
+            </>
+          )}
           <View style={[ss.refBox, { backgroundColor: `${tc.primary}10` }]}>
             <Text style={[ss.refLabel, { color: tc.subheading }]}>Local Reference</Text>
             <Text style={[ss.refValue, { color: tc.primary }]}>{localRef}</Text>
@@ -418,6 +484,8 @@ const ss = StyleSheet.create({
   walletLabel:    { fontSize: 13, fontWeight: '600', flex: 1 },
   fieldLabel:     { fontSize: 13, fontWeight: '600', marginBottom: 8, color: '#888' },
   pinInp:         { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, fontSize: 22, textAlign: 'center', letterSpacing: 8 },
+  timeInp:        { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13 },
+  hintText:       { fontSize: 12, marginTop: 6 },
   payBtn:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16, borderRadius: 14 },
   payBtnText:     { color: '#FFF', fontSize: 15, fontWeight: '700' },
   emergencyModal: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', zIndex: 100 },

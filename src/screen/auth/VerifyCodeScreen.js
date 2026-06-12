@@ -33,9 +33,9 @@ export default function VerifyOTPScreen({ route, navigation }) {
   }, [otp]);
 
   const handleChange = (value, index) => {
-    if (!/^\d?$/.test(value)) return;
+    if (!/^[A-Za-z0-9]?$/.test(value)) return;
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = value.toUpperCase();
     setOtp(newOtp);
     if (value && index < 5) refs.current[index + 1]?.focus();
   };
@@ -232,7 +232,7 @@ export default function VerifyOTPScreen({ route, navigation }) {
       
       <AuthHeader 
         title={isDeviceVerification ? "Verify Device" : "Verify Phone"} 
-        subtitle={`Code sent to ${phone}`} 
+        subtitle={`Access key sent to ${phone}`}
         showBack 
         onBack={() => navigation.goBack()} 
       />
@@ -247,7 +247,9 @@ export default function VerifyOTPScreen({ route, navigation }) {
               style={otpBox(theme)}
               value={d}
               onChangeText={v => handleChange(v, i)}
-              keyboardType="number-pad"
+              keyboardType="default"
+              autoCapitalize="characters"
+              autoCorrect={false}
               maxLength={1}
               textAlign="center"
               editable={!loading}
@@ -272,7 +274,7 @@ export default function VerifyOTPScreen({ route, navigation }) {
             <ActivityIndicator color={theme.primary} />
           ) : (
             <Text style={{ color: '#fff', fontWeight: 'bold' }}>
-              Verify OTP
+              Verify Access Key
             </Text>
           )}
         </TouchableOpacity>
@@ -287,7 +289,7 @@ export default function VerifyOTPScreen({ route, navigation }) {
             <ActivityIndicator color={theme.primary} />
           ) : (
             <Text style={{ color: theme.primary, fontSize: 16 }}>
-              Resend OTP
+              Resend Access Key
             </Text>
           )}
         </TouchableOpacity>

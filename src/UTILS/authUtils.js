@@ -90,7 +90,7 @@ export class AuthValidation {
       return { isValid: false, error: AUTH_CONSTANTS.ERROR_MESSAGES.OTP_REQUIRED };
     }
     
-    const cleanedOTP = otp.replace(/\D/g, '');
+    const cleanedOTP = otp.replace(/[^A-Za-z0-9]/g, '');
     
     if (cleanedOTP.length !== AUTH_CONSTANTS.OTP.LENGTH) {
       return { isValid: false, error: AUTH_CONSTANTS.ERROR_MESSAGES.OTP_INVALID };

@@ -46,10 +46,10 @@ export const useOTPVerification = (phone, userId) => {
    * Update OTP digit
    */
   const updateOTP = (value, index) => {
-    if (!/^\d*$/.test(value)) return;
+    if (!/^[A-Za-z0-9]*$/.test(value)) return;
 
     const newOTP = [...otp];
-    newOTP[index] = value;
+    newOTP[index] = value.toUpperCase();
     setOtp(newOTP);
 
     // Clear error when user types

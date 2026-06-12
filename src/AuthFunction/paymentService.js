@@ -763,6 +763,8 @@ export const merpiGetRoutes    = (params)     => makeGeneralGetQuery('/merpi/bus
 // Buses are physical vehicles assigned to a schedule — fetched by schedule_id path param
 export const merpiGetBuses     = (scheduleId) => makeGeneralGet(`/merpi/bus/buses/${scheduleId}`);
 export const merpiGetSchedules = (params)     => makeGeneralGetQuery('/merpi/bus/schedules', params);
+// V2 packages — for random schedules, returns operating_hours + buses[] (bus_id/start_time/end_time)
+export const merpiGetSchedulePackages = (params) => makeGeneralGetQuery('/merpi/bus/schedules/packages', params);
 // Seat grid is keyed by schedule_id/bus_id/departure_date path params (YYYY-MM-DD)
 export const merpiGetSeats     = (scheduleId, busId, departureDate) =>
   makeGeneralGet(`/merpi/bus/seats/${scheduleId}/${busId}/${departureDate}`);

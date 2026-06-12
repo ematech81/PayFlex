@@ -10,22 +10,22 @@ import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import BookingStepIndicator from 'component/bus/BookingStepIndicator';
-import { merpiGetSchedules, merpiGetBuses } from 'AuthFunction/paymentService';
-import { toDMY, extractList, placeLabel, fmtDate } from 'utility/busHelpers';
+import { merpiGetSchedulePackages } from 'AuthFunction/paymentService';
+import { extractList, placeLabel, fmtDate } from 'utility/busHelpers';
 
 export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
   const { route, depDate, fromCity, toCity } = navRoute.params || {};
   const dark = useThem(), tc = dark ? colors.dark : colors.light;
   const insets = useSafeAreaInsets();
 
+  const isRandom = route?.schedule_type === 'random';
+
   const [schedules, setSchedules]               = useState([]);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [buses, setBuses]                       = useState([]);
   const [selectedBus, setSelectedBus]           = useState(null);
   const [loadingSchedules, setLoadingSchedules] = useState(true);
-  const [loadingBuses, setLoadingBuses]         = useState(false);
   const [scheduleError, setScheduleError]       = useState(null);
-  const [busError, setBusError]                 = useState(null);
 
   const origin = placeLabel(route?.from) || fromCity?.name || '';
   const dest   = placeLabel(route?.to)   || toCity?.name   || '';
@@ -33,12 +33,21 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const r = await merpiGetSchedules({
-          route_id:    route.id,
-          terminal_id: route.terminal?.id,
-          date:        toDMY(depDate),
+        // v1 /schedules returns null time/window for many schedules — the
+        // packages endpoint is the only source of populated time/operating_hours
+        // and embeds the bus (with available_seats) right on each entry.
+        const r = await merpiGetSchedulePackages({
+          route_id:       route.id,
+          departure_date: depDate ? depDate.slice(0, 10) : undefined,
         });
-        setSchedules(extractList(r, 'schedules', 'data'));
+        const list = extractList(r, 'schedules', 'data');
+        if (isRandom) {
+          const pkg = list.find(s => s.route?.id === route.id) || list[0] || null;
+          setSelectedSchedule(pkg);
+          setBuses(pkg?.buses || []);
+        } else {
+          setSchedules(list);
+        }
       } catch (e) {
         setScheduleError(e.message || 'Could not load schedules.');
       } finally {
@@ -48,20 +57,9 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
     load();
   }, []);
 
-  const selectSchedule = async (schedule) => {
+  const selectSchedule = (schedule) => {
     setSelectedSchedule(schedule);
-    setSelectedBus(null);
-    setBuses([]);
-    setBusError(null);
-    setLoadingBuses(true);
-    try {
-      const r = await merpiGetBuses(schedule.id);
-      setBuses(extractList(r, 'buses', 'data'));
-    } catch (e) {
-      setBusError(e.message || 'Could not load buses.');
-    } finally {
-      setLoadingBuses(false);
-    }
+    setSelectedBus(schedule.bus || null);
   };
 
   const proceed = () => {
@@ -75,7 +73,7 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
     });
   };
 
-  const canContinue = !!(selectedSchedule && selectedBus);
+  const canContinue = isRandom ? !!selectedBus : !!(selectedSchedule && selectedBus);
 
   return (
     <SafeAreaView style={[ss.container, { backgroundColor: tc.background }]}>
@@ -114,7 +112,37 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
           )}
         </View>
 
-        {/* ── SECTION 1: Departure time ── */}
+        {/* ── SECTION 1: Departure time (timed schedules only) ── */}
+        {isRandom ? (
+          <>
+            <View style={ss.sectionHeader}>
+              <Ionicons name="time-outline" size={16} color={tc.primary} />
+              <Text style={[ss.sectionTitle, { color: tc.heading }]}>Operating Hours</Text>
+            </View>
+            {loadingSchedules ? (
+              <ActivityIndicator color={tc.primary} size="large" style={{ marginVertical: 28 }} />
+            ) : scheduleError ? (
+              <StatusCard icon="warning-outline" color="#EF4444" bg="#FEF2F2" border="#FCA5A5" message={scheduleError} />
+            ) : !selectedSchedule ? (
+              <StatusCard icon="information-circle-outline" color={tc.subheading} bg={tc.card} border={tc.border || '#E5E5EA'} message="No schedules available for this date." />
+            ) : (
+              <View style={[ss.routeStrip, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+                <View style={[ss.routeIconBox, { backgroundColor: `${tc.primary}14` }]}>
+                  <Ionicons name="time" size={18} color={tc.primary} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[ss.routeOp, { color: tc.heading }]}>
+                    {selectedSchedule.operating_hours?.start || '—'} – {selectedSchedule.operating_hours?.end || '—'}
+                  </Text>
+                  <Text style={[ss.routeCities, { color: tc.subheading }]}>
+                    Buses depart within this window — choose your preferred time on the next step
+                  </Text>
+                </View>
+              </View>
+            )}
+          </>
+        ) : (
+          <>
         <View style={ss.sectionHeader}>
           <Ionicons name="time-outline" size={16} color={tc.primary} />
           <Text style={[ss.sectionTitle, { color: tc.heading }]}>Choose Departure Time</Text>
@@ -168,40 +196,53 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
                       <Text style={[ss.scheduleName, { color: tc.subtext }]}>· {sch.name}</Text>
                     )}
                   </View>
-                  {!!depDate && (
-                    <View style={ss.datePill}>
-                      <Ionicons name="calendar-outline" size={11} color="#16A34A" />
-                      <Text style={ss.datePillText}>{fmtDate(depDate)}</Text>
-                    </View>
-                  )}
+                  <View style={ss.scheduleBottom2Row}>
+                    {!!sch.bus?.name && (
+                      <View style={[ss.busBadge, { backgroundColor: `${tc.primary}12` }]}>
+                        <Ionicons name="bus-outline" size={11} color={tc.primary} />
+                        <Text style={[ss.busBadgeText, { color: tc.primary }]} numberOfLines={1}>
+                          {sch.bus.name}{sch.bus.seats ? ` · ${sch.bus.seats} seats` : ''}
+                        </Text>
+                      </View>
+                    )}
+                    {!!depDate && (
+                      <View style={ss.datePill}>
+                        <Ionicons name="calendar-outline" size={11} color="#16A34A" />
+                        <Text style={ss.datePillText}>{fmtDate(depDate)}</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
               </TouchableOpacity>
             );
           })
         )}
+          </>
+        )}
 
-        {/* ── SECTION 2: Buses (revealed after schedule selected) ── */}
-        {selectedSchedule && (
+        {/* ── SECTION 2: Buses (random schedules only — timed bundles its bus per departure time) ── */}
+        {isRandom && (
           <>
             <View style={[ss.sectionHeader, { marginTop: 10 }]}>
               <Ionicons name="bus-outline" size={16} color={tc.primary} />
               <Text style={[ss.sectionTitle, { color: tc.heading }]}>Choose Your Bus</Text>
             </View>
 
-            {loadingBuses ? (
+            {loadingSchedules ? (
               <ActivityIndicator color={tc.primary} size="large" style={{ marginVertical: 28 }} />
-            ) : busError ? (
-              <StatusCard icon="warning-outline" color="#EF4444" bg="#FEF2F2" border="#FCA5A5" message={busError} />
             ) : buses.length === 0 ? (
               <StatusCard icon="information-circle-outline" color={tc.subheading} bg={tc.card} border={tc.border || '#E5E5EA'} message="No buses available for this schedule." />
             ) : (
-              buses.map(bus => {
-                const sel = selectedBus?.id === bus.id;
+              buses.map((bus, idx) => {
+                const busKey  = isRandom ? bus.bus_id : bus.id;
+                const sel     = isRandom ? selectedBus?.bus_id === busKey : selectedBus?.id === busKey;
                 const imageUri = bus.image || bus.image_url || bus.photo
                   || selectedSchedule?.business?.photo || null;
+                const busName = isRandom ? (bus.bus_type || 'Bus') : bus.name;
+                const priceVal = isRandom ? bus.price : route?.price;
                 return (
                   <TouchableOpacity
-                    key={bus.id}
+                    key={busKey ?? idx}
                     style={[ss.busCard, {
                       backgroundColor: sel ? `${tc.primary}10` : tc.card,
                       borderColor: sel ? tc.primary : tc.border || '#E5E5EA',
@@ -213,18 +254,27 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
 
                     <View style={ss.busInfo}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Text style={[ss.busName, { color: tc.heading }]} numberOfLines={1}>{bus.name}</Text>
+                        <Text style={[ss.busName, { color: tc.heading }]} numberOfLines={1}>{busName}</Text>
                         {sel && <Ionicons name="checkmark-circle" size={20} color={tc.primary} />}
                       </View>
 
                       <View style={ss.busMeta}>
-                        <View style={[ss.busBadge, { backgroundColor: `${tc.primary}12` }]}>
-                          <Ionicons name="people-outline" size={11} color={tc.primary} />
-                          <Text style={[ss.busBadgeText, { color: tc.primary }]}>{bus.seats} seats</Text>
-                        </View>
-                        {route?.price != null && (
+                        {isRandom ? (
+                          <View style={[ss.busBadge, { backgroundColor: `${tc.primary}12` }]}>
+                            <Ionicons name="time-outline" size={11} color={tc.primary} />
+                            <Text style={[ss.busBadgeText, { color: tc.primary }]}>
+                              {bus.start_time?.slice(0, 5)} – {bus.end_time?.slice(0, 5)}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View style={[ss.busBadge, { backgroundColor: `${tc.primary}12` }]}>
+                            <Ionicons name="people-outline" size={11} color={tc.primary} />
+                            <Text style={[ss.busBadgeText, { color: tc.primary }]}>{bus.seats} seats</Text>
+                          </View>
+                        )}
+                        {priceVal != null && (
                           <Text style={[ss.busPrice, { color: tc.primary }]}>
-                            {formatCurrency(route.price, 'NGN')} / seat
+                            {formatCurrency(priceVal, 'NGN')} / seat
                           </Text>
                         )}
                       </View>
@@ -244,11 +294,15 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
         <View style={{ flex: 1, marginRight: 12 }}>
           {canContinue ? (
             <Text style={[ss.selInfo, { color: tc.heading }]} numberOfLines={1}>
-              {selectedSchedule.time?.departure} · {selectedBus.name}
+              {isRandom
+                ? `${selectedBus.bus_type || 'Bus'} · ${selectedBus.start_time?.slice(0, 5)}–${selectedBus.end_time?.slice(0, 5)}`
+                : `${selectedSchedule.time?.departure} · ${selectedBus.name}`}
             </Text>
           ) : (
             <Text style={[ss.selHint, { color: tc.subtext }]}>
-              {!selectedSchedule ? 'Select a departure time' : 'Select a bus to continue'}
+              {isRandom
+                ? 'Select a bus to continue'
+                : (!selectedSchedule ? 'Select a departure time' : 'Select a bus to continue')}
             </Text>
           )}
         </View>
@@ -334,6 +388,7 @@ const ss = StyleSheet.create({
   timeArrow:          { alignItems: 'center', paddingHorizontal: 8 },
   timeLine:           { width: 24, height: 1, marginBottom: 4 },
   scheduleBottom:     { marginTop: 10, gap: 6 },
+  scheduleBottom2Row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   operatorRow:        { flexDirection: 'row', alignItems: 'center', gap: 6 },
   operatorAvatar:     { width: 20, height: 20, borderRadius: 10 },
   operatorAvatarPlaceholder: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

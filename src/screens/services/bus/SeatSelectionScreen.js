@@ -24,6 +24,8 @@ export default function SeatSelectionScreen({ navigation, route: navRoute }) {
   const dark = useThem(), tc = dark ? colors.dark : colors.light;
   const insets = useSafeAreaInsets();
 
+  const isRandom = route?.schedule_type === 'random';
+
   const [seatGrid, setSeatGrid] = useState([]);
   const [selected, setSelected] = useState([]);
   const [loading, setLoading]   = useState(true);
@@ -32,9 +34,18 @@ export default function SeatSelectionScreen({ navigation, route: navRoute }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const formattedDate = buildDepartureDate(depDate, schedule?.time?.departure);
-        const r = await merpiGetSeats(schedule?.id, bus?.id, formattedDate);
-        const raw = r?.data?.data?.seats || r?.data?.seats || extractList(r, 'seats', 'data');
+        let raw;
+        if (isRandom) {
+          const formattedDate = buildDepartureDate(depDate, schedule?.time?.departure);
+          const r = await merpiGetSeats(schedule?.id, bus?.id, formattedDate);
+          raw = r?.data?.data?.seats || r?.data?.seats || extractList(r, 'seats', 'data');
+        } else {
+          // Timed schedules: bus.available_seats is embedded directly in the
+          // packages response, fetched with the chosen departure_date — no
+          // separate getSeats call (which rejects same-day bookings).
+          raw = bus?.available_seats;
+          if (!raw) throw new Error('Seat map not available for this bus.');
+        }
         // raw may already be 2D or flat — normalise to 2D
         const grid = Array.isArray(raw?.[0]) ? raw : [raw];
         setSeatGrid(grid);

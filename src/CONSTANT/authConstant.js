@@ -55,10 +55,10 @@ export const AUTH_CONSTANTS = {
     PASSWORD_MISMATCH: 'Passwords do not match',
     
     // OTP
-    OTP_REQUIRED: 'Please enter OTP code',
-    OTP_INVALID: 'OTP must be 6 digits',
-    OTP_EXPIRED: 'OTP has expired. Please request a new one',
-    OTP_INCORRECT: 'Invalid OTP code',
+    OTP_REQUIRED: 'Please enter your access key',
+    OTP_INVALID: 'Access key must be 6 characters',
+    OTP_EXPIRED: 'Access key has expired. Please request a new one',
+    OTP_INCORRECT: 'Invalid access key',
     
     // PIN
     LOGIN_PIN_REQUIRED: 'Please enter your 6-digit PIN',
@@ -75,7 +75,7 @@ export const AUTH_CONSTANTS = {
   // Success Messages
   SUCCESS_MESSAGES: {
     REGISTRATION: 'Registration successful!',
-    OTP_SENT: 'OTP sent to your phone',
+    OTP_SENT: 'Your access key has been sent. It may take up to 2 minutes to arrive.',
     OTP_VERIFIED: 'Phone number verified successfully',
     PIN_SET: 'Login PIN set successfully',
     LOGIN_SUCCESS: 'Login successful',

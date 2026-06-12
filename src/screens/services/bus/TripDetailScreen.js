@@ -19,6 +19,9 @@ export default function TripDetailScreen({ navigation, route: navRoute }) {
   const origin  = placeLabel(route?.from) || fromCity?.name || '';
   const dest    = placeLabel(route?.to)   || toCity?.name   || '';
   const isLuxury = /luxury|vip|executive/i.test(route?.business?.type || route?.schedule_type || '');
+  const isRandom = route?.schedule_type === 'random';
+  const busName  = isRandom ? (bus?.bus_type || 'Bus') : bus?.name;
+  const pricePerSeat = isRandom ? (bus?.price ?? route?.price) : route?.price;
 
   const InfoRow = ({ label, value, icon, highlight }) =>
     value ? (
@@ -68,8 +71,18 @@ export default function TripDetailScreen({ navigation, route: navRoute }) {
           <InfoRow label="From"          value={origin}                    icon="location-outline" />
           <InfoRow label="To"            value={dest}                      icon="flag-outline" />
           <InfoRow label="Date"          value={fmtDate(depDate)}          icon="calendar-outline" />
-          <InfoRow label="Departure"     value={schedule?.time?.departure}  icon="time-outline" />
-          <InfoRow label="Arrival"       value={schedule?.time?.arrival}    icon="time-outline" />
+          {isRandom ? (
+            <InfoRow
+              label="Operating Hours"
+              value={schedule?.operating_hours ? `${schedule.operating_hours.start?.slice(0, 5)} – ${schedule.operating_hours.end?.slice(0, 5)}` : null}
+              icon="time-outline"
+            />
+          ) : (
+            <>
+              <InfoRow label="Departure"     value={schedule?.time?.departure}  icon="time-outline" />
+              <InfoRow label="Arrival"       value={schedule?.time?.arrival}    icon="time-outline" />
+            </>
+          )}
           <InfoRow label="Schedule"      value={schedule?.name}             icon="list-outline" />
         </Card>
 
@@ -77,7 +90,7 @@ export default function TripDetailScreen({ navigation, route: navRoute }) {
         <Card title="OPERATOR" icon="business-outline">
           <InfoRow label="Company"   value={route?.business?.name}  icon="business-outline" />
           <InfoRow label="Type"      value={isLuxury ? 'Luxury' : 'Standard'}  icon="star-outline" />
-          <InfoRow label="Bus"       value={bus?.name}              icon="bus-outline" />
+          <InfoRow label="Bus"       value={busName}                icon="bus-outline" />
           <InfoRow label="Capacity"  value={bus?.seats ? `${bus.seats} seats` : null} icon="people-outline" />
           <InfoRow label="Terminal"  value={route?.terminal?.name}  icon="location-outline" />
           <InfoRow label="Terminal Address" value={route?.terminal?.address} icon="map-outline" />
@@ -88,7 +101,7 @@ export default function TripDetailScreen({ navigation, route: navRoute }) {
           <View style={[ss.priceBlock, { backgroundColor: `${tc.primary}10` }]}>
             <Text style={[ss.priceLabel, { color: tc.subheading }]}>Price per seat</Text>
             <Text style={[ss.priceValue, { color: tc.primary }]}>
-              {route?.price != null ? formatCurrency(route.price, 'NGN') : '—'}
+              {pricePerSeat != null ? formatCurrency(pricePerSeat, 'NGN') : '—'}
             </Text>
           </View>
           {route?.price_breakdown && (
@@ -105,7 +118,7 @@ export default function TripDetailScreen({ navigation, route: navRoute }) {
           <InfoRow label="Route ID"   value={`#${route?.id}`}    icon="barcode-outline" />
           <InfoRow label="Route Slug" value={route?.business?.slug} icon="link-outline" />
           <InfoRow label="Schedule"   value={`#${schedule?.id}`} icon="barcode-outline" />
-          <InfoRow label="Bus ID"     value={`#${bus?.id}`}      icon="barcode-outline" />
+          <InfoRow label="Bus ID"     value={`#${isRandom ? bus?.bus_id : bus?.id}`} icon="barcode-outline" />
         </Card>
 
         {/* CTA */}
@@ -114,7 +127,7 @@ export default function TripDetailScreen({ navigation, route: navRoute }) {
           onPress={() =>
             navigation.navigate('PassengerForm', {
               route, schedule, bus, depDate,
-              pricePerSeat: route?.price,
+              pricePerSeat,
             })
           }
           activeOpacity={0.85}

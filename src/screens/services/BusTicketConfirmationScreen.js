@@ -105,7 +105,12 @@ export default function BusTicketConfirmationScreen({ navigation, route }) {
           <InfoRow label="Operator"   value={tripRoute?.business?.name} />
           <InfoRow label="Terminal"   value={tripRoute?.terminal?.name} />
           <InfoRow label="Departure"  value={schedule?.time?.departure} />
-          <InfoRow label="Bus"        value={bus ? `${bus.name} (${bus.seats} seats)` : null} />
+          <InfoRow
+            label="Bus"
+            value={bus
+              ? (bus.bus_type ? bus.bus_type : `${bus.name}${bus.seats ? ` (${bus.seats} seats)` : ''}`)
+              : null}
+          />
           <InfoRow label="Seats"      value={seats?.map(seatLabel).join(', ')} />
           <InfoRow label="Passenger"  value={passenger?.fullName} />
           <InfoRow label="Phone"      value={passenger?.phone} />

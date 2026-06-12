@@ -52,6 +52,20 @@ export const buildDepartureDate = (dateStr, timeStr) => {
   return `${yyyy}-${mm}-${dd} ${to24Hour(timeStr)}`;
 };
 
+// "HH:MM", "HH:MM:SS" or "HH:MM AM/PM" → minutes since midnight
+export const timeToMinutes = (timeStr) => {
+  if (!timeStr) return null;
+  const [h, m] = to24Hour(timeStr).split(':').map(Number);
+  return h * 60 + m;
+};
+
+// minutes since midnight → "HH:MM"
+export const minutesToHHMM = (mins) => {
+  const h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
 // Extract nested list from MERPI/backend response
 export const extractList = (r, ...keys) => {
   const payload = r?.data?.data || r?.data || {};

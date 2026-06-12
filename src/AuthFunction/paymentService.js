@@ -779,8 +779,9 @@ export const merpiBuyEventTickets    = (pin, data) => makeGeneralRequest('/merpi
 // ─── MERPI / Syticks — Cinema ─────────────────────────────────────────────────
 export const merpiGetMovies          = (params) => makeGeneralGetQuery('/merpi/cinema', params);
 export const merpiGetCinemaDetails   = (id)     => makeGeneralGet(`/merpi/cinema/${id}`);
-export const merpiGetCinemaDates     = (id)     => makeGeneralGet(`/merpi/cinema/${id}/dates`);
-export const merpiGetCinemaTickets   = (id)     => makeGeneralGet(`/merpi/cinema/${id}/tickets`);
+export const merpiGetCinemaDates     = (id, month) => makeGeneralGet(`/merpi/cinema/${id}/dates/${month}`);
+export const merpiGetCinemaTickets   = (id, cinemaLocationId) =>
+  makeGeneralGetQuery(`/merpi/cinema/${id}/tickets`, { cinema_location_id: cinemaLocationId });
 export const merpiBuyCinemaTickets   = (pin, data) => makeGeneralRequest('/merpi/cinema/buy', { ...data, pin });
 
 // ─── MERPI / Syticks — General ────────────────────────────────────────────────

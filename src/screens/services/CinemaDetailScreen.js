@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
   TouchableOpacity, ActivityIndicator, Alert, Image, FlatList,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
@@ -16,9 +15,31 @@ import {
   merpiGetCinemaTickets, merpiBuyCinemaTickets,
 } from 'AuthFunction/paymentService';
 
-const toYMD = (d) => (typeof d === 'string' ? d : d.toISOString().split('T')[0]);
-const fmtDate = (iso) =>
-  iso ? new Date(iso).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '';
+const fmtDate = (ymd) =>
+  ymd ? new Date(`${ymd}T00:00:00`).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+
+// Resolve which `times[]` apply for a given location + date, based on the
+// cinema's shared_times / per_day_times configuration (daily & weekly only).
+function resolveShowtimes(cinemaInfo, locationId, dateStr) {
+  if (!cinemaInfo) return [];
+  const { shared_times, per_day_times, showing, times, days_with_times, locations } = cinemaInfo;
+  const loc = (locations || []).find((l) => l.id === locationId);
+  const timesSrc      = shared_times ? (times || []) : (loc?.times || []);
+  const daysWithTimes = shared_times ? (days_with_times || []) : (loc?.days_with_times || []);
+
+  if (!per_day_times) return timesSrc;
+
+  if (showing === 'daily') {
+    return daysWithTimes.find((d) => d.date === dateStr)?.times || [];
+  }
+
+  // weekly: dateStr -> JS day (0=Sun..6=Sat) -> doc's day (1=Mon..7=Sun)
+  const jsDay = new Date(`${dateStr}T00:00:00`).getDay();
+  const docDay = jsDay === 0 ? 7 : jsDay;
+  return daysWithTimes.find((d) => d.day === docDay)?.times || [];
+}
+
+const monthName = (date) => date.toLocaleString('en-US', { month: 'long' });
 
 export default function CinemaDetailScreen({ navigation, route }) {
   const { movieId, movie: initialMovie } = route.params || {};
@@ -27,29 +48,45 @@ export default function CinemaDetailScreen({ navigation, route }) {
   const { wallet } = useWallet();
 
   const [movie,          setMovie]          = useState(initialMovie || null);
-  const [availDates,     setAvailDates]     = useState([]);
-  const [tickets,        setTickets]        = useState([]);
   const [loading,        setLoading]        = useState(true);
   const [buying,         setBuying]         = useState(false);
   const [pin,            setPin]            = useState('');
-  const [quantities,     setQuantities]     = useState({});
+
+  const [locationId,     setLocationId]     = useState(null);
+  const [displayMonth,   setDisplayMonth]   = useState(() => { const d = new Date(); d.setDate(1); return d; });
+  const [availDates,     setAvailDates]     = useState([]);
+  const [datesLoading,   setDatesLoading]   = useState(false);
   const [attendanceDate, setAttendanceDate] = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const [showtimes,      setShowtimes]      = useState([]);
+  const [timeId,         setTimeId]         = useState(null);
+
+  const [tickets,        setTickets]        = useState([]);
+  const [quantities,     setQuantities]     = useState({});
 
   const bal = wallet?.user?.walletBalance || 0;
   const totalAmount = tickets.reduce((sum, t) => sum + (t.price || 0) * (quantities[t.id] || 0), 0);
-  const hasSelection = Object.values(quantities).some(q => q > 0);
+  const hasSelection = Object.values(quantities).some((q) => q > 0);
 
+  const cinemaInfo = movie?.cinema_info;
+  const locations  = cinemaInfo?.locations || [];
+
+  // Load movie details
   useEffect(() => {
     (async () => {
       setLoading(true);
       try {
-        const [mvRes, dtRes] = await Promise.all([
-          merpiGetCinemaDetails(movieId),
-          merpiGetCinemaDates(movieId),
-        ]);
-        setMovie(mvRes?.data?.data || mvRes?.data || initialMovie);
-        setAvailDates(dtRes?.data?.data || dtRes?.data || []);
+        const res = await merpiGetCinemaDetails(movieId);
+        const data = res?.data?.data || initialMovie;
+        setMovie(data);
+
+        const locs = data?.cinema_info?.locations || [];
+        if (locs.length === 1) {
+          setLocationId(locs[0].id);
+        } else if (locs.length > 1) {
+          const hq = locs.find((l) => l.is_headquarters);
+          setLocationId((hq || locs[0]).id);
+        }
       } catch (e) {
         Alert.alert('Error', e.message || 'Could not load movie details.');
       } finally {
@@ -58,32 +95,77 @@ export default function CinemaDetailScreen({ navigation, route }) {
     })();
   }, [movieId]);
 
-  const loadTickets = async (date) => {
+  // Load available dates whenever the displayed month or location changes
+  const loadDates = useCallback(async () => {
+    setDatesLoading(true);
     try {
-      const res = await merpiGetCinemaTickets(movieId);
-      const list = res?.data?.data || res?.data || [];
+      const res = await merpiGetCinemaDates(movieId, monthName(displayMonth));
+      setAvailDates(res?.data?.data || []);
+    } catch (e) {
+      setAvailDates([]);
+    } finally {
+      setDatesLoading(false);
+    }
+  }, [movieId, displayMonth]);
+
+  useEffect(() => {
+    if (locationId == null && locations.length > 0) return;
+    loadDates();
+  }, [loadDates, locationId, locations.length]);
+
+  const selectLocation = (id) => {
+    if (id === locationId) return;
+    setLocationId(id);
+    setAttendanceDate('');
+    setShowtimes([]);
+    setTimeId(null);
+    setTickets([]);
+    setQuantities({});
+  };
+
+  const selectDate = (dateStr) => {
+    setAttendanceDate(dateStr);
+    setTimeId(null);
+    setTickets([]);
+    setQuantities({});
+    const times = resolveShowtimes(cinemaInfo, locationId, dateStr);
+    setShowtimes(times);
+  };
+
+  const selectTime = async (selectedTimeId) => {
+    setTimeId(selectedTimeId);
+    try {
+      const res = await merpiGetCinemaTickets(movieId, locationId);
+      const list = res?.data?.data?.tickets || [];
       setTickets(list);
       const init = {};
-      list.forEach(t => { init[t.id] = 0; });
+      list.forEach((t) => { init[t.id] = 0; });
       setQuantities(init);
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not load ticket types.');
     }
   };
 
-  const selectDate = (date) => {
-    const d = typeof date === 'string' ? date : toYMD(date);
-    setAttendanceDate(d);
-    setShowDatePicker(false);
-    loadTickets(d);
+  const changeQty = (ticketId, delta) => {
+    setQuantities((prev) => ({ ...prev, [ticketId]: Math.max(0, (prev[ticketId] || 0) + delta) }));
   };
 
-  const changeQty = (ticketId, delta) => {
-    setQuantities(prev => ({ ...prev, [ticketId]: Math.max(0, (prev[ticketId] || 0) + delta) }));
+  const changeMonth = (delta) => {
+    setDisplayMonth((prev) => {
+      const d = new Date(prev);
+      d.setMonth(d.getMonth() + delta);
+      return d;
+    });
+    setAttendanceDate('');
+    setShowtimes([]);
+    setTimeId(null);
+    setTickets([]);
+    setQuantities({});
   };
 
   const handleBuy = async () => {
     if (!attendanceDate) { Alert.alert('Date required', 'Please select your attendance date.'); return; }
+    if (!timeId)         { Alert.alert('Showtime required', 'Please select a showtime.'); return; }
     if (!hasSelection)   { Alert.alert('No tickets', 'Please select at least one ticket.'); return; }
     if (pin.length !== 4){ Alert.alert('PIN required', 'Enter your 4-digit transaction PIN.'); return; }
     if (bal < totalAmount){ Alert.alert('Insufficient balance', 'Please fund your wallet.'); return; }
@@ -91,14 +173,16 @@ export default function CinemaDetailScreen({ navigation, route }) {
     setBuying(true);
     try {
       const lineItems = tickets
-        .filter(t => (quantities[t.id] || 0) > 0)
-        .map(t => ({ ticket_id: t.id, quantity: quantities[t.id] }));
+        .filter((t) => (quantities[t.id] || 0) > 0)
+        .map((t) => ({ id: t.id, count: quantities[t.id] }));
 
       const res = await merpiBuyCinemaTickets(pin, {
-        cinema_id:       movieId,
-        attendance_date: attendanceDate,
-        tickets:         lineItems,
-        amount:          totalAmount,
+        experience_id:      movieId,
+        cinema_location_id: locationId,
+        attendance_date:    attendanceDate,
+        time_id:            timeId,
+        tickets:            lineItems,
+        amount:             totalAmount,
       });
 
       Alert.alert('Booking Confirmed!', `Reference: ${res.reference}\nEnjoy the movie!`, [
@@ -128,15 +212,15 @@ export default function CinemaDetailScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={tc.heading} />
         </TouchableOpacity>
-        <Text style={[ss.headerTitle, { color: tc.heading }]} numberOfLines={1}>{movie?.title || movie?.name || 'Movie'}</Text>
+        <Text style={[ss.headerTitle, { color: tc.heading }]} numberOfLines={1}>{movie?.title || 'Movie'}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         {/* Poster */}
-        {(movie?.poster || movie?.image) ? (
-          <Image source={{ uri: movie.poster || movie.image }} style={ss.poster} resizeMode="cover" />
+        {movie?.image?.[0]?.image ? (
+          <Image source={{ uri: movie.image[0].image }} style={ss.poster} resizeMode="cover" />
         ) : (
           <View style={[ss.posterPlaceholder, { backgroundColor: `${tc.primary}15` }]}>
             <Ionicons name="film-outline" size={48} color={tc.primary} />
@@ -145,69 +229,111 @@ export default function CinemaDetailScreen({ navigation, route }) {
 
         {/* Movie info */}
         <View style={[ss.infoCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-          <Text style={[ss.movieTitle, { color: tc.heading }]}>{movie?.title || movie?.name}</Text>
+          <Text style={[ss.movieTitle, { color: tc.heading }]}>{movie?.title}</Text>
           <View style={ss.badgeRow}>
-            {movie?.genre && <View style={[ss.badge, { backgroundColor: `${tc.primary}15` }]}><Text style={[ss.badgeText, { color: tc.primary }]}>{movie.genre}</Text></View>}
-            {movie?.rating && (
-              <View style={[ss.badge, { backgroundColor: '#FFF8E1', flexDirection: 'row', gap: 3 }]}>
-                <Ionicons name="star" size={11} color="#F59E0B" />
-                <Text style={[ss.badgeText, { color: '#92400E' }]}>{movie.rating}</Text>
+            {movie?.business?.name && <View style={[ss.badge, { backgroundColor: '#F3F4F6' }]}><Text style={[ss.badgeText, { color: '#374151' }]}>{movie.business.name}</Text></View>}
+            {movie?.category?.name && <View style={[ss.badge, { backgroundColor: `${tc.primary}15` }]}><Text style={[ss.badgeText, { color: tc.primary }]}>{movie.category.name}</Text></View>}
+            {cinemaInfo?.showing && (
+              <View style={[ss.badge, { backgroundColor: `${tc.primary}15` }]}>
+                <Text style={[ss.badgeText, { color: tc.primary }]}>{cinemaInfo.showing === 'weekly' ? 'Weekly' : 'Daily'}</Text>
               </View>
             )}
-            {movie?.duration && <View style={[ss.badge, { backgroundColor: '#F3F4F6' }]}><Text style={[ss.badgeText, { color: '#374151' }]}>{movie.duration}</Text></View>}
           </View>
-          {movie?.synopsis && <Text style={[ss.synopsis, { color: tc.subheading }]}>{movie.synopsis}</Text>}
+          {movie?.description && <Text style={[ss.synopsis, { color: tc.subheading }]}>{movie.description}</Text>}
         </View>
 
-        {/* Date selection */}
-        <Text style={[ss.sectionLabel, { color: tc.subheading }]}>SELECT ATTENDANCE DATE</Text>
+        {/* Location selection */}
+        {locations.length > 1 && (
+          <>
+            <Text style={[ss.sectionLabel, { color: tc.subheading }]}>SELECT LOCATION</Text>
+            <FlatList
+              data={locations}
+              horizontal showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => String(item.id)}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 12 }}
+              renderItem={({ item }) => {
+                const active = locationId === item.id;
+                return (
+                  <TouchableOpacity
+                    style={[ss.dateChip, { backgroundColor: active ? tc.primary : tc.card, borderColor: active ? tc.primary : tc.border || '#E5E5EA' }]}
+                    onPress={() => selectLocation(item.id)} activeOpacity={0.8}
+                  >
+                    <Text style={[ss.dateChipText, { color: active ? '#FFF' : tc.heading }]}>
+                      {item.name}{item.is_headquarters ? ' (HQ)' : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </>
+        )}
 
-        {/* Available dates as chips */}
-        {availDates.length > 0 ? (
+        {/* Date selection */}
+        <View style={ss.monthRow}>
+          <Text style={[ss.sectionLabel, { color: tc.subheading, marginBottom: 0 }]}>SELECT DATE</Text>
+          <View style={ss.monthNav}>
+            <TouchableOpacity onPress={() => changeMonth(-1)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="chevron-back" size={18} color={tc.heading} />
+            </TouchableOpacity>
+            <Text style={[ss.monthLabel, { color: tc.heading }]}>{monthName(displayMonth)}</Text>
+            <TouchableOpacity onPress={() => changeMonth(1)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="chevron-forward" size={18} color={tc.heading} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {datesLoading ? (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+            <ActivityIndicator color={tc.primary} />
+          </View>
+        ) : availDates.length > 0 ? (
           <FlatList
             data={availDates}
             horizontal showsHorizontalScrollIndicator={false}
-            keyExtractor={(item, i) => String(item?.date || item || i)}
+            keyExtractor={(item, i) => String(item || i)}
             contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 12 }}
             renderItem={({ item }) => {
-              const dateStr = item?.date || item;
-              const active  = attendanceDate === dateStr;
+              const active = attendanceDate === item;
               return (
                 <TouchableOpacity
                   style={[ss.dateChip, { backgroundColor: active ? tc.primary : tc.card, borderColor: active ? tc.primary : tc.border || '#E5E5EA' }]}
-                  onPress={() => selectDate(dateStr)} activeOpacity={0.8}
+                  onPress={() => selectDate(item)} activeOpacity={0.8}
                 >
-                  <Text style={[ss.dateChipText, { color: active ? '#FFF' : tc.heading }]}>{fmtDate(dateStr)}</Text>
+                  <Text style={[ss.dateChipText, { color: active ? '#FFF' : tc.heading }]}>{fmtDate(item)}</Text>
                 </TouchableOpacity>
               );
             }}
           />
         ) : (
-          <TouchableOpacity
-            style={[ss.datePickerBtn, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', marginHorizontal: 16, marginBottom: 12 }]}
-            onPress={() => setShowDatePicker(true)} activeOpacity={0.8}
-          >
-            <Text style={[{ flex: 1, fontSize: 15 }, { color: attendanceDate ? tc.heading : tc.subtext }]}>
-              {attendanceDate ? fmtDate(attendanceDate) : 'Select attendance date'}
-            </Text>
-            <Ionicons name="calendar-outline" size={18} color={tc.subtext} />
-          </TouchableOpacity>
+          <Text style={[{ fontSize: 13, color: tc.subtext, paddingHorizontal: 16, marginBottom: 12 }]}>No showings available this month.</Text>
         )}
 
-        {showDatePicker && (
-          <DateTimePicker
-            value={attendanceDate ? new Date(attendanceDate) : new Date()}
-            mode="date" display="default" minimumDate={new Date()}
-            onChange={(_, dt) => { if (dt) selectDate(dt); else setShowDatePicker(false); }}
-          />
-        )}
-
-        {/* Validation warning */}
-        {hasSelection && !attendanceDate && (
-          <View style={[ss.warnBox, { backgroundColor: '#FEF3C7', marginHorizontal: 16 }]}>
-            <Ionicons name="alert-circle-outline" size={16} color="#F59E0B" />
-            <Text style={{ fontSize: 13, color: '#92400E', flex: 1 }}>Please select your attendance date before purchasing.</Text>
-          </View>
+        {/* Showtime selection */}
+        {attendanceDate && (
+          <>
+            <Text style={[ss.sectionLabel, { color: tc.subheading }]}>SELECT SHOWTIME</Text>
+            {showtimes.length > 0 ? (
+              <FlatList
+                data={showtimes}
+                horizontal showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => String(item.id)}
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 8, marginBottom: 12 }}
+                renderItem={({ item }) => {
+                  const active = timeId === item.id;
+                  return (
+                    <TouchableOpacity
+                      style={[ss.dateChip, { backgroundColor: active ? tc.primary : tc.card, borderColor: active ? tc.primary : tc.border || '#E5E5EA' }]}
+                      onPress={() => selectTime(item.id)} activeOpacity={0.8}
+                    >
+                      <Text style={[ss.dateChipText, { color: active ? '#FFF' : tc.heading }]}>{item.start} – {item.end}</Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            ) : (
+              <Text style={[{ fontSize: 13, color: tc.subtext, paddingHorizontal: 16, marginBottom: 12 }]}>No showtimes available for this date.</Text>
+            )}
+          </>
         )}
 
         {/* Ticket types */}
@@ -217,8 +343,8 @@ export default function CinemaDetailScreen({ navigation, route }) {
             {tickets.map((ticket) => (
               <View key={ticket.id} style={[ss.ticketRow, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[{ fontSize: 14, fontWeight: '700', color: tc.heading }]}>{ticket.name || ticket.type}</Text>
-                  {ticket.description && <Text style={[{ fontSize: 12, color: tc.subheading, marginTop: 2 }]} numberOfLines={2}>{ticket.description}</Text>}
+                  <Text style={[{ fontSize: 14, fontWeight: '700', color: tc.heading }]}>{ticket.title}</Text>
+                  {ticket.price_breakdown && <Text style={[{ fontSize: 11, color: tc.subheading, marginTop: 2 }]} numberOfLines={2}>{ticket.price_breakdown}</Text>}
                   <Text style={[{ fontSize: 15, fontWeight: '800', color: tc.primary, marginTop: 4 }]}>{formatCurrency(ticket.price || 0, 'NGN')}</Text>
                 </View>
                 <View style={ss.qtyRow}>
@@ -246,9 +372,9 @@ export default function CinemaDetailScreen({ navigation, route }) {
                   <Text style={ss.payVal}>{fmtDate(attendanceDate)}</Text>
                 </View>
               )}
-              {tickets.filter(t => (quantities[t.id] || 0) > 0).map(t => (
+              {tickets.filter((t) => (quantities[t.id] || 0) > 0).map((t) => (
                 <View key={t.id} style={ss.payRow}>
-                  <Text style={ss.payLabel}>{t.name} × {quantities[t.id]}</Text>
+                  <Text style={ss.payLabel}>{t.title} × {quantities[t.id]}</Text>
                   <Text style={ss.payVal}>{formatCurrency((t.price || 0) * quantities[t.id], 'NGN')}</Text>
                 </View>
               ))}
@@ -272,8 +398,8 @@ export default function CinemaDetailScreen({ navigation, route }) {
                       style={[ss.numKey, { backgroundColor: k ? tc.background : 'transparent', borderColor: tc.border || '#E5E5EA' }]}
                       onPress={() => {
                         if (!k) return;
-                        if (k === '⌫') setPin(p => p.slice(0, -1));
-                        else if (pin.length < 4) setPin(p => p + k);
+                        if (k === '⌫') setPin((p) => p.slice(0, -1));
+                        else if (pin.length < 4) setPin((p) => p + k);
                       }}
                       disabled={!k}
                     >
@@ -282,7 +408,7 @@ export default function CinemaDetailScreen({ navigation, route }) {
                   ))}
                 </View>
                 <View style={[ss.pinDots, { borderColor: tc.border || '#E5E5EA' }]}>
-                  {[0,1,2,3].map(i => (
+                  {[0,1,2,3].map((i) => (
                     <View key={i} style={[ss.pinDot, { backgroundColor: i < pin.length ? tc.primary : tc.border || '#E5E5EA' }]} />
                   ))}
                 </View>
@@ -298,9 +424,9 @@ export default function CinemaDetailScreen({ navigation, route }) {
 
             <TouchableOpacity
               style={[ss.primaryBtn, { backgroundColor: tc.primary,
-                opacity: (buying || bal < totalAmount || pin.length !== 4 || !attendanceDate) ? 0.5 : 1 }]}
+                opacity: (buying || bal < totalAmount || pin.length !== 4 || !attendanceDate || !timeId) ? 0.5 : 1 }]}
               onPress={handleBuy}
-              disabled={buying || bal < totalAmount || pin.length !== 4 || !attendanceDate}
+              disabled={buying || bal < totalAmount || pin.length !== 4 || !attendanceDate || !timeId}
               activeOpacity={0.85}
             >
               {buying ? <ActivityIndicator color="#FFF" /> : (
@@ -330,9 +456,11 @@ const ss = StyleSheet.create({
   badgeText:        { fontSize: 11, fontWeight: '700' },
   synopsis:         { fontSize: 13, lineHeight: 20, marginTop: 8 },
   sectionLabel:     { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, paddingHorizontal: 16, marginBottom: 8, marginTop: 4 },
+  monthRow:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 },
+  monthNav:         { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  monthLabel:       { fontSize: 13, fontWeight: '700', minWidth: 70, textAlign: 'center' },
   dateChip:         { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
   dateChipText:     { fontSize: 13, fontWeight: '600' },
-  datePickerBtn:    { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13 },
   ticketRow:        { marginHorizontal: 16, marginBottom: 10, borderRadius: 12, borderWidth: 1, padding: 14, flexDirection: 'row', alignItems: 'center' },
   qtyRow:           { flexDirection: 'row', alignItems: 'center', gap: 8 },
   qtyBtn:           { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

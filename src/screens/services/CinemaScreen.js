@@ -9,7 +9,6 @@ import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 import { merpiGetMovies } from 'AuthFunction/paymentService';
-import { formatCurrency } from 'CONSTANT/formatCurrency';
 
 export default function CinemaScreen({ navigation }) {
   const dark = useThem(), tc = dark ? colors.dark : colors.light;
@@ -26,7 +25,7 @@ export default function CinemaScreen({ navigation }) {
     setError('');
     try {
       const res = await merpiGetMovies({ search: search || undefined });
-      setMovies(res?.data?.data || res?.data || []);
+      setMovies(res?.data?.data?.experiences || []);
     } catch (e) {
       setError(e.message || 'Could not load movies.');
     } finally {
@@ -44,34 +43,32 @@ export default function CinemaScreen({ navigation }) {
       onPress={() => navigation.navigate('CinemaDetail', { movieId: item.id, movie: item })}
       activeOpacity={0.8}
     >
-      {item.poster || item.image ? (
-        <Image source={{ uri: item.poster || item.image }} style={ss.poster} resizeMode="cover" />
+      {item.image?.[0]?.image ? (
+        <Image source={{ uri: item.image[0].image }} style={ss.poster} resizeMode="cover" />
       ) : (
         <View style={[ss.posterPlaceholder, { backgroundColor: `${tc.primary}15` }]}>
           <Ionicons name="film-outline" size={32} color={tc.primary} />
         </View>
       )}
       <View style={ss.movieInfo}>
-        <Text style={[ss.movieTitle, { color: tc.heading }]} numberOfLines={2}>{item.title || item.name}</Text>
-        {item.genre && (
-          <View style={[ss.genreChip, { backgroundColor: `${tc.primary}15` }]}>
-            <Text style={[ss.genreText, { color: tc.primary }]}>{item.genre}</Text>
-          </View>
-        )}
+        <Text style={[ss.movieTitle, { color: tc.heading }]} numberOfLines={2}>{item.title}</Text>
         <View style={ss.movieMeta}>
-          {item.rating && (
-            <View style={ss.ratingRow}>
-              <Ionicons name="star" size={12} color="#F59E0B" />
-              <Text style={[{ fontSize: 12, color: tc.subheading }]}>{item.rating}</Text>
+          {item.business?.name && (
+            <Text style={[{ fontSize: 12, color: tc.subheading }]} numberOfLines={1}>{item.business.name}</Text>
+          )}
+          {item.category?.name && (
+            <View style={[ss.genreChip, { backgroundColor: `${tc.primary}15` }]}>
+              <Text style={[ss.genreText, { color: tc.primary }]}>{item.category.name}</Text>
             </View>
           )}
-          {item.duration && (
-            <Text style={[{ fontSize: 12, color: tc.subheading }]}>{item.duration}</Text>
-          )}
         </View>
-        <Text style={[ss.moviePrice, { color: tc.primary }]}>
-          {item.min_price ? `From ${formatCurrency(item.min_price, 'NGN')}` : 'See prices'}
-        </Text>
+        {item.cinema_info?.showing && (
+          <View style={[ss.genreChip, { backgroundColor: `${tc.primary}15`, alignSelf: 'flex-start' }]}>
+            <Text style={[ss.genreText, { color: tc.primary }]}>
+              {item.cinema_info.showing === 'weekly' ? 'Weekly' : 'Daily'}
+            </Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );

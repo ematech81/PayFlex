@@ -11,6 +11,7 @@ import { StatusBarComponent } from 'component/StatusBar';
 import { useWallet } from 'context/WalletContext';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { merpiGetEventDetails, merpiGetEventTickets, merpiBuyEventTickets } from 'AuthFunction/paymentService';
+import PaymentSummaryModal from 'component/PaymentSummaryModal';
 
 const fmtDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
@@ -26,8 +27,8 @@ export default function EventDetailScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [buying,  setBuying]  = useState(false);
   const [pin,     setPin]     = useState('');
-  const [showPin, setShowPin] = useState(false);
   const [quantities, setQuantities] = useState({});
+  const [showPayModal, setShowPayModal] = useState(false);
 
   const bal = wallet?.user?.walletBalance || 0;
 
@@ -171,77 +172,36 @@ export default function EventDetailScreen({ navigation, route }) {
           </>
         )}
 
-        {/* Total + PIN + Buy */}
+        {/* Review & pay */}
         {hasSelection && (
-          <>
-            <View style={ss.payCard}>
-              <Text style={ss.payTitle}>Order Summary</Text>
-              {tickets.filter(t => (quantities[t.id] || 0) > 0).map(t => (
-                <View key={t.id} style={ss.payRow}>
-                  <Text style={ss.payLabel}>{t.name} × {quantities[t.id]}</Text>
-                  <Text style={ss.payVal}>{formatCurrency((t.price || 0) * quantities[t.id], 'NGN')}</Text>
-                </View>
-              ))}
-              <View style={[ss.payRow, ss.payTotal]}>
-                <Text style={ss.payTotalLabel}>Total</Text>
-                <Text style={ss.payTotalAmt}>{formatCurrency(totalAmount, 'NGN')}</Text>
-              </View>
-              <View style={ss.walletRow}>
-                <Ionicons name="wallet-outline" size={15} color="#FFF" />
-                <Text style={ss.walletLabel}>Wallet Balance</Text>
-                <Text style={[ss.walletBal, { color: bal < totalAmount ? '#FFB3B3' : '#7FFFB3' }]}>
-                  {formatCurrency(bal, 'NGN')}
-                </Text>
-              </View>
-            </View>
-
-            {bal >= totalAmount && (
-              <View style={[ss.pinCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-                <Text style={[{ fontSize: 13, fontWeight: '600', color: tc.heading, marginBottom: 8 }]}>Transaction PIN</Text>
-                <View style={[ss.pinInput, { backgroundColor: tc.background, borderColor: tc.border || '#E5E5EA' }]}>
-                  <Text style={[ss.pinDots, { color: tc.heading }]}>{pin ? '•'.repeat(pin.length) : '••••'}</Text>
-                  <TouchableOpacity onPress={() => setShowPin(v => !v)}>
-                    <Ionicons name={showPin ? 'eye-off-outline' : 'eye-outline'} size={18} color={tc.subtext} />
-                  </TouchableOpacity>
-                </View>
-                <View style={ss.numPad}>
-                  {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((k, i) => (
-                    <TouchableOpacity key={i} style={[ss.numKey, { backgroundColor: k ? tc.card : 'transparent', borderColor: tc.border || '#E5E5EA' }]}
-                      onPress={() => {
-                        if (!k) return;
-                        if (k === '⌫') setPin(p => p.slice(0, -1));
-                        else if (pin.length < 4) setPin(p => p + k);
-                      }}
-                      disabled={!k}
-                    >
-                      <Text style={[ss.numKeyText, { color: tc.heading }]}>{k}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {bal < totalAmount && (
-              <View style={[ss.warnBox, { backgroundColor: '#FEE2E2' }]}>
-                <Ionicons name="warning-outline" size={16} color="#EF4444" />
-                <Text style={{ fontSize: 13, color: '#EF4444', flex: 1 }}>Insufficient balance. Please fund your wallet.</Text>
-              </View>
-            )}
-
-            <TouchableOpacity
-              style={[ss.primaryBtn, { backgroundColor: tc.primary, opacity: (buying || bal < totalAmount || pin.length !== 4) ? 0.5 : 1 }]}
-              onPress={handleBuy}
-              disabled={buying || bal < totalAmount || pin.length !== 4}
-              activeOpacity={0.85}
-            >
-              {buying ? <ActivityIndicator color="#FFF" /> : (
-                <><Text style={ss.primaryBtnText}>Buy Tickets — {formatCurrency(totalAmount, 'NGN')}</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFF" /></>
-              )}
-            </TouchableOpacity>
-          </>
+          <TouchableOpacity
+            style={[ss.primaryBtn, { backgroundColor: tc.primary }]}
+            onPress={() => setShowPayModal(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={ss.primaryBtnText}>Review & Pay — {formatCurrency(totalAmount, 'NGN')}</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFF" />
+          </TouchableOpacity>
         )}
       </ScrollView>
+
+      <PaymentSummaryModal
+        visible={showPayModal}
+        onClose={() => setShowPayModal(false)}
+        tc={tc}
+        title="Order Summary"
+        rows={tickets.filter(t => (quantities[t.id] || 0) > 0).map(t => ({
+          label: `${t.name} × ${quantities[t.id]}`,
+          value: formatCurrency((t.price || 0) * quantities[t.id], 'NGN'),
+        }))}
+        totalAmount={totalAmount}
+        walletBalance={bal}
+        pin={pin}
+        onPinChange={setPin}
+        onConfirm={handleBuy}
+        confirmLabel={`Buy Tickets — ${formatCurrency(totalAmount, 'NGN')}`}
+        loading={buying}
+      />
     </SafeAreaView>
   );
 }
@@ -264,24 +224,6 @@ const ss = StyleSheet.create({
   qtyRow:          { flexDirection: 'row', alignItems: 'center', gap: 8 },
   qtyBtn:          { width: 32, height: 32, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   qtyText:         { fontSize: 16, fontWeight: '700', minWidth: 20, textAlign: 'center' },
-  payCard:         { marginHorizontal: 16, borderRadius: 14, backgroundColor: '#3B0CB0', padding: 20, marginBottom: 12 },
-  payTitle:        { fontSize: 15, fontWeight: '700', color: '#FFF', marginBottom: 10 },
-  payRow:          { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  payLabel:        { fontSize: 13, color: 'rgba(255,255,255,0.8)' },
-  payVal:          { fontSize: 13, fontWeight: '600', color: '#FFF' },
-  payTotal:        { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', paddingTop: 8, marginTop: 4 },
-  payTotalLabel:   { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  payTotalAmt:     { fontSize: 20, fontWeight: '900', color: '#FFF' },
-  walletRow:       { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)' },
-  walletLabel:     { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.8)' },
-  walletBal:       { fontSize: 14, fontWeight: '700' },
-  pinCard:         { marginHorizontal: 16, borderRadius: 14, borderWidth: 1, padding: 16, marginBottom: 12 },
-  pinInput:        { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  pinDots:         { fontSize: 22, letterSpacing: 8 },
-  numPad:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  numKey:          { width: '30%', paddingVertical: 14, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
-  numKeyText:      { fontSize: 18, fontWeight: '600' },
-  warnBox:         { marginHorizontal: 16, flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: 10, marginBottom: 12 },
   primaryBtn:      { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, marginTop: 4 },
   primaryBtnText:  { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });

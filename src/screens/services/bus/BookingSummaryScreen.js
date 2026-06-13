@@ -15,6 +15,7 @@ import PassengerCard from 'component/bus/PassengerCard';
 import EditPassengerModal from 'component/bus/EditPassengerModal';
 import { merpiBuyBusTicket } from 'AuthFunction/paymentService';
 import { useWallet } from 'context/WalletContext';
+import PaymentSummaryModal from 'component/PaymentSummaryModal';
 import { placeLabel, fmtDate, seatLabel, buildDepartureDate, timeToMinutes, minutesToHHMM } from 'utility/busHelpers';
 
 const genLocalRef = () => `PAY-BUS-${Date.now()}`;
@@ -38,6 +39,7 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
   const [busy, setBusy]                   = useState(false);
   const [localRef]                        = useState(genLocalRef);
   const [showPinSheet, setShowPinSheet]   = useState(false);
+  const [showPayModal, setShowPayModal]   = useState(false);
 
   const isRandom   = (route?.schedule_type || schedule?.route?.schedule_type) === 'random';
   const seats      = selectedSeats || [];
@@ -256,55 +258,35 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
           <InfoRow label="Relationship" value={emergency.relationship} tc={tc} />
         </TouchableOpacity>
 
-        {/* Payment summary */}
-        <View style={[ss.payCard, { backgroundColor: '#3B0CB0' }]}>
-          <SectionHeader icon="wallet-outline" title="PAYMENT SUMMARY" light />
-          <PayRow label={`${formatCurrency(pricePerSeat, 'NGN')} × ${seatCount} seat${seatCount !== 1 ? 's' : ''}`} value={formatCurrency(totalPrice, 'NGN')} />
-          <View style={ss.payDivider} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-            <Text style={ss.payTotalLabel}>Total</Text>
-            <Text style={ss.payTotalAmt}>{formatCurrency(totalPrice, 'NGN')}</Text>
-          </View>
-          <View style={[ss.walletRow, { borderTopColor: 'rgba(255,255,255,0.2)' }]}>
-            <Ionicons name="wallet-outline" size={16} color={sufficient ? '#4ADE80' : '#F87171'} />
-            <Text style={[ss.walletLabel, { color: sufficient ? '#4ADE80' : '#F87171' }]}>
-              Wallet: {formatCurrency(walletBal, 'NGN')}
-              {!sufficient && '  ⚠ Insufficient balance'}
-            </Text>
-          </View>
-        </View>
-
-        {/* PIN + Pay */}
-        <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-          <Text style={[ss.fieldLabel, { color: tc.subheading }]}>Transaction PIN</Text>
-          <TextInput
-            style={[ss.pinInp, { borderColor: tc.border || '#E5E5EA', color: tc.heading, backgroundColor: tc.background }]}
-            value={pin}
-            onChangeText={v => setPin(v.replace(/\D/g, '').slice(0, 4))}
-            placeholder="• • • •"
-            placeholderTextColor={tc.subtext}
-            keyboardType="number-pad"
-            secureTextEntry
-            maxLength={4}
-          />
-        </View>
-
+        {/* Review & pay */}
         <TouchableOpacity
-          style={[ss.payBtn, { backgroundColor: tc.primary, opacity: (!sufficient || busy) ? 0.5 : 1 }]}
-          onPress={handlePay}
-          disabled={!sufficient || busy}
+          style={[ss.payBtn, { backgroundColor: tc.primary }]}
+          onPress={() => setShowPayModal(true)}
           activeOpacity={0.85}
         >
-          {busy
-            ? <ActivityIndicator color="#FFF" />
-            : <>
-                <Ionicons name="lock-closed-outline" size={18} color="#FFF" />
-                <Text style={ss.payBtnText}>Confirm & Pay {formatCurrency(totalPrice, 'NGN')}</Text>
-              </>
-          }
+          <Ionicons name="lock-closed-outline" size={18} color="#FFF" />
+          <Text style={ss.payBtnText}>Review & Pay {formatCurrency(totalPrice, 'NGN')}</Text>
         </TouchableOpacity>
 
       </ScrollView>
+
+      <PaymentSummaryModal
+        visible={showPayModal}
+        onClose={() => setShowPayModal(false)}
+        tc={tc}
+        title="Payment Summary"
+        rows={[{
+          label: `${formatCurrency(pricePerSeat, 'NGN')} × ${seatCount} seat${seatCount !== 1 ? 's' : ''}`,
+          value: formatCurrency(totalPrice, 'NGN'),
+        }]}
+        totalAmount={totalPrice}
+        walletBalance={walletBal}
+        pin={pin}
+        onPinChange={setPin}
+        onConfirm={handlePay}
+        confirmLabel={`Confirm & Pay ${formatCurrency(totalPrice, 'NGN')}`}
+        loading={busy}
+      />
 
       {/* Edit passenger modal */}
       <EditPassengerModal
@@ -447,15 +429,6 @@ function InfoRow({ label, value, tc }) {
   );
 }
 
-function PayRow({ label, value }) {
-  return (
-    <View style={ss.payRow}>
-      <Text style={ss.payLabel}>{label}</Text>
-      <Text style={ss.payValue}>{value}</Text>
-    </View>
-  );
-}
-
 const ss = StyleSheet.create({
   container:      { flex: 1 },
   header:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
@@ -473,15 +446,6 @@ const ss = StyleSheet.create({
   refBox:         { borderRadius: 10, padding: 12, alignItems: 'center', marginTop: 10 },
   refLabel:       { fontSize: 11, fontWeight: '600', marginBottom: 4 },
   refValue:       { fontSize: 14, fontWeight: '800', letterSpacing: 0.5 },
-  payCard:        { borderRadius: 16, padding: 18, marginBottom: 14 },
-  payRow:         { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  payLabel:       { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
-  payValue:       { fontSize: 14, fontWeight: '600', color: '#FFF' },
-  payDivider:     { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 10 },
-  payTotalLabel:  { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  payTotalAmt:    { fontSize: 22, fontWeight: '900', color: '#FFF' },
-  walletRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, paddingTop: 12, borderTopWidth: 1 },
-  walletLabel:    { fontSize: 13, fontWeight: '600', flex: 1 },
   fieldLabel:     { fontSize: 13, fontWeight: '600', marginBottom: 8, color: '#888' },
   pinInp:         { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, fontSize: 22, textAlign: 'center', letterSpacing: 8 },
   timeInp:        { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13 },

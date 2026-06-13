@@ -11,16 +11,18 @@ import { StatusBarComponent } from 'component/StatusBar';
 import { useWallet } from 'context/WalletContext';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { merpiGetHotelRooms, merpiBookHotelRoom } from 'AuthFunction/paymentService';
+import PaymentSummaryModal from 'component/PaymentSummaryModal';
 
 const pad   = (n) => String(n).padStart(2, '0');
 const toYMD = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const fmtDate = (ymd) =>
   ymd ? new Date(`${ymd}T00:00:00`).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
 
+// Check-in must be in the future, so the strip starts from tomorrow.
 const DATE_STRIP_DAYS = 60;
 const dateStrip = Array.from({ length: DATE_STRIP_DAYS }, (_, i) => {
   const d = new Date();
-  d.setDate(d.getDate() + i);
+  d.setDate(d.getDate() + i + 1);
   return d;
 });
 
@@ -45,11 +47,12 @@ export default function HotelDetailScreen({ navigation, route }) {
   const [buying,       setBuying]       = useState(false);
   const [pin,          setPin]          = useState('');
 
-  const [checkinDate,  setCheckinDate]  = useState(() => toYMD(new Date()));
+  const [checkinDate,  setCheckinDate]  = useState(() => toYMD(dateStrip[0]));
   const [nights,       setNights]       = useState(1);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [numberOfRooms, setNumberOfRooms] = useState(1);
   const [numberOfGuests, setNumberOfGuests] = useState(1);
+  const [showPayModal, setShowPayModal] = useState(false);
 
   const bal = wallet?.user?.walletBalance || 0;
   const checkoutDate = addDays(checkinDate, nights);
@@ -305,80 +308,37 @@ export default function HotelDetailScreen({ navigation, route }) {
               </View>
             </View>
 
-            {/* Payment + PIN */}
-            <View style={ss.payCard}>
-              <Text style={ss.payTitle}>Order Summary</Text>
-              <View style={ss.payRow}>
-                <Text style={ss.payLabel}>Check-in</Text>
-                <Text style={ss.payVal}>{fmtDate(checkinDate)}</Text>
-              </View>
-              <View style={ss.payRow}>
-                <Text style={ss.payLabel}>Check-out</Text>
-                <Text style={ss.payVal}>{fmtDate(checkoutDate)}</Text>
-              </View>
-              <View style={ss.payRow}>
-                <Text style={ss.payLabel}>{selectedRoom.room_name} × {numberOfRooms} room(s) × {nights} night(s)</Text>
-                <Text style={ss.payVal}>{formatCurrency(totalAmount, 'NGN')}</Text>
-              </View>
-              <View style={[ss.payRow, ss.payTotal]}>
-                <Text style={ss.payTotalLabel}>Total</Text>
-                <Text style={ss.payTotalAmt}>{formatCurrency(totalAmount, 'NGN')}</Text>
-              </View>
-              <View style={ss.walletRow}>
-                <Ionicons name="wallet-outline" size={15} color="#FFF" />
-                <Text style={ss.walletLabel}>Wallet Balance</Text>
-                <Text style={[ss.walletBal, { color: bal < totalAmount ? '#FFB3B3' : '#7FFFB3' }]}>{formatCurrency(bal, 'NGN')}</Text>
-              </View>
-            </View>
-
-            {bal >= totalAmount && (
-              <View style={[ss.pinCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-                <Text style={[{ fontSize: 13, fontWeight: '600', color: tc.heading, marginBottom: 8 }]}>Transaction PIN</Text>
-                <View style={ss.numPad}>
-                  {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((k, i) => (
-                    <TouchableOpacity key={i}
-                      style={[ss.numKey, { backgroundColor: k ? tc.background : 'transparent', borderColor: tc.border || '#E5E5EA' }]}
-                      onPress={() => {
-                        if (!k) return;
-                        if (k === '⌫') setPin((p) => p.slice(0, -1));
-                        else if (pin.length < 4) setPin((p) => p + k);
-                      }}
-                      disabled={!k}
-                    >
-                      <Text style={[ss.numKeyText, { color: tc.heading }]}>{k}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <View style={[ss.pinDots, { borderColor: tc.border || '#E5E5EA' }]}>
-                  {[0,1,2,3].map((i) => (
-                    <View key={i} style={[ss.pinDot, { backgroundColor: i < pin.length ? tc.primary : tc.border || '#E5E5EA' }]} />
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {bal < totalAmount && (
-              <View style={[ss.warnBox, { backgroundColor: '#FEE2E2', marginHorizontal: 16 }]}>
-                <Ionicons name="warning-outline" size={16} color="#EF4444" />
-                <Text style={{ fontSize: 13, color: '#EF4444', flex: 1 }}>Insufficient balance. Please fund your wallet.</Text>
-              </View>
-            )}
-
+            {/* Review & pay */}
             <TouchableOpacity
-              style={[ss.primaryBtn, { backgroundColor: tc.primary,
-                opacity: (buying || bal < totalAmount || pin.length !== 4) ? 0.5 : 1 }]}
-              onPress={handleBuy}
-              disabled={buying || bal < totalAmount || pin.length !== 4}
+              style={[ss.primaryBtn, { backgroundColor: tc.primary }]}
+              onPress={() => setShowPayModal(true)}
               activeOpacity={0.85}
             >
-              {buying ? <ActivityIndicator color="#FFF" /> : (
-                <><Text style={ss.primaryBtnText}>Book Now — {formatCurrency(totalAmount, 'NGN')}</Text>
-                <Ionicons name="arrow-forward" size={18} color="#FFF" /></>
-              )}
+              <Text style={ss.primaryBtnText}>Review & Pay — {formatCurrency(totalAmount, 'NGN')}</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFF" />
             </TouchableOpacity>
           </>
         )}
       </ScrollView>
+
+      <PaymentSummaryModal
+        visible={showPayModal}
+        onClose={() => setShowPayModal(false)}
+        tc={tc}
+        title="Order Summary"
+        rows={selectedRoom ? [
+          { label: 'Check-in', value: fmtDate(checkinDate) },
+          { label: 'Check-out', value: fmtDate(checkoutDate) },
+          { label: `${selectedRoom.room_name} × ${numberOfRooms} room(s) × ${nights} night(s)`, value: formatCurrency(totalAmount, 'NGN') },
+        ] : []}
+        totalAmount={totalAmount}
+        walletBalance={bal}
+        pin={pin}
+        onPinChange={setPin}
+        onConfirm={handleBuy}
+        confirmLabel={`Book Now — ${formatCurrency(totalAmount, 'NGN')}`}
+        loading={buying}
+      />
     </SafeAreaView>
   );
 }
@@ -421,24 +381,6 @@ const ss = StyleSheet.create({
   roomPrice:        { fontSize: 14, fontWeight: '800' },
   roomOcc:          { fontSize: 11 },
   unavailableText:  { fontSize: 11, fontWeight: '700', color: '#EF4444', marginTop: 4 },
-  payCard:          { marginHorizontal: 16, borderRadius: 14, backgroundColor: '#3B0CB0', padding: 20, marginBottom: 12, marginTop: 8 },
-  payTitle:         { fontSize: 15, fontWeight: '700', color: '#FFF', marginBottom: 10 },
-  payRow:           { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  payLabel:         { fontSize: 13, color: 'rgba(255,255,255,0.8)', flexShrink: 1, paddingRight: 8 },
-  payVal:           { fontSize: 13, fontWeight: '600', color: '#FFF' },
-  payTotal:         { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', paddingTop: 8, marginTop: 4 },
-  payTotalLabel:    { fontSize: 15, fontWeight: '700', color: '#FFF' },
-  payTotalAmt:      { fontSize: 20, fontWeight: '900', color: '#FFF' },
-  walletRow:        { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)' },
-  walletLabel:      { flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.8)' },
-  walletBal:        { fontSize: 14, fontWeight: '700' },
-  pinCard:          { marginHorizontal: 16, borderRadius: 14, borderWidth: 1, padding: 16, marginBottom: 12 },
-  numPad:           { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  numKey:           { width: '30%', paddingVertical: 14, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
-  numKeyText:       { fontSize: 18, fontWeight: '600' },
-  pinDots:          { flexDirection: 'row', justifyContent: 'center', gap: 12, borderTopWidth: 1, paddingTop: 12 },
-  pinDot:           { width: 14, height: 14, borderRadius: 7 },
-  warnBox:          { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: 10, marginBottom: 12 },
   primaryBtn:       { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, marginTop: 4 },
   primaryBtnText:   { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });

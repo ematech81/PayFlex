@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView, FlatList,
-  TouchableOpacity, ActivityIndicator, Alert, Image, Platform,
+  TouchableOpacity, ActivityIndicator, Alert, Image, Platform, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,6 +54,14 @@ export default function HotelDetailScreen({ navigation, route }) {
   const [numberOfGuests, setNumberOfGuests] = useState(1);
   const [showPayModal, setShowPayModal] = useState(false);
 
+  const accountUser = wallet?.user || {};
+  const [guestName,  setGuestName]  = useState(accountUser.fullName || '');
+  const [guestEmail, setGuestEmail] = useState(accountUser.email || '');
+  const [guestPhone, setGuestPhone] = useState(accountUser.phone || '');
+  const [guestDob,   setGuestDob]   = useState(
+    accountUser.ninVerification?.dateOfBirth || accountUser.bvnVerification?.dateOfBirth || ''
+  );
+
   const bal = wallet?.user?.walletBalance || 0;
   const checkoutDate = addDays(checkinDate, nights);
 
@@ -92,6 +100,10 @@ export default function HotelDetailScreen({ navigation, route }) {
 
   const handleBuy = async () => {
     if (!selectedRoom)     { Alert.alert('Room required', 'Please select a room.'); return; }
+    if (!guestName.trim() || !guestEmail.trim() || !guestPhone.trim() || !guestDob.trim()) {
+      Alert.alert('Guest details required', 'Please fill in the guest name, email, phone and date of birth.');
+      return;
+    }
     if (pin.length !== 4)  { Alert.alert('PIN required', 'Enter your 4-digit transaction PIN.'); return; }
     if (bal < totalAmount) { Alert.alert('Insufficient balance', 'Please fund your wallet.'); return; }
 
@@ -104,6 +116,12 @@ export default function HotelDetailScreen({ navigation, route }) {
         checkin_date:      checkinDate,
         checkout_date:     checkoutDate,
         amount:            totalAmount,
+        guest_info: {
+          name:         guestName.trim(),
+          email:        guestEmail.trim(),
+          phone_number: guestPhone.trim(),
+          dob:          guestDob.trim(),
+        },
       });
 
       const booking = res?.booking || {};
@@ -308,6 +326,46 @@ export default function HotelDetailScreen({ navigation, route }) {
               </View>
             </View>
 
+            {/* Guest details */}
+            <Text style={[ss.sectionLabel, { color: tc.subheading, marginTop: 4 }]}>GUEST DETAILS</Text>
+            <View style={[ss.guestCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+              <Text style={[ss.inputLabel, { color: tc.subheading }]}>Full Name</Text>
+              <TextInput
+                style={[ss.input, { borderColor: tc.border || '#E5E5EA', color: tc.heading, backgroundColor: tc.background }]}
+                value={guestName}
+                onChangeText={setGuestName}
+                placeholder="Guest full name"
+                placeholderTextColor={tc.subtext}
+              />
+              <Text style={[ss.inputLabel, { color: tc.subheading }]}>Email</Text>
+              <TextInput
+                style={[ss.input, { borderColor: tc.border || '#E5E5EA', color: tc.heading, backgroundColor: tc.background }]}
+                value={guestEmail}
+                onChangeText={setGuestEmail}
+                placeholder="Guest email"
+                placeholderTextColor={tc.subtext}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <Text style={[ss.inputLabel, { color: tc.subheading }]}>Phone Number</Text>
+              <TextInput
+                style={[ss.input, { borderColor: tc.border || '#E5E5EA', color: tc.heading, backgroundColor: tc.background }]}
+                value={guestPhone}
+                onChangeText={setGuestPhone}
+                placeholder="e.g. +2348012345678"
+                placeholderTextColor={tc.subtext}
+                keyboardType="phone-pad"
+              />
+              <Text style={[ss.inputLabel, { color: tc.subheading }]}>Date of Birth</Text>
+              <TextInput
+                style={[ss.input, { borderColor: tc.border || '#E5E5EA', color: tc.heading, backgroundColor: tc.background }]}
+                value={guestDob}
+                onChangeText={setGuestDob}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={tc.subtext}
+              />
+            </View>
+
             {/* Review & pay */}
             <TouchableOpacity
               style={[ss.primaryBtn, { backgroundColor: tc.primary }]}
@@ -327,6 +385,7 @@ export default function HotelDetailScreen({ navigation, route }) {
         tc={tc}
         title="Order Summary"
         rows={selectedRoom ? [
+          { label: 'Guest', value: guestName },
           { label: 'Check-in', value: fmtDate(checkinDate) },
           { label: 'Check-out', value: fmtDate(checkoutDate) },
           { label: `${selectedRoom.room_name} × ${numberOfRooms} room(s) × ${nights} night(s)`, value: formatCurrency(totalAmount, 'NGN') },
@@ -381,6 +440,9 @@ const ss = StyleSheet.create({
   roomPrice:        { fontSize: 14, fontWeight: '800' },
   roomOcc:          { fontSize: 11 },
   unavailableText:  { fontSize: 11, fontWeight: '700', color: '#EF4444', marginTop: 4 },
+  guestCard:        { marginHorizontal: 16, marginBottom: 10, borderRadius: 12, borderWidth: 1, padding: 14 },
+  inputLabel:       { fontSize: 12, fontWeight: '600', marginBottom: 6 },
+  input:            { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 12 },
   primaryBtn:       { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, marginTop: 4 },
   primaryBtnText:   { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });

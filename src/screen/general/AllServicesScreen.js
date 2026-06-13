@@ -111,6 +111,14 @@ const services = [
     color: '#6C5CE7',
   },
   {
+    id: 'hotels',
+    label: 'Hotels',
+    icon: 'bed',
+    iconLib: Ionicons,
+    screen: 'Hotels',
+    color: '#74B9FF',
+  },
+  {
     id: 'waec',
     label: 'WAEC',
     icon: 'card-account-details',

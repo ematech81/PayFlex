@@ -82,6 +82,8 @@ import EventsScreen from 'screens/services/EventsScreen';
 import EventDetailScreen from 'screens/services/EventDetailScreen';
 import CinemaScreen from 'screens/services/CinemaScreen';
 import CinemaDetailScreen from 'screens/services/CinemaDetailScreen';
+import HotelsScreen from 'screens/services/HotelsScreen';
+import HotelDetailScreen from 'screens/services/HotelDetailScreen';
 import DeleteAccountScreen from 'screen/UserProfile/DeleteAccountScreen';
 import NotificationsInboxScreen from 'screen/general/NotificationsInboxScreen';
 import IssueReportScreen from 'screen/general/IssueReportScreen';
@@ -439,6 +441,8 @@ function AppContent({ initialRoute, navigationRef }) {
               <Stack.Screen name="EventDetail"          component={EventDetailScreen} />
               <Stack.Screen name="Cinema"               component={CinemaScreen} />
               <Stack.Screen name="CinemaDetail"         component={CinemaDetailScreen} />
+              <Stack.Screen name="Hotels"               component={HotelsScreen} />
+              <Stack.Screen name="HotelDetail"          component={HotelDetailScreen} />
             
               <Stack.Screen
                 name="TransportScreen"

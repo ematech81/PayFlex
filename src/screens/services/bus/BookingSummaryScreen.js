@@ -119,7 +119,7 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
             route_id:         schedule?.route?.id || route?.id,
             bus_id:           bus?.bus_id,
             no_of_passengers: seatCount,
-            departure_time:   minutesToHHMM(randomMinutes),
+            departure_time:   minutesToHHMM(randomMinutes) + ':00',
             departure_date:   randomDepartureDate,
             customer_info:    customerInfo,
             amount:           totalPrice,
@@ -261,7 +261,15 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
         {/* Review & pay */}
         <TouchableOpacity
           style={[ss.payBtn, { backgroundColor: tc.primary }]}
-          onPress={() => setShowPayModal(true)}
+          onPress={() => {
+            if (isRandom && windowStartMin != null && windowEndMin != null &&
+                (randomMinutes < windowStartMin || randomMinutes > windowEndMin)) {
+              Alert.alert('Invalid departure time',
+                `Please pick a time between ${minutesToHHMM(windowStartMin)} and ${minutesToHHMM(windowEndMin)}.`);
+              return;
+            }
+            setShowPayModal(true);
+          }}
           activeOpacity={0.85}
         >
           <Ionicons name="lock-closed-outline" size={18} color="#FFF" />

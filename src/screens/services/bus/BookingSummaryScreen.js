@@ -119,7 +119,7 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
             route_id:         schedule?.route?.id || route?.id,
             bus_id:           bus?.bus_id,
             no_of_passengers: seatCount,
-            departure_time:   minutesToHHMM(randomMinutes) + ':00',
+            departure_time:   minutesToHHMM(randomMinutes),
             departure_date:   randomDepartureDate,
             customer_info:    customerInfo,
             amount:           totalPrice,
@@ -262,11 +262,27 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
         <TouchableOpacity
           style={[ss.payBtn, { backgroundColor: tc.primary }]}
           onPress={() => {
-            if (isRandom && windowStartMin != null && windowEndMin != null &&
-                (randomMinutes < windowStartMin || randomMinutes > windowEndMin)) {
-              Alert.alert('Invalid departure time',
-                `Please pick a time between ${minutesToHHMM(windowStartMin)} and ${minutesToHHMM(windowEndMin)}.`);
-              return;
+            if (isRandom) {
+              if (windowStartMin == null || windowEndMin == null) {
+                Alert.alert('Cannot Book', 'Operating hours are not available for this bus. Please go back and select a different bus.');
+                return;
+              }
+              const todayStr = new Date().toISOString().slice(0, 10);
+              if (depDate?.slice(0, 10) === todayStr) {
+                const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+                if (nowMin > windowEndMin) {
+                  Alert.alert(
+                    'Booking Window Closed',
+                    `Today's operating window has ended (${minutesToHHMM(windowStartMin)}–${minutesToHHMM(windowEndMin)}). Please go back and select tomorrow or a later departure date.`,
+                  );
+                  return;
+                }
+              }
+              if (randomMinutes < windowStartMin || randomMinutes > windowEndMin) {
+                Alert.alert('Invalid departure time',
+                  `Please pick a time between ${minutesToHHMM(windowStartMin)} and ${minutesToHHMM(windowEndMin)}.`);
+                return;
+              }
             }
             setShowPayModal(true);
           }}

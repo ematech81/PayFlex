@@ -672,9 +672,11 @@ export default function HomeScreen({route}) {
                       style={[
                         styles.txAmount,
                         {
-                          color: tx.status === 'success' || tx.status === 'completed'
+                          color: ['success', 'successful', 'completed', 'confirmed'].includes(tx.status)
                             ? themeColors.success
-                            : themeColors.error,
+                            : tx.status === 'pending'
+                              ? themeColors.warning
+                              : themeColors.error,
                         },
                       ]}
                     >
@@ -683,17 +685,21 @@ export default function HomeScreen({route}) {
                     <View style={[
                       styles.statusBadge,
                       {
-                        backgroundColor: tx.status === 'success' || tx.status === 'completed'
+                        backgroundColor: ['success', 'successful', 'completed', 'confirmed'].includes(tx.status)
                           ? `${themeColors.success}20`
-                          : `${themeColors.error}20`,
+                          : tx.status === 'pending'
+                            ? `${themeColors.warning}20`
+                            : `${themeColors.error}20`,
                       }
                     ]}>
                       <Text style={[
                         styles.statusText,
                         {
-                          color: tx.status === 'success' || tx.status === 'completed'
+                          color: ['success', 'successful', 'completed', 'confirmed'].includes(tx.status)
                             ? themeColors.success
-                            : themeColors.error,
+                            : tx.status === 'pending'
+                              ? themeColors.warning
+                              : themeColors.error,
                         }
                       ]}>
                         {tx.status}

@@ -34,11 +34,25 @@ export default function EventsScreen({ navigation }) {
         category_id: activeCategory || undefined,
         search:      search || undefined,
       });
-      // Backend returns { success, data: { data: [...], next_page, count } }
-      const rawData = evRes?.data?.data;
-      const eventList = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+      // Backend strips the MERPI envelope and sends data.data.
+      // MERPI may return a flat array OR a paginated {data:[...], next_page, count}.
+      // Also handles camelCase (endDate) vs snake_case (end_date) variants.
+      const d = evRes?.data?.data;
+      const eventList = Array.isArray(d)
+        ? d
+        : Array.isArray(d?.data)
+          ? d.data
+          : Array.isArray(evRes?.data)
+            ? evRes.data
+            : [];
+      console.log('[EventsScreen] eventList length:', eventList.length, 'sample:', JSON.stringify(eventList[0])?.slice(0, 150));
       const now = new Date();
-      setEvents(eventList.filter((e) => !e.end_date || new Date(e.end_date) >= now));
+      setEvents(eventList.filter((e) => {
+        const endStr = e.end_date || e.endDate;
+        if (!endStr) return true;
+        const d2 = new Date(endStr);
+        return isNaN(d2.getTime()) || d2 >= now;
+      }));
     } catch (e) {
       setError(e.message || 'Could not load events.');
     } finally {

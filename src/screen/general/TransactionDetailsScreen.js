@@ -104,6 +104,7 @@ export default function TransactionDetailsScreen({ navigation, route }) {
       case 'success':
       case 'successful':
       case 'delivered':
+      case 'confirmed':
         return '#4CAF50';
       case 'failed':
         return themeColors.destructive;
@@ -122,11 +123,15 @@ export default function TransactionDetailsScreen({ navigation, route }) {
 
   const getServiceName = (type) => {
     const names = {
-      airtime: 'Airtime Recharge',
-      data: 'Data Bundle',
-      electricity: 'Electricity Payment',
-      tv: 'TV Subscription',
-      education: 'Educational Service',
+      airtime:       'Airtime Recharge',
+      data:          'Data Bundle',
+      electricity:   'Electricity Payment',
+      tv:            'TV Subscription',
+      education:     'Educational Service',
+      bus_ticket:    'Bus Ticket',
+      cinema_ticket: 'Cinema Ticket',
+      event_ticket:  'Event Ticket',
+      hotel_booking: 'Hotel Booking',
     };
     return names[type] || 'Transaction';
   };
@@ -248,6 +253,63 @@ const renderServiceDetails = (txn, colors) => {
           {commonDetails}
         </>
       );
+
+    case 'bus_ticket': {
+      const b = txn.bookingDetails || {};
+      return (
+        <>
+          <DetailRow label="Reference"      value={txn.reference} copiable themeColors={colors} />
+          {b.booking_number && <DetailRow label="Booking #" value={b.booking_number} themeColors={colors} />}
+          {b.route         && <DetailRow label="Route"      value={`${b.route.from || ''} → ${b.route.to || ''}`} themeColors={colors} />}
+          {b.departure_date && <DetailRow label="Date"      value={b.departure_date} themeColors={colors} />}
+          {b.departure_time && <DetailRow label="Time"      value={b.departure_time} themeColors={colors} />}
+          {b.passenger?.fullName && <DetailRow label="Passenger" value={b.passenger.fullName} themeColors={colors} />}
+        </>
+      );
+    }
+
+    case 'cinema_ticket': {
+      const b = txn.bookingDetails || {};
+      return (
+        <>
+          <DetailRow label="Reference"  value={txn.reference} copiable themeColors={colors} />
+          {b.invoice_id  && <DetailRow label="Invoice #"  value={String(b.invoice_id)} themeColors={colors} />}
+          {b.name        && <DetailRow label="Name"       value={b.name}    themeColors={colors} />}
+          {b.email       && <DetailRow label="Email"      value={b.email}   themeColors={colors} />}
+          {b.tickets?.map((t, i) => (
+            <DetailRow key={i} label={`Ticket${b.tickets.length > 1 ? ` ${i + 1}` : ''}`} value={t.title} themeColors={colors} />
+          ))}
+        </>
+      );
+    }
+
+    case 'event_ticket': {
+      const b = txn.bookingDetails || {};
+      return (
+        <>
+          <DetailRow label="Reference" value={txn.reference} copiable themeColors={colors} />
+          {b.invoice_id && <DetailRow label="Invoice #" value={String(b.invoice_id)} themeColors={colors} />}
+          {b.name       && <DetailRow label="Name"      value={b.name}  themeColors={colors} />}
+          {b.email      && <DetailRow label="Email"     value={b.email} themeColors={colors} />}
+        </>
+      );
+    }
+
+    case 'hotel_booking': {
+      const b = txn.bookingDetails || {};
+      return (
+        <>
+          <DetailRow label="Reference"   value={txn.reference} copiable themeColors={colors} />
+          {b.booking_number && <DetailRow label="Booking #"  value={b.booking_number}         themeColors={colors} />}
+          {b.hotel?.name    && <DetailRow label="Hotel"      value={b.hotel.name}              themeColors={colors} />}
+          {b.room?.room_name && <DetailRow label="Room"      value={b.room.room_name}          themeColors={colors} />}
+          {b.checkin_date   && <DetailRow label="Check-in"   value={b.checkin_date}            themeColors={colors} />}
+          {b.checkout_date  && <DetailRow label="Check-out"  value={b.checkout_date}           themeColors={colors} />}
+          {b.number_of_nights != null && <DetailRow label="Nights" value={String(b.number_of_nights)} themeColors={colors} />}
+          {b.name           && <DetailRow label="Guest"      value={b.name}                    themeColors={colors} />}
+        </>
+      );
+    }
 
     default:
       return commonDetails;

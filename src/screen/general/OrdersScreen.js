@@ -46,16 +46,20 @@ export default function TransactionHistoryScreen({ navigation }) {
 
   // Categories
   const CATEGORIES = [
-    { label: 'All Categories', value: 'all', icon: '📋' },
-    { label: 'Airtime', value: 'airtime', icon: '📱' },
-    { label: 'Data', value: 'data', icon: '📊' },
-    { label: 'Electricity', value: 'electricity', icon: '⚡' },
-    { label: 'TV Subscription', value: 'tv', icon: '📺' },
-    { label: 'Education', value: 'education', icon: '📚' },
-    { label: 'Flight Booking', value: 'flight', icon: '✈️' },
-    { label: 'Betting', value: 'betting', icon: '🎰' },
-    { label: 'CAC Registration', value: 'cac', icon: '📄' },
-    { label: 'NIN Services', value: 'nin', icon: '🆔' },
+    { label: 'All Categories',   value: 'all',           icon: '📋' },
+    { label: 'Airtime',          value: 'airtime',        icon: '📱' },
+    { label: 'Data',             value: 'data',           icon: '📊' },
+    { label: 'Electricity',      value: 'electricity',    icon: '⚡' },
+    { label: 'TV Subscription',  value: 'tv',             icon: '📺' },
+    { label: 'Education',        value: 'education',      icon: '📚' },
+    { label: 'Flight Booking',   value: 'flight',         icon: '✈️' },
+    { label: 'Betting',          value: 'betting',        icon: '🎰' },
+    { label: 'CAC Registration', value: 'cac',            icon: '📄' },
+    { label: 'NIN Services',     value: 'nin',            icon: '🆔' },
+    { label: 'Bus Ticket',       value: 'bus_ticket',     icon: '🚌' },
+    { label: 'Cinema Ticket',    value: 'cinema_ticket',  icon: '🎬' },
+    { label: 'Event Ticket',     value: 'event_ticket',   icon: '🎫' },
+    { label: 'Hotel Booking',    value: 'hotel_booking',  icon: '🏨' },
   ];
 
   // Statuses
@@ -167,15 +171,19 @@ const loadTransactions = async (page = 1) => {
   // ========================================
   const getServiceName = (type) => {
     const names = {
-      airtime: 'Airtime Recharge',
-      data: 'Data Bundle',
-      electricity: 'Electricity Payment',
-      tv: 'TV Subscription',
-      education: 'Educational Service',
-      flight: 'Flight Booking',
-      betting: 'Betting',
-      cac: 'CAC Registration',
-      nin: 'NIN Services',
+      airtime:        'Airtime Recharge',
+      data:           'Data Bundle',
+      electricity:    'Electricity Payment',
+      tv:             'TV Subscription',
+      education:      'Educational Service',
+      flight:         'Flight Booking',
+      betting:        'Betting',
+      cac:            'CAC Registration',
+      nin:            'NIN Services',
+      bus_ticket:     'Bus Ticket',
+      cinema_ticket:  'Cinema Ticket',
+      event_ticket:   'Event Ticket',
+      hotel_booking:  'Hotel Booking',
     };
     return names[type] || 'Transaction';
   };
@@ -188,6 +196,7 @@ const loadTransactions = async (page = 1) => {
       case 'success':
       case 'successful':
       case 'delivered':
+      case 'confirmed':
         return '#4CAF50';
       case 'failed':
         return '#ff3b30';
@@ -202,7 +211,7 @@ const loadTransactions = async (page = 1) => {
   // Render Transaction Item
   // ========================================
   const renderTransactionItem = ({ item }) => {
-    const isSuccess = item.status === 'success' || item.status === 'successful' || item.status === 'completed';
+    const isSuccess = ['success', 'successful', 'completed', 'confirmed'].includes(item.status);
     const isCredit = item.type === 'wallet_topup' || item.type === 'referral_bonus';
     const amountSign = isCredit ? '+' : '-';
     const amountColor = isSuccess ? '#4CAF50' : item.status === 'failed' ? themeColors.destructive : '#FFC107';

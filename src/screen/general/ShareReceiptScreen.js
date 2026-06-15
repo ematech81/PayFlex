@@ -106,6 +106,7 @@ export default function ShareReceiptScreen({ navigation, route }) {
       case 'success':
       case 'successful':
       case 'delivered':
+      case 'confirmed':
         return '#4CAF50';
       case 'failed':
         return '#ff3b30';
@@ -124,11 +125,15 @@ export default function ShareReceiptScreen({ navigation, route }) {
 
   const getServiceName = (type) => {
     const names = {
-      airtime: 'Airtime Recharge',
-      data: 'Data Bundle',
-      electricity: 'Electricity Payment',
-      tv: 'TV Subscription',
-      education: 'Educational Service',
+      airtime:       'Airtime Recharge',
+      data:          'Data Bundle',
+      electricity:   'Electricity Payment',
+      tv:            'TV Subscription',
+      education:     'Educational Service',
+      bus_ticket:    'Bus Ticket',
+      cinema_ticket: 'Cinema Ticket',
+      event_ticket:  'Event Ticket',
+      hotel_booking: 'Hotel Booking',
     };
     return names[type] || 'Transaction';
   };
@@ -355,6 +360,60 @@ export default function ShareReceiptScreen({ navigation, route }) {
           </>
         );
 
+      case 'bus_ticket': {
+        const b = transaction.bookingDetails || {};
+        return (
+          <>
+            <ReceiptRow label="Reference" value={transaction.reference} />
+            {b.booking_number && <ReceiptRow label="Booking #"  value={b.booking_number} />}
+            {b.departure_date && <ReceiptRow label="Date"        value={b.departure_date} />}
+            {b.departure_time && <ReceiptRow label="Departure"   value={b.departure_time} />}
+            {b.passenger?.fullName && <ReceiptRow label="Passenger" value={b.passenger.fullName} />}
+          </>
+        );
+      }
+
+      case 'cinema_ticket': {
+        const b = transaction.bookingDetails || {};
+        return (
+          <>
+            <ReceiptRow label="Reference" value={transaction.reference} />
+            {b.invoice_id && <ReceiptRow label="Invoice #" value={String(b.invoice_id)} />}
+            {b.name       && <ReceiptRow label="Name"      value={b.name} />}
+            {b.tickets?.map((t, i) => (
+              <ReceiptRow key={i} label={b.tickets.length > 1 ? `Ticket ${i + 1}` : 'Ticket'} value={t.title} />
+            ))}
+          </>
+        );
+      }
+
+      case 'event_ticket': {
+        const b = transaction.bookingDetails || {};
+        return (
+          <>
+            <ReceiptRow label="Reference" value={transaction.reference} />
+            {b.invoice_id && <ReceiptRow label="Invoice #" value={String(b.invoice_id)} />}
+            {b.name       && <ReceiptRow label="Name"      value={b.name} />}
+          </>
+        );
+      }
+
+      case 'hotel_booking': {
+        const b = transaction.bookingDetails || {};
+        return (
+          <>
+            <ReceiptRow label="Reference"  value={transaction.reference} />
+            {b.booking_number             && <ReceiptRow label="Booking #"  value={b.booking_number} />}
+            {b.hotel?.name                && <ReceiptRow label="Hotel"      value={b.hotel.name} />}
+            {b.room?.room_name            && <ReceiptRow label="Room"       value={b.room.room_name} />}
+            {b.checkin_date               && <ReceiptRow label="Check-in"   value={b.checkin_date} />}
+            {b.checkout_date              && <ReceiptRow label="Check-out"  value={b.checkout_date} />}
+            {b.number_of_nights != null   && <ReceiptRow label="Nights"     value={String(b.number_of_nights)} />}
+            {b.name                       && <ReceiptRow label="Guest"      value={b.name} />}
+          </>
+        );
+      }
+
       default:
         return commonDetails;
     }
@@ -443,10 +502,10 @@ export default function ShareReceiptScreen({ navigation, route }) {
                 { backgroundColor: getStatusColor(transaction.status) },
               ]}
             >
-              <Ionicons 
-                name={transaction.status === 'success' ? 'checkmark-circle' : 'close-circle'} 
-                size={24} 
-                color="#FFF" 
+              <Ionicons
+                name={['success','successful','confirmed'].includes(transaction.status) ? 'checkmark-circle' : 'close-circle'}
+                size={24}
+                color="#FFF"
               />
               <Text style={styles.statusText}>
                 {transaction.status?.toUpperCase()}

@@ -394,6 +394,14 @@ export default function ShareReceiptScreen({ navigation, route }) {
             <ReceiptRow label="Reference" value={transaction.reference} />
             {b.invoice_id && <ReceiptRow label="Invoice #" value={String(b.invoice_id)} />}
             {b.name       && <ReceiptRow label="Name"      value={b.name} />}
+            {b.email      && <ReceiptRow label="Email"     value={b.email} />}
+            {Array.isArray(b.tickets) && b.tickets.map((t, i) => (
+              <ReceiptRow
+                key={t.id || i}
+                label={t.title || t.name || `Ticket ${i + 1}`}
+                value={t.price != null ? formatCurrency(t.price, 'NGN') : ''}
+              />
+            ))}
           </>
         );
       }

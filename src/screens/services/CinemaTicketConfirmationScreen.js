@@ -110,6 +110,25 @@ export default function CinemaTicketConfirmationScreen({ navigation, route }) {
         )}
 
         <TouchableOpacity
+          style={[ss.receiptBtn, { borderColor: tc.primary }]}
+          onPress={() => navigation.navigate('ShareReceipt', {
+            reference,
+            transaction: {
+              reference,
+              type:           'cinema_ticket',
+              amount,
+              status:         'confirmed',
+              isMerpi:        true,
+              bookingDetails: booking,
+            },
+          })}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="download-outline" size={18} color={tc.primary} />
+          <Text style={[ss.receiptBtnText, { color: tc.primary }]}>Download Receipt</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[ss.primaryBtn, { backgroundColor: tc.primary }]}
           onPress={() => navigation.navigate('MainTabs')}
           activeOpacity={0.85}
@@ -145,6 +164,8 @@ const ss = StyleSheet.create({
   ticketRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F0F0F0' },
   ticketTitle:    { fontSize: 14, fontWeight: '600' },
   ticketPrice:    { fontSize: 14, fontWeight: '700' },
-  primaryBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, marginTop: 4 },
+  receiptBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginTop: 4, borderWidth: 1.5 },
+  receiptBtnText: { fontSize: 15, fontWeight: '700' },
+  primaryBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, marginTop: 10 },
   primaryBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });

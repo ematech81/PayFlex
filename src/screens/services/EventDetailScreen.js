@@ -79,9 +79,14 @@ export default function EventDetailScreen({ navigation, route }) {
         amount: totalAmount,
       });
 
-      Alert.alert('Booking Confirmed!', `Reference: ${res.reference}`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      navigation.replace('EventTicketConfirmation', {
+        reference:  res.reference,
+        booking:    res.booking,
+        eventName:  event?.name || event?.title,
+        eventDate:  event?.date || event?.start_date,
+        eventVenue: event?.venue || event?.location,
+        amount:     totalAmount,
+      });
     } catch (e) {
       Alert.alert('Purchase Failed', e.message || 'Could not complete purchase.');
     } finally {

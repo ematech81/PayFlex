@@ -80,6 +80,7 @@ import BusSeatSelectionScreen from 'screens/services/bus/SeatSelectionScreen';
 import BookingSummaryScreen from 'screens/services/bus/BookingSummaryScreen';
 import EventsScreen from 'screens/services/EventsScreen';
 import EventDetailScreen from 'screens/services/EventDetailScreen';
+import EventTicketConfirmationScreen from 'screens/services/EventTicketConfirmationScreen';
 import CinemaScreen from 'screens/services/CinemaScreen';
 import CinemaDetailScreen from 'screens/services/CinemaDetailScreen';
 import CinemaTicketConfirmationScreen from 'screens/services/CinemaTicketConfirmationScreen';
@@ -441,6 +442,7 @@ function AppContent({ initialRoute, navigationRef }) {
               <Stack.Screen name="BookingSummary"       component={BookingSummaryScreen} />
               <Stack.Screen name="Events"               component={EventsScreen} />
               <Stack.Screen name="EventDetail"          component={EventDetailScreen} />
+              <Stack.Screen name="EventTicketConfirmation" component={EventTicketConfirmationScreen} options={{ gestureEnabled: false }} />
               <Stack.Screen name="Cinema"               component={CinemaScreen} />
               <Stack.Screen name="CinemaDetail"              component={CinemaDetailScreen} />
               <Stack.Screen name="CinemaTicketConfirmation" component={CinemaTicketConfirmationScreen} options={{ gestureEnabled: false }} />

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView, FlatList,
   TouchableOpacity, ActivityIndicator, Alert, Image, Platform, TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -158,6 +159,11 @@ export default function HotelDetailScreen({ navigation, route }) {
         <View style={{ width: 24 }} />
       </View>
 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={insets.top + 56}
+      >
       <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         {/* Photo */}
@@ -378,6 +384,7 @@ export default function HotelDetailScreen({ navigation, route }) {
           </>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <PaymentSummaryModal
         visible={showPayModal}

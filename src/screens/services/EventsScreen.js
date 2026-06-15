@@ -34,17 +34,15 @@ export default function EventsScreen({ navigation }) {
         category_id: activeCategory || undefined,
         search:      search || undefined,
       });
-      // Backend strips the MERPI envelope and sends data.data.
-      // MERPI may return a flat array OR a paginated {data:[...], next_page, count}.
-      // Also handles camelCase (endDate) vs snake_case (end_date) variants.
-      const d = evRes?.data?.data;
-      const eventList = Array.isArray(d)
-        ? d
-        : Array.isArray(d?.experiences)
-          ? d.experiences
-          : Array.isArray(d?.data)
-            ? d.data
-            : [];
+      // handleResponse returns the parsed JSON body directly, so evRes is:
+      //   { success: true, data: { experiences: [...], next_page, count } }
+      // evRes.data is MERPI's data wrapper; experiences array is inside it.
+      const merpiData = evRes?.data;
+      const eventList = Array.isArray(merpiData?.experiences)
+        ? merpiData.experiences
+        : Array.isArray(merpiData)
+          ? merpiData
+          : [];
       console.log('[EventsScreen] eventList length:', eventList.length, 'sample:', JSON.stringify(eventList[0])?.slice(0, 150));
       const now = new Date();
       setEvents(eventList.filter((e) => {

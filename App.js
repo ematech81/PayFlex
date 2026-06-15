@@ -85,6 +85,7 @@ import CinemaDetailScreen from 'screens/services/CinemaDetailScreen';
 import CinemaTicketConfirmationScreen from 'screens/services/CinemaTicketConfirmationScreen';
 import HotelsScreen from 'screens/services/HotelsScreen';
 import HotelDetailScreen from 'screens/services/HotelDetailScreen';
+import HotelBookingConfirmationScreen from 'screens/services/HotelBookingConfirmationScreen';
 import DeleteAccountScreen from 'screen/UserProfile/DeleteAccountScreen';
 import NotificationsInboxScreen from 'screen/general/NotificationsInboxScreen';
 import IssueReportScreen from 'screen/general/IssueReportScreen';
@@ -444,7 +445,8 @@ function AppContent({ initialRoute, navigationRef }) {
               <Stack.Screen name="CinemaDetail"              component={CinemaDetailScreen} />
               <Stack.Screen name="CinemaTicketConfirmation" component={CinemaTicketConfirmationScreen} options={{ gestureEnabled: false }} />
               <Stack.Screen name="Hotels"               component={HotelsScreen} />
-              <Stack.Screen name="HotelDetail"          component={HotelDetailScreen} />
+              <Stack.Screen name="HotelDetail"               component={HotelDetailScreen} />
+              <Stack.Screen name="HotelBookingConfirmation" component={HotelBookingConfirmationScreen} options={{ gestureEnabled: false }} />
             
               <Stack.Screen
                 name="TransportScreen"

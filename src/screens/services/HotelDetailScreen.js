@@ -125,12 +125,10 @@ export default function HotelDetailScreen({ navigation, route }) {
         },
       });
 
-      const booking = res?.booking || {};
-      Alert.alert(
-        'Booking Confirmed!',
-        `Reference: ${res.reference || booking.reference || ''}\n${booking.booking_number ? `Booking #: ${booking.booking_number}\n` : ''}Enjoy your stay!`,
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      navigation.replace('HotelBookingConfirmation', {
+        reference: res.reference,
+        booking:   res.booking,
+      });
     } catch (e) {
       Alert.alert('Booking Failed', e.message || 'Could not complete booking.');
     } finally {

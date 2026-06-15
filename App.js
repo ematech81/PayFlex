@@ -82,6 +82,7 @@ import EventsScreen from 'screens/services/EventsScreen';
 import EventDetailScreen from 'screens/services/EventDetailScreen';
 import CinemaScreen from 'screens/services/CinemaScreen';
 import CinemaDetailScreen from 'screens/services/CinemaDetailScreen';
+import CinemaTicketConfirmationScreen from 'screens/services/CinemaTicketConfirmationScreen';
 import HotelsScreen from 'screens/services/HotelsScreen';
 import HotelDetailScreen from 'screens/services/HotelDetailScreen';
 import DeleteAccountScreen from 'screen/UserProfile/DeleteAccountScreen';
@@ -440,7 +441,8 @@ function AppContent({ initialRoute, navigationRef }) {
               <Stack.Screen name="Events"               component={EventsScreen} />
               <Stack.Screen name="EventDetail"          component={EventDetailScreen} />
               <Stack.Screen name="Cinema"               component={CinemaScreen} />
-              <Stack.Screen name="CinemaDetail"         component={CinemaDetailScreen} />
+              <Stack.Screen name="CinemaDetail"              component={CinemaDetailScreen} />
+              <Stack.Screen name="CinemaTicketConfirmation" component={CinemaTicketConfirmationScreen} options={{ gestureEnabled: false }} />
               <Stack.Screen name="Hotels"               component={HotelsScreen} />
               <Stack.Screen name="HotelDetail"          component={HotelDetailScreen} />
             

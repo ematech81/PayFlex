@@ -190,9 +190,16 @@ export default function CinemaDetailScreen({ navigation, route }) {
         amount:             totalAmount,
       });
 
-      Alert.alert('Booking Confirmed!', `Reference: ${res.reference}\nEnjoy the movie!`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      const selectedShowtime = showtimes.find((s) => s.id === timeId);
+      navigation.replace('CinemaTicketConfirmation', {
+        reference:      res.reference,
+        booking:        res.booking,
+        movieTitle:     movie?.title,
+        cinemaName:     cinemaInfo?.name,
+        attendanceDate,
+        showtime:       selectedShowtime ? `${selectedShowtime.start} – ${selectedShowtime.end}` : null,
+        amount:         totalAmount,
+      });
     } catch (e) {
       Alert.alert('Purchase Failed', e.message || 'Could not complete purchase.');
     } finally {

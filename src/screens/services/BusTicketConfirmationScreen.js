@@ -129,6 +129,26 @@ export default function BusTicketConfirmationScreen({ navigation, route }) {
           }
         </TouchableOpacity>
 
+        {/* Download receipt */}
+        <TouchableOpacity
+          style={[ss.receiptBtn, { borderColor: tc.primary }]}
+          onPress={() => navigation.navigate('ShareReceipt', {
+            reference,
+            transaction: {
+              reference,
+              type:           'bus_ticket',
+              amount,
+              status:         'confirmed',
+              isMerpi:        true,
+              bookingDetails: { ...booking, passenger, seats },
+            },
+          })}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="download-outline" size={18} color={tc.primary} />
+          <Text style={[ss.receiptBtnText, { color: tc.primary }]}>Download Receipt</Text>
+        </TouchableOpacity>
+
         {/* Back to home */}
         <TouchableOpacity
           style={[ss.primaryBtn, { backgroundColor: tc.primary }]}
@@ -162,6 +182,8 @@ const ss = StyleSheet.create({
   infoValue:       { fontSize: 13, fontWeight: '600', flex: 1.5, textAlign: 'right' },
   outlineBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 12, borderWidth: 1.5, marginBottom: 12 },
   outlineBtnText:  { fontSize: 14, fontWeight: '600' },
+  receiptBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginBottom: 12, borderWidth: 1.5 },
+  receiptBtnText:  { fontSize: 15, fontWeight: '700' },
   primaryBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12 },
   primaryBtnText:  { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });

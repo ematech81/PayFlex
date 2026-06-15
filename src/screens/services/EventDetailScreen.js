@@ -40,11 +40,17 @@ export default function EventDetailScreen({ navigation, route }) {
           merpiGetEventDetails(eventId),
           merpiGetEventTickets(eventId),
         ]);
-        // Backend returns { success, data: <event object> } for detail
-        setEvent(evRes?.data?.data || evRes?.data || initialEvent);
-        // Tickets: may be a paginated wrapper or direct array
-        const tkRaw = tkRes?.data?.data;
-        const tList = Array.isArray(tkRaw) ? tkRaw : (tkRaw?.data || []);
+        // handleResponse returns the JSON body; evRes = { success, data: <event> }
+        setEvent(evRes?.data || initialEvent);
+        // tkRes = { success, data: <tickets array or wrapper> }
+        const tkRaw = tkRes?.data;
+        const tList = Array.isArray(tkRaw)
+          ? tkRaw
+          : Array.isArray(tkRaw?.tickets)
+            ? tkRaw.tickets
+            : Array.isArray(tkRaw?.data)
+              ? tkRaw.data
+              : [];
         setTickets(tList);
         const init = {};
         tList.forEach(t => { init[t.id] = 0; });

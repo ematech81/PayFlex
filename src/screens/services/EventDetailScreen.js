@@ -40,8 +40,11 @@ export default function EventDetailScreen({ navigation, route }) {
           merpiGetEventDetails(eventId),
           merpiGetEventTickets(eventId),
         ]);
+        // Backend returns { success, data: <event object> } for detail
         setEvent(evRes?.data?.data || evRes?.data || initialEvent);
-        const tList = tkRes?.data?.data || tkRes?.data || [];
+        // Tickets: may be a paginated wrapper or direct array
+        const tkRaw = tkRes?.data?.data;
+        const tList = Array.isArray(tkRaw) ? tkRaw : (tkRaw?.data || []);
         setTickets(tList);
         const init = {};
         tList.forEach(t => { init[t.id] = 0; });
@@ -71,7 +74,7 @@ export default function EventDetailScreen({ navigation, route }) {
     try {
       const lineItems = tickets
         .filter(t => (quantities[t.id] || 0) > 0)
-        .map(t => ({ ticket_id: t.id, quantity: quantities[t.id] }));
+        .map(t => ({ id: t.id, count: quantities[t.id] }));
 
       const res = await merpiBuyEventTickets(pin, {
         experience_id: eventId,
@@ -79,12 +82,17 @@ export default function EventDetailScreen({ navigation, route }) {
         amount: totalAmount,
       });
 
+      const loc = event?.location;
+      const venueStr = typeof loc === 'object'
+        ? [loc.street, loc.town, loc.city].filter(Boolean).join(', ')
+        : loc || event?.address || event?.venue;
+
       navigation.replace('EventTicketConfirmation', {
         reference:  res.reference,
         booking:    res.booking,
-        eventName:  event?.name || event?.title,
-        eventDate:  event?.date || event?.start_date,
-        eventVenue: event?.venue || event?.location,
+        eventName:  event?.title || event?.name,
+        eventDate:  event?.start_date || event?.date,
+        eventVenue: venueStr,
         amount:     totalAmount,
       });
     } catch (e) {
@@ -111,7 +119,7 @@ export default function EventDetailScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={tc.heading} />
         </TouchableOpacity>
-        <Text style={[ss.headerTitle, { color: tc.heading }]} numberOfLines={1}>{event?.name || event?.title || 'Event'}</Text>
+        <Text style={[ss.headerTitle, { color: tc.heading }]} numberOfLines={1}>{event?.title || event?.name || 'Event'}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -128,19 +136,25 @@ export default function EventDetailScreen({ navigation, route }) {
 
         {/* Event info */}
         <View style={[ss.infoCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-          <Text style={[ss.eventTitle, { color: tc.heading }]}>{event?.name || event?.title}</Text>
-          {event?.date && (
+          <Text style={[ss.eventTitle, { color: tc.heading }]}>{event?.title || event?.name}</Text>
+          {(event?.start_date || event?.date) && (
             <View style={ss.metaRow}>
               <Ionicons name="calendar-outline" size={15} color={tc.primary} />
-              <Text style={[ss.metaText, { color: tc.subheading }]}>{fmtDate(event.date || event.start_date)}</Text>
+              <Text style={[ss.metaText, { color: tc.subheading }]}>{fmtDate(event.start_date || event.date)}</Text>
             </View>
           )}
-          {(event?.venue || event?.location) && (
-            <View style={ss.metaRow}>
-              <Ionicons name="location-outline" size={15} color={tc.primary} />
-              <Text style={[ss.metaText, { color: tc.subheading }]}>{event.venue || event.location}</Text>
-            </View>
-          )}
+          {(() => {
+            const loc = event?.location;
+            const venue = typeof loc === 'object'
+              ? [loc.street, loc.town, loc.city].filter(Boolean).join(', ')
+              : loc || event?.address || event?.venue;
+            return venue ? (
+              <View style={ss.metaRow}>
+                <Ionicons name="location-outline" size={15} color={tc.primary} />
+                <Text style={[ss.metaText, { color: tc.subheading }]}>{venue}</Text>
+              </View>
+            ) : null;
+          })()}
           {event?.description && (
             <Text style={[ss.description, { color: tc.subheading }]}>{event.description}</Text>
           )}

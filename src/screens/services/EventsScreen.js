@@ -34,8 +34,16 @@ export default function EventsScreen({ navigation }) {
         merpiGetEvents({ category: activeCategory || undefined, search: search || undefined }),
         merpiGetCategories(),
       ]);
-      setEvents(evRes?.data?.data || evRes?.data || []);
-      setCategories(catRes?.data?.data || catRes?.data || []);
+      // Backend returns { success, data: { data: [...], next_page, count } }
+      // (paginated wrapper from MERPI). Extract the items array defensively.
+      const rawData = evRes?.data?.data;
+      const eventList = Array.isArray(rawData) ? rawData : (rawData?.data || []);
+      // Filter out events whose end_date has already passed
+      const now = new Date();
+      setEvents(eventList.filter((e) => !e.end_date || new Date(e.end_date) >= now));
+
+      const catRaw = catRes?.data?.data;
+      setCategories(Array.isArray(catRaw) ? catRaw : (catRaw?.data || catRaw || []));
     } catch (e) {
       setError(e.message || 'Could not load events.');
     } finally {
@@ -54,31 +62,41 @@ export default function EventsScreen({ navigation }) {
       onPress={() => navigation.navigate('EventDetail', { eventId: item.id, event: item })}
       activeOpacity={0.8}
     >
-      {item.image || item.banner ? (
-        <Image source={{ uri: item.image || item.banner }} style={ss.eventImage} resizeMode="cover" />
+      {item.images?.[0] || item.image || item.banner ? (
+        <Image
+          source={{ uri: item.images?.[0] || item.image || item.banner }}
+          style={ss.eventImage}
+          resizeMode="cover"
+        />
       ) : (
         <View style={[ss.eventImagePlaceholder, { backgroundColor: `${tc.primary}20` }]}>
           <Ionicons name="ticket-outline" size={32} color={tc.primary} />
         </View>
       )}
       <View style={ss.eventBody}>
-        <Text style={[ss.eventTitle, { color: tc.heading }]} numberOfLines={2}>{item.name || item.title}</Text>
+        <Text style={[ss.eventTitle, { color: tc.heading }]} numberOfLines={2}>{item.title || item.name}</Text>
         <View style={ss.eventMeta}>
           <Ionicons name="calendar-outline" size={13} color={tc.subheading} />
-          <Text style={[ss.eventMetaText, { color: tc.subheading }]}>{fmtDate(item.date || item.start_date)}</Text>
+          <Text style={[ss.eventMetaText, { color: tc.subheading }]}>{fmtDate(item.start_date || item.date)}</Text>
         </View>
-        {(item.venue || item.location) && (
-          <View style={ss.eventMeta}>
-            <Ionicons name="location-outline" size={13} color={tc.subheading} />
-            <Text style={[ss.eventMetaText, { color: tc.subheading }]} numberOfLines={1}>
-              {item.venue || item.location}
-            </Text>
-          </View>
-        )}
+        {(() => {
+          const loc = item.location;
+          const venue = typeof loc === 'object'
+            ? [loc.town, loc.city].filter(Boolean).join(', ')
+            : loc || item.address || item.venue;
+          return venue ? (
+            <View style={ss.eventMeta}>
+              <Ionicons name="location-outline" size={13} color={tc.subheading} />
+              <Text style={[ss.eventMetaText, { color: tc.subheading }]} numberOfLines={1}>{venue}</Text>
+            </View>
+          ) : null;
+        })()}
         <View style={ss.eventFooter}>
-          {item.category && (
+          {(item.category?.name || item.category) && (
             <View style={[ss.catChip, { backgroundColor: `${tc.primary}15` }]}>
-              <Text style={[ss.catChipText, { color: tc.primary }]}>{item.category}</Text>
+              <Text style={[ss.catChipText, { color: tc.primary }]}>
+                {item.category?.name || item.category}
+              </Text>
             </View>
           )}
           <Text style={[ss.eventPrice, { color: tc.primary }]}>

@@ -40,10 +40,10 @@ export default function EventsScreen({ navigation }) {
       const d = evRes?.data?.data;
       const eventList = Array.isArray(d)
         ? d
-        : Array.isArray(d?.data)
-          ? d.data
-          : Array.isArray(evRes?.data)
-            ? evRes.data
+        : Array.isArray(d?.experiences)
+          ? d.experiences
+          : Array.isArray(d?.data)
+            ? d.data
             : [];
       console.log('[EventsScreen] eventList length:', eventList.length, 'sample:', JSON.stringify(eventList[0])?.slice(0, 150));
       const now = new Date();

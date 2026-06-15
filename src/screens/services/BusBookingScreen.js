@@ -199,7 +199,10 @@ export default function BusBookingScreen({ navigation }) {
       });
       const list = extractList(r, 'routes', 'data');
       if (!list.length) {
-        Alert.alert('No routes found', 'No available routes for the selected cities.');
+        Alert.alert(
+          'No Routes Available',
+          'Bus routes between these cities are not available at the moment. Please try a different city pair or check back later.',
+        );
         return;
       }
       setRoutes(list);

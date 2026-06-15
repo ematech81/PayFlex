@@ -73,7 +73,15 @@ export default function EventDetailScreen({ navigation, route }) {
   const totalAmount = tickets.reduce((sum, t) => sum + (t.price || 0) * (quantities[t.id] || 0), 0);
   const hasSelection = Object.values(quantities).some(q => q > 0);
 
+  const isExpired = (() => {
+    const endStr = event?.end_date;
+    if (!endStr) return false;
+    const d = new Date(endStr);
+    return !isNaN(d.getTime()) && d < new Date();
+  })();
+
   const handleBuy = async () => {
+    if (isExpired) { Alert.alert('Event Ended', 'This event has already ended and tickets are no longer available.'); return; }
     if (!pin || pin.length !== 4) { Alert.alert('PIN required', 'Enter your 4-digit transaction PIN.'); return; }
     if (bal < totalAmount) { Alert.alert('Insufficient balance', 'Please fund your wallet.'); return; }
     setBuying(true);
@@ -88,16 +96,14 @@ export default function EventDetailScreen({ navigation, route }) {
         amount: totalAmount,
       });
 
-      const loc = event?.location;
-      const venueStr = typeof loc === 'object'
-        ? [loc.street, loc.town, loc.city].filter(Boolean).join(', ')
-        : loc || event?.address || event?.venue;
+      const addr = event?.address || {};
+      const venueStr = [addr.street, addr.town, addr.city].filter(Boolean).join(', ');
 
       navigation.replace('EventTicketConfirmation', {
         reference:  res.reference,
         booking:    res.booking,
-        eventName:  event?.title || event?.name,
-        eventDate:  event?.start_date || event?.date,
+        eventName:  event?.title,
+        eventDate:  event?.start_date,
         eventVenue: venueStr,
         amount:     totalAmount,
       });
@@ -165,8 +171,16 @@ export default function EventDetailScreen({ navigation, route }) {
           ) : null}
         </View>
 
+        {/* Expired banner */}
+        {isExpired && (
+          <View style={[ss.expiredBanner, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+            <Ionicons name="time-outline" size={18} color="#EF4444" />
+            <Text style={[ss.expiredText, { color: '#EF4444' }]}>This event has ended. Ticket sales are closed.</Text>
+          </View>
+        )}
+
         {/* Ticket types */}
-        {tickets.length > 0 && (
+        {!isExpired && tickets.length > 0 && (
           <>
             <Text style={[ss.sectionLabel, { color: tc.subheading }]}>SELECT TICKETS</Text>
             {tickets.map((ticket) => (
@@ -197,7 +211,7 @@ export default function EventDetailScreen({ navigation, route }) {
         )}
 
         {/* Review & pay */}
-        {hasSelection && (
+        {!isExpired && hasSelection && (
           <TouchableOpacity
             style={[ss.primaryBtn, { backgroundColor: tc.primary }]}
             onPress={() => setShowPayModal(true)}
@@ -250,4 +264,6 @@ const ss = StyleSheet.create({
   qtyText:         { fontSize: 16, fontWeight: '700', minWidth: 20, textAlign: 'center' },
   primaryBtn:      { marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, marginTop: 4 },
   primaryBtnText:  { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  expiredBanner:   { marginHorizontal: 16, marginBottom: 12, borderRadius: 10, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  expiredText:     { fontSize: 13, fontWeight: '600', flex: 1 },
 });

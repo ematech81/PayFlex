@@ -42,10 +42,12 @@ const handleResponse = async (response) => {
     throw new Error('Server returned invalid response format');
   }
 
-  // ✅ Handle 304 Not Modified (cached response)
+  // 304 Not Modified — backend now sends Cache-Control: no-store for MERPI
+  // routes so this should not occur. If it does, return null so callers
+  // treat it as no data rather than silently returning stale transaction data.
   if (response.status === 304) {
-    console.log('⚠️ 304 Not Modified - using cached data');
-    return { success: true, data: { transactions: [], pagination: {}, stats: {} } };
+    console.warn('⚠️ 304 Not Modified — unexpected for this endpoint');
+    return null;
   }
 
   const data = await response.json();

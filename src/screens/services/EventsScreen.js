@@ -30,26 +30,29 @@ export default function EventsScreen({ navigation }) {
     if (!quiet) setLoading(true);
     setError('');
     try {
-      const [evRes, catRes] = await Promise.all([
-        merpiGetEvents({ category: activeCategory || undefined, search: search || undefined }),
-        merpiGetCategories(),
-      ]);
+      const evRes = await merpiGetEvents({
+        category_id: activeCategory || undefined,
+        search:      search || undefined,
+      });
       // Backend returns { success, data: { data: [...], next_page, count } }
-      // (paginated wrapper from MERPI). Extract the items array defensively.
       const rawData = evRes?.data?.data;
       const eventList = Array.isArray(rawData) ? rawData : (rawData?.data || []);
-      // Filter out events whose end_date has already passed
       const now = new Date();
       setEvents(eventList.filter((e) => !e.end_date || new Date(e.end_date) >= now));
-
-      const catRaw = catRes?.data?.data;
-      setCategories(Array.isArray(catRaw) ? catRaw : (catRaw?.data || catRaw || []));
     } catch (e) {
       setError(e.message || 'Could not load events.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+
+    // Categories are non-critical — load separately so a 404 never blocks events
+    merpiGetCategories()
+      .then((catRes) => {
+        const catRaw = catRes?.data?.data;
+        setCategories(Array.isArray(catRaw) ? catRaw : (catRaw?.data || []));
+      })
+      .catch(() => {});
   }, [activeCategory, search]);
 
   useEffect(() => { load(); }, [activeCategory]);

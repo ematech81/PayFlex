@@ -125,9 +125,9 @@ export default function EventDetailScreen({ navigation, route }) {
 
       <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-        {/* Banner */}
-        {(event?.image || event?.banner) ? (
-          <Image source={{ uri: event.image || event.banner }} style={ss.banner} resizeMode="cover" />
+        {/* Banner — MERPI image field is [{image: url}] */}
+        {event?.image?.[0]?.image ? (
+          <Image source={{ uri: event.image[0].image }} style={ss.banner} resizeMode="cover" />
         ) : (
           <View style={[ss.bannerPlaceholder, { backgroundColor: `${tc.primary}15` }]}>
             <Ionicons name="ticket-outline" size={48} color={tc.primary} />
@@ -136,18 +136,17 @@ export default function EventDetailScreen({ navigation, route }) {
 
         {/* Event info */}
         <View style={[ss.infoCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-          <Text style={[ss.eventTitle, { color: tc.heading }]}>{event?.title || event?.name}</Text>
-          {(event?.start_date || event?.date) && (
+          <Text style={[ss.eventTitle, { color: tc.heading }]}>{event?.title}</Text>
+          {event?.start_date ? (
             <View style={ss.metaRow}>
               <Ionicons name="calendar-outline" size={15} color={tc.primary} />
-              <Text style={[ss.metaText, { color: tc.subheading }]}>{fmtDate(event.start_date || event.date)}</Text>
+              <Text style={[ss.metaText, { color: tc.subheading }]}>{fmtDate(event.start_date)}</Text>
             </View>
-          )}
+          ) : null}
           {(() => {
-            const loc = event?.location;
-            const venue = typeof loc === 'object'
-              ? [loc.street, loc.town, loc.city].filter(Boolean).join(', ')
-              : loc || event?.address || event?.venue;
+            // MERPI location is in event.address: {street, town, city, country}
+            const addr = event?.address || {};
+            const venue = [addr.street, addr.town, addr.city].filter(Boolean).join(', ');
             return venue ? (
               <View style={ss.metaRow}>
                 <Ionicons name="location-outline" size={15} color={tc.primary} />
@@ -155,9 +154,9 @@ export default function EventDetailScreen({ navigation, route }) {
               </View>
             ) : null;
           })()}
-          {event?.description && (
+          {event?.description ? (
             <Text style={[ss.description, { color: tc.subheading }]}>{event.description}</Text>
-          )}
+          ) : null}
         </View>
 
         {/* Ticket types */}

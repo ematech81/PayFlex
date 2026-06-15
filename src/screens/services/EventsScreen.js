@@ -73,56 +73,55 @@ export default function EventsScreen({ navigation }) {
 
   const onRefresh = () => { setRefreshing(true); load(true); };
 
-  const renderEvent = ({ item }) => (
-    <TouchableOpacity
-      style={[ss.eventCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
-      onPress={() => navigation.navigate('EventDetail', { eventId: item.id, event: item })}
-      activeOpacity={0.8}
-    >
-      {item.images?.[0] || item.image || item.banner ? (
-        <Image
-          source={{ uri: item.images?.[0] || item.image || item.banner }}
-          style={ss.eventImage}
-          resizeMode="cover"
-        />
-      ) : (
-        <View style={[ss.eventImagePlaceholder, { backgroundColor: `${tc.primary}20` }]}>
-          <Ionicons name="ticket-outline" size={32} color={tc.primary} />
-        </View>
-      )}
-      <View style={ss.eventBody}>
-        <Text style={[ss.eventTitle, { color: tc.heading }]} numberOfLines={2}>{item.title || item.name}</Text>
-        <View style={ss.eventMeta}>
-          <Ionicons name="calendar-outline" size={13} color={tc.subheading} />
-          <Text style={[ss.eventMetaText, { color: tc.subheading }]}>{fmtDate(item.start_date || item.date)}</Text>
-        </View>
-        {(() => {
-          const loc = item.location;
-          const venue = typeof loc === 'object'
-            ? [loc.town, loc.city].filter(Boolean).join(', ')
-            : loc || item.address || item.venue;
-          return venue ? (
+  const renderEvent = ({ item }) => {
+    // MERPI returns image as [{image: url}]; address as {street, town, city, country}
+    const imageUri = item.image?.[0]?.image || item.images?.[0]?.image_url;
+    const addr = item.address || {};
+    const venue = [addr.town, addr.city].filter(Boolean).join(', ') || addr.street;
+
+    return (
+      <TouchableOpacity
+        style={[ss.eventCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
+        onPress={() => navigation.navigate('EventDetail', { eventId: item.id, event: item })}
+        activeOpacity={0.8}
+      >
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={ss.eventImage} resizeMode="cover" />
+        ) : (
+          <View style={[ss.eventImagePlaceholder, { backgroundColor: `${tc.primary}20` }]}>
+            <Ionicons name="ticket-outline" size={32} color={tc.primary} />
+          </View>
+        )}
+        <View style={ss.eventBody}>
+          <Text style={[ss.eventTitle, { color: tc.heading }]} numberOfLines={2}>{item.title}</Text>
+          {item.start_date ? (
+            <View style={ss.eventMeta}>
+              <Ionicons name="calendar-outline" size={13} color={tc.subheading} />
+              <Text style={[ss.eventMetaText, { color: tc.subheading }]}>{fmtDate(item.start_date)}</Text>
+            </View>
+          ) : null}
+          {venue ? (
             <View style={ss.eventMeta}>
               <Ionicons name="location-outline" size={13} color={tc.subheading} />
               <Text style={[ss.eventMetaText, { color: tc.subheading }]} numberOfLines={1}>{venue}</Text>
             </View>
-          ) : null;
-        })()}
-        <View style={ss.eventFooter}>
-          {(item.category?.name || item.category) && (
-            <View style={[ss.catChip, { backgroundColor: `${tc.primary}15` }]}>
-              <Text style={[ss.catChipText, { color: tc.primary }]}>
-                {item.category?.name || item.category}
+          ) : null}
+          <View style={ss.eventFooter}>
+            {item.category?.name ? (
+              <View style={[ss.catChip, { backgroundColor: `${tc.primary}15` }]}>
+                <Text style={[ss.catChipText, { color: tc.primary }]}>{item.category.name}</Text>
+              </View>
+            ) : <View />}
+            {item.min_price ? (
+              <Text style={[ss.eventPrice, { color: tc.primary }]}>
+                From {formatCurrency(item.min_price, 'NGN')}
               </Text>
-            </View>
-          )}
-          <Text style={[ss.eventPrice, { color: tc.primary }]}>
-            {item.min_price ? `From ${formatCurrency(item.min_price, 'NGN')}` : 'Free'}
-          </Text>
+            ) : null}
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={[ss.container, { backgroundColor: tc.background }]}>

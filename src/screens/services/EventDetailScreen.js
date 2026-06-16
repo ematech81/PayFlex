@@ -149,23 +149,37 @@ export default function EventDetailScreen({ navigation, route }) {
         {/* Event info */}
         <View style={[ss.infoCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
           <Text style={[ss.eventTitle, { color: tc.heading }]}>{event?.title}</Text>
+
+          {/* Date block */}
           {event?.start_date ? (
-            <View style={ss.metaRow}>
-              <Ionicons name="calendar-outline" size={15} color={tc.primary} />
-              <Text style={[ss.metaText, { color: tc.subheading }]}>{fmtDate(event.start_date)}</Text>
+            <View style={[ss.infoBlock, { backgroundColor: `${tc.primary}12`, borderColor: `${tc.primary}30` }]}>
+              <View style={[ss.infoBlockIcon, { backgroundColor: `${tc.primary}22` }]}>
+                <Ionicons name="calendar" size={18} color={tc.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[ss.infoBlockLabel, { color: tc.primary }]}>DATE & TIME</Text>
+                <Text style={[ss.infoBlockValue, { color: tc.heading }]}>{fmtDate(event.start_date)}</Text>
+              </View>
             </View>
           ) : null}
+
+          {/* Venue block */}
           {(() => {
-            // MERPI location is in event.address: {street, town, city, country}
             const addr = event?.address || {};
             const venue = [addr.street, addr.town, addr.city].filter(Boolean).join(', ');
             return venue ? (
-              <View style={ss.metaRow}>
-                <Ionicons name="location-outline" size={15} color={tc.primary} />
-                <Text style={[ss.metaText, { color: tc.subheading }]}>{venue}</Text>
+              <View style={[ss.infoBlock, { backgroundColor: `${tc.primary}12`, borderColor: `${tc.primary}30` }]}>
+                <View style={[ss.infoBlockIcon, { backgroundColor: `${tc.primary}22` }]}>
+                  <Ionicons name="location" size={18} color={tc.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[ss.infoBlockLabel, { color: tc.primary }]}>VENUE</Text>
+                  <Text style={[ss.infoBlockValue, { color: tc.heading }]}>{venue}</Text>
+                </View>
               </View>
             ) : null;
           })()}
+
           {event?.description ? (
             <Text style={[ss.description, { color: tc.subheading }]}>{event.description}</Text>
           ) : null}
@@ -253,9 +267,11 @@ const ss = StyleSheet.create({
   banner:          { width: '100%', height: 200 },
   bannerPlaceholder:{ width: '100%', height: 160, alignItems: 'center', justifyContent: 'center' },
   infoCard:        { margin: 16, borderRadius: 14, borderWidth: 1, padding: 16 },
-  eventTitle:      { fontSize: 20, fontWeight: '800', marginBottom: 12 },
-  metaRow:         { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  metaText:        { fontSize: 13 },
+  eventTitle:      { fontSize: 20, fontWeight: '800', marginBottom: 14 },
+  infoBlock:       { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 10 },
+  infoBlockIcon:   { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  infoBlockLabel:  { fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 3 },
+  infoBlockValue:  { fontSize: 14, fontWeight: '700', lineHeight: 20 },
   description:     { fontSize: 13, lineHeight: 20, marginTop: 12 },
   sectionLabel:    { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, paddingHorizontal: 16, marginBottom: 8 },
   ticketRow:       { marginHorizontal: 16, marginBottom: 10, borderRadius: 12, borderWidth: 1, padding: 14, flexDirection: 'row', alignItems: 'center' },

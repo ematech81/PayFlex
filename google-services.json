@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "261369868626",
+    "project_id": "fixng-33e74",
+    "storage_bucket": "fixng-33e74.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:261369868626:android:bc5fe6d9e7bd45e9738a8b",
+        "android_client_info": {
+          "package_name": "com.ematech81.fixng"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCpBwNXMQBGdHQuiGRehobnnn_9YfjazA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:261369868626:android:b77f18d9fd643839738a8b",
+        "android_client_info": {
+          "package_name": "com.ematech81.payflex"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCpBwNXMQBGdHQuiGRehobnnn_9YfjazA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -127,14 +127,6 @@ const services = [
     color: '#FDCB6E',
   },
   {
-    id: 'nin',
-    label: 'NIN',
-    icon: 'torso-business',
-    iconLib: Foundation,
-    screen: 'NINScreen',
-    color: '#A29BFE',
-  },
-  {
     id: 'cac',
     label: 'CAC',
     icon: 'business',
@@ -151,15 +143,6 @@ const services = [
     color: '#FFA502',
   },
  
-  {
-    id: 'education',
-    label: 'Education',
-    icon: 'graduation-cap',
-    iconLib: FontAwesome5,
-    screen: 'EducationPurchase',
-    color: '#9B59B6',
-  },
-
 ];
 
 const ServiceCard = React.memo(({ service, onPress, index, themeColors }) => {

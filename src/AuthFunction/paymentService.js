@@ -737,6 +737,10 @@ export const cacRegisterBusinessName = (pin, form) =>
 export const cacGetRegistrationStatus = (transactionRef) =>
   makeGeneralGet(`/cac/registration/${transactionRef}`);
 
+/** Download CAC certificate after approval — PIN required (wallet deduction) */
+export const cacDownloadCertificate = (pin, transactionRef) =>
+  makeGeneralRequest(`/cac/registration/${transactionRef}/certificate`, { transactionRef, pin });
+
 /** Business validation search — PIN sent in body */
 export const cacSearchBusiness = (pin, validationType, searchParam) =>
   makeGeneralRequest('/cac/search', { validationType, searchParam, pin });

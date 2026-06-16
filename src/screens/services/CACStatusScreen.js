@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
-  TouchableOpacity, ActivityIndicator, Linking, Animated,
+  TouchableOpacity, ActivityIndicator, Linking, Animated, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
-import { cacGetRegistrationStatus } from 'AuthFunction/paymentService';
+import { cacGetRegistrationStatus, cacDownloadCertificate } from 'AuthFunction/paymentService';
 
 const POLL_INTERVAL = 30000; // 30 seconds
 const TERMINAL_STATUSES = ['approved', 'queried', 'failed'];
@@ -29,9 +29,12 @@ export default function CACStatusScreen({ navigation, route }) {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [certLoading, setCertLoading] = useState(false);
+  const [certPin, setCertPin] = useState('');
+  const [showCertPin, setShowCertPin] = useState(false);
   const [error,   setError]   = useState('');
-  const pollRef = useRef(null);
-  const pulse   = useRef(new Animated.Value(1)).current;
+  const pollRef   = useRef(null);
+  const statusRef = useRef(null); // tracks terminal status for polling closure
+  const pulse     = useRef(new Animated.Value(1)).current;
 
   const fetchStatus = useCallback(async (quiet = false) => {
     if (!transactionRef) return;
@@ -39,7 +42,10 @@ export default function CACStatusScreen({ navigation, route }) {
     try {
       const res = await cacGetRegistrationStatus(transactionRef);
       if (res?.success) {
-        setData(res.data || res);
+        // Backend returns { success, registration, vasStatus } — not { success, data }
+        const reg = res.registration || res.data || res;
+        setData(reg);
+        statusRef.current = reg?.status;
         setError('');
       } else {
         setError(res?.message || 'Could not fetch status');
@@ -51,12 +57,11 @@ export default function CACStatusScreen({ navigation, route }) {
     }
   }, [transactionRef]);
 
-  // Start polling on mount; stop when status is terminal
+  // Start polling on mount; use statusRef (not stale closure state) for terminal check
   useEffect(() => {
     fetchStatus();
     pollRef.current = setInterval(() => {
-      const status = data?.status;
-      if (status && TERMINAL_STATUSES.includes(status)) {
+      if (statusRef.current && TERMINAL_STATUSES.includes(statusRef.current)) {
         clearInterval(pollRef.current);
         return;
       }
@@ -81,26 +86,18 @@ export default function CACStatusScreen({ navigation, route }) {
   }, [data?.status]);
 
   const handleDownloadCert = async () => {
+    if (!certPin || certPin.length !== 4) {
+      alert('Enter your 4-digit transaction PIN to download the certificate.');
+      return;
+    }
     setCertLoading(true);
     try {
-      const { cacRegisterBusinessName: _, ...rest } = require('AuthFunction/paymentService');
-      const { makeGeneralRequest } = require('AuthFunction/paymentService');
-      // Call POST /cac/registration/:ref/certificate — no PIN needed for status cert
-      const res = await fetch(
-        `${require('utility/apiIPAdress').GeneralApiIPAddress}/cac/registration/${transactionRef}/certificate`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${(await require('@react-native-async-storage/async-storage').default.getItem('@payflex_token'))}`,
-          },
-          body: JSON.stringify({ transactionRef }),
-        }
-      );
-      const json = await res.json();
-      const url  = json?.data?.certificateUrl || json?.certificateUrl;
+      const res = await cacDownloadCertificate(certPin, transactionRef);
+      const url = res?.data?.certificateUrl || res?.certificateUrl;
       if (url) {
         await Linking.openURL(url);
+        setShowCertPin(false);
+        setCertPin('');
       } else {
         alert('Certificate not yet available. Try again shortly.');
       }
@@ -163,7 +160,9 @@ export default function CACStatusScreen({ navigation, route }) {
             <InfoRow label="TIN"              value={data.tin} />
             <InfoRow label="Submitted"        value={data.createdAt ? new Date(data.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null} />
             <InfoRow label="Last Updated"     value={data.updatedAt ? new Date(data.updatedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : null} />
-            {data.queryReason && <InfoRow label="Query Reason" value={data.queryReason?.reason || data.queryReason?.comment} />}
+            {Array.isArray(data.queries) && data.queries.length > 0 && (
+              <InfoRow label="Query Reason" value={data.queries.map(q => q.reason || q.comment).filter(Boolean).join(' | ')} />
+            )}
           </View>
         )}
 
@@ -171,20 +170,43 @@ export default function CACStatusScreen({ navigation, route }) {
         {isApproved && (
           <View style={[styles.actionsCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
             <Text style={[styles.sectionTitle, { color: tc.subheading }]}>NEXT STEPS</Text>
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: tc.primary, opacity: certLoading ? 0.7 : 1 }]}
-              onPress={handleDownloadCert}
-              disabled={certLoading}
-              activeOpacity={0.85}
-            >
-              {certLoading
-                ? <ActivityIndicator color="#FFF" />
-                : <>
-                    <Ionicons name="document-text-outline" size={20} color="#FFF" />
-                    <Text style={styles.actionBtnText}>Download Certificate</Text>
-                  </>
-              }
-            </TouchableOpacity>
+            {showCertPin ? (
+              <>
+                <Text style={[styles.pinLabel, { color: tc.heading }]}>Enter Transaction PIN to download:</Text>
+                <TextInput
+                  style={[styles.pinInput, { backgroundColor: tc.background, color: tc.heading, borderColor: tc.border || '#E5E5EA' }]}
+                  value={certPin} onChangeText={setCertPin}
+                  placeholder="••••" placeholderTextColor={tc.subtext}
+                  keyboardType="number-pad" secureTextEntry maxLength={4}
+                />
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: tc.primary, opacity: (certLoading || certPin.length !== 4) ? 0.6 : 1 }]}
+                  onPress={handleDownloadCert}
+                  disabled={certLoading || certPin.length !== 4}
+                  activeOpacity={0.85}
+                >
+                  {certLoading
+                    ? <ActivityIndicator color="#FFF" />
+                    : <>
+                        <Ionicons name="document-text-outline" size={20} color="#FFF" />
+                        <Text style={styles.actionBtnText}>Confirm & Download</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => { setShowCertPin(false); setCertPin(''); }} style={{ alignItems: 'center', marginTop: 4 }}>
+                  <Text style={[{ fontSize: 13, color: tc.subheading }]}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: tc.primary }]}
+                onPress={() => setShowCertPin(true)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="document-text-outline" size={20} color="#FFF" />
+                <Text style={styles.actionBtnText}>Download Certificate</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -248,9 +270,11 @@ const styles = StyleSheet.create({
   infoLabel:   { fontSize: 13, flex: 1 },
   infoValue:   { fontSize: 13, fontWeight: '600', flex: 1.5, textAlign: 'right' },
 
-  actionsCard: { borderRadius: 14, borderWidth: 1, padding: 16, marginBottom: 14 },
-  actionBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginBottom: 10 },
-  actionBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  actionsCard:  { borderRadius: 14, borderWidth: 1, padding: 16, marginBottom: 14 },
+  actionBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginBottom: 10 },
+  actionBtnText:{ color: '#FFF', fontSize: 15, fontWeight: '700' },
+  pinLabel:     { fontSize: 13, fontWeight: '600', marginBottom: 8 },
+  pinInput:     { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12, fontSize: 20, letterSpacing: 8, textAlign: 'center', marginBottom: 12 },
 
   centered:    { paddingVertical: 40, alignItems: 'center', gap: 12 },
   loadingText: { fontSize: 14 },

@@ -1357,11 +1357,11 @@ export default function CACScreen({ navigation }) {
             </View>
             <TouchableOpacity onPress={() => setStep(4)}><Text style={[ss.editBtn, { color: tc.primary }]}>Edit</Text></TouchableOpacity>
           </View>
-          {docs.map((d, i) => (
+          {docs.filter(d => d.uploaded).map((d, i) => (
             <View key={i} style={[ss.docRow, { borderBottomColor: tc.border || '#F0F0F0' }]}>
               <Ionicons name="document-outline" size={16} color={tc.subheading} />
               <Text style={[ss.docName, { color: tc.heading }]} numberOfLines={1}>{d.label}</Text>
-              <Text style={[ss.docSize, { color: tc.subtext }]}>{d.size} MB • Uploaded</Text>
+              <Text style={[ss.docSize, { color: tc.subtext }]}>{d.size ? `${Math.round(d.size)} KB` : ''} • Uploaded</Text>
             </View>
           ))}
         </View>

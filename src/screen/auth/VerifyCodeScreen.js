@@ -294,13 +294,36 @@ export default function VerifyOTPScreen({ route, navigation }) {
           )}
         </TouchableOpacity>
 
+        {/* Delivery info notice */}
+        <View style={{
+          marginTop: 28,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          backgroundColor: `${theme.primary}12`,
+          borderRadius: 12,
+          borderLeftWidth: 3,
+          borderLeftColor: theme.primary,
+          width: '100%',
+        }}>
+          <Text style={{ color: theme.heading, fontSize: 13, fontWeight: '600', marginBottom: 4 }}>
+            Access key sent
+          </Text>
+          <Text style={{ color: theme.subheading, fontSize: 13, lineHeight: 20 }}>
+            Your access key has been sent to your phone number and email address.
+          </Text>
+          <Text style={{ color: theme.subheading, fontSize: 13, lineHeight: 20, marginTop: 4 }}>
+            <Text style={{ fontWeight: '600', color: theme.heading }}>Note: </Text>
+            SMS delivery may take up to 2 minutes. If you don't see it, check your email inbox.
+          </Text>
+        </View>
+
         {/* Context indicator */}
         {isDeviceVerification && (
-          <Text style={{ 
-            color: theme.subtext, 
-            marginTop: 20, 
+          <Text style={{
+            color: theme.subtext,
+            marginTop: 16,
             textAlign: 'center',
-            fontSize: 12 
+            fontSize: 12
           }}>
             Verifying new device for security
           </Text>

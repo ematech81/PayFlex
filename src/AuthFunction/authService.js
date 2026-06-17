@@ -522,6 +522,16 @@ export const AuthService = {
   },
 
 
+  forgotPin: async (phone) => {
+    if (!phone) {
+      return { success: false, message: 'Phone number is required' };
+    }
+    return await makeAuthRequest('/forgot-pin', {
+      method: 'POST',
+      body: JSON.stringify({ phone: phone.trim() }),
+    });
+  },
+
   /**
    * Verifies PIN reset code
    * @param {string} phone - User's phone number

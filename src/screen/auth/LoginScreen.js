@@ -286,12 +286,7 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  const verifyResetCode = async () => {
-    const code = resetOtp.join('');
-    if (code.length !== 6) {
-      return Alert.alert('Error', 'Enter your 6-character access key');
-    }
-
+  const verifyResetCodeWithValue = async (code) => {
     try {
       const res = await AuthService.verifyResetCode(resetPhone, code);
       if (res.success) {
@@ -304,6 +299,14 @@ export default function LoginScreen({ navigation }) {
       console.error('❌ Reset code verification error:', err);
       Alert.alert('Error', 'Code verification failed');
     }
+  };
+
+  const verifyResetCode = async () => {
+    const code = resetOtp.join('');
+    if (code.length !== 6) {
+      return Alert.alert('Error', 'Enter your 6-character access key');
+    }
+    await verifyResetCodeWithValue(code);
   };
 
   const completeReset = async () => {
@@ -358,7 +361,8 @@ export default function LoginScreen({ navigation }) {
 
     // Auto-submit when all 6 digits entered
     if (updated.every(x => x) && updated.join('').length === 6) {
-      setTimeout(() => verifyResetCode(), 100);
+      const fullCode = updated.join('');
+      setTimeout(() => verifyResetCodeWithValue(fullCode), 100);
     }
   };
 

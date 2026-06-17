@@ -10,6 +10,7 @@ import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import { merpiGetTransaction } from 'AuthFunction/paymentService';
+import { fmtDate } from 'utility/busHelpers';
 
 // MERPI route endpoints can come back as strings or objects like
 // { address, city: { id, name } } — always reduce to a displayable string.
@@ -27,12 +28,12 @@ const placeLabel = (v) => {
 const seatLabel = (seat) => `${seat.row}${String.fromCharCode(64 + seat.column)}`;
 
 export default function BusTicketConfirmationScreen({ navigation, route }) {
-  const { reference, booking, route: tripRoute, schedule, bus, seats, passenger, amount } = route.params || {};
+  const { reference, booking, route: tripRoute, schedule, bus, seats, passenger, amount, depDate, departureTime } = route.params || {};
   const dark = useThem(), tc = dark ? colors.dark : colors.light;
   const insets = useSafeAreaInsets();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [status, setStatus] = useState(booking?.status || 'confirmed');
+  const [status, setStatus] = useState(typeof booking?.status === 'string' ? booking.status : 'confirmed');
 
   const checkStatus = async () => {
     if (!reference) return;
@@ -102,9 +103,10 @@ export default function BusTicketConfirmationScreen({ navigation, route }) {
             <Text style={[ss.detailCardTitle, { color: tc.subheading }]}>TRIP DETAILS</Text>
           </View>
           <InfoRow label="Route"      value={tripRoute ? `${placeLabel(tripRoute.from)} → ${placeLabel(tripRoute.to)}` : null} />
+          <InfoRow label="Date"       value={fmtDate(depDate)} />
+          <InfoRow label="Departure"  value={departureTime || schedule?.time?.departure} />
           <InfoRow label="Operator"   value={tripRoute?.business?.name} />
           <InfoRow label="Terminal"   value={tripRoute?.terminal?.name} />
-          <InfoRow label="Departure"  value={schedule?.time?.departure} />
           <InfoRow
             label="Bus"
             value={bus
@@ -138,7 +140,7 @@ export default function BusTicketConfirmationScreen({ navigation, route }) {
               reference,
               type:           'bus_ticket',
               amount,
-              status:         'confirmed',
+              status,
               isMerpi:        true,
               bookingDetails: { ...booking, passenger, seats },
             },

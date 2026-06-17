@@ -16,12 +16,14 @@ export const seatLabel = (seat) =>
   `${seat.row}${String.fromCharCode(64 + seat.column)}`;
 
 // YYYY-MM-DD → "25 Aug 2024"
-export const fmtDate = (iso) =>
-  iso
-    ? new Date(iso).toLocaleDateString('en-NG', {
-        day: 'numeric', month: 'short', year: 'numeric',
-      })
-    : '';
+// Appends T00:00:00 to avoid timezone-offset "Invalid Date" on Android
+export const fmtDate = (iso) => {
+  if (!iso) return '';
+  const safe = iso.includes('T') ? iso : `${iso.slice(0, 10)}T00:00:00`;
+  return new Date(safe).toLocaleDateString('en-NG', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
+};
 
 // YYYY-MM-DD → DD-MM-YYYY (MERPI schedules/seats format)
 export const toDMY = (ymd) => {

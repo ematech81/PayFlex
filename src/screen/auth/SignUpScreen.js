@@ -71,27 +71,23 @@ const handleSubmit = async () => {
     }
 
     // Handle successful registration
-    if (response.success && response.userId && response.phone) {
-      // Extract last 3 digits for masking (phone is already masked from backend)
-      const maskedPhone = response.phone; // Backend returns "****5098"
-      
-      // Show success message
+    if (response.success && response.phone) {
+      const maskedPhone = response.phone;
       Alert.alert(
         'Registration Successful',
-        `We sent a verification code to ${maskedPhone}`,
+        `We sent a verification code to ${maskedPhone} and your email.`,
         [
           {
             text: 'Verify Now',
             onPress: () => {
               navigation.replace('VerifyCode', {
-                userId: response.userId,
-                phone: form.phone, // Pass original unmasked phone for verification
+                phone: form.phone,
                 fromSignup: true,
               });
             },
           },
         ],
-        { cancelable: false } // Prevent dismissing without action
+        { cancelable: false }
       );
       return;
     }

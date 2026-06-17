@@ -141,6 +141,8 @@ export default function BookingSummaryScreen({ navigation, route: navRoute }) {
         seats,
         passenger: primary,
         amount:    totalPrice,
+        depDate,
+        departureTime: isRandom ? minutesToHHMM(randomMinutes) : (schedule?.time?.departure || ''),
       });
     } catch (e) {
       const msg = e.message || '';

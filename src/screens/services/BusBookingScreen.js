@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+
+
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity,
-  ActivityIndicator, Alert, FlatList, Platform,
+  View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity,
+  ActivityIndicator, Alert, Platform, RefreshControl, TextInput,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,27 +14,16 @@ import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
-import {
-  merpiGetStates, merpiGetCities, merpiGetRoutes,
-} from 'AuthFunction/paymentService';
+import { merpiGetStates, merpiGetCities, merpiGetRoutes } from 'AuthFunction/paymentService';
 
-const STEPS = ['Search', 'Select'];
-
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const toYMD = (d) => {
   const dt = typeof d === 'string' ? new Date(d) : d;
   return dt.toISOString().split('T')[0];
 };
-// MERPI schedules endpoint expects 'DD-MM-YYYY' (e.g. '25-08-2024')
-const toDMY = (ymd) => {
-  if (!ymd) return '';
-  const [y, m, d] = ymd.split('-');
-  return `${d}-${m}-${y}`;
-};
 const fmtDate = (iso) =>
-  iso ? new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  iso ? new Date(iso).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '';
 
-// MERPI route endpoints can come back as strings or objects like
-// { address, city: { id, name } } — always reduce to a displayable string.
 const placeLabel = (v) => {
   if (v == null) return '';
   if (typeof v === 'string') return v;
@@ -42,54 +34,67 @@ const placeLabel = (v) => {
   return String(v);
 };
 
-// Seat cells have no seat_number — derive an airline-style code from row/column (1A, 2C, …)
-const seatLabel = (seat) => `${seat.row}${String.fromCharCode(64 + seat.column)}`;
+// ─── Design Tokens ────────────────────────────────────────────────────────────
+const RADIUS = { sm: 10, md: 14, lg: 20, xl: 24 };
 
-// ─── Small reusable atoms ─────────────────────────────────────────────────────
-
-const FieldLabel = ({ text, tc }) => (
-  <Text style={[ss.fieldLabel, { color: tc.heading }]}>{text}</Text>
-);
-
-const SelectDropdown = ({ value, placeholder, onPress, tc }) => (
-  <TouchableOpacity
-    style={[ss.inp, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', flexDirection: 'row', alignItems: 'center' }]}
-    onPress={onPress} activeOpacity={0.8}
-  >
-    <Text style={[{ flex: 1, fontSize: 15 }, { color: value ? tc.heading : tc.subtext }]} numberOfLines={1}>
-      {value || placeholder}
-    </Text>
-    <Ionicons name="chevron-down" size={18} color={tc.subtext} />
-  </TouchableOpacity>
-);
-
+// ─── Enhanced Bottom Sheet with search ───────────────────────────────────────
 const BottomSheet = ({ visible, title, data, keyFn, labelFn, onSelect, onClose, tc }) => {
+  const [query, setQuery] = useState('');
+  const filtered = query
+    ? data.filter(d => labelFn(d).toLowerCase().includes(query.toLowerCase()))
+    : data;
+
   if (!visible) return null;
   return (
-    <View style={ss.overlay}>
-      {/* dim backdrop — tap to close */}
+    <View style={bs.overlay}>
       <TouchableOpacity style={StyleSheet.absoluteFillObject} onPress={onClose} activeOpacity={1} />
-      {/* sheet panel */}
-      <View style={[ss.sheet, { backgroundColor: tc.card }]}>
-        <View style={[ss.sheetHandle, { backgroundColor: tc.border || '#E5E5EA' }]} />
-        <Text style={[ss.sheetTitle, { color: tc.heading }]}>{title}</Text>
+      <View style={[bs.sheet, { backgroundColor: tc.card }]}>
+        {/* Handle */}
+        <View style={[bs.handle, { backgroundColor: tc.border || '#DDD' }]} />
+
+        {/* Title */}
+        <Text style={[bs.title, { color: tc.heading }]}>{title}</Text>
+
+        {/* Search */}
+        <View style={[bs.searchBox, { backgroundColor: tc.background, borderColor: tc.border || '#E5E5EA' }]}>
+          <Ionicons name="search-outline" size={16} color={tc.subtext} />
+          <TextInput
+            style={[bs.searchInput, { color: tc.heading }]}
+            value={query}
+            onChangeText={setQuery}
+            placeholder={`Search ${title}…`}
+            placeholderTextColor={tc.subtext}
+            autoFocus
+          />
+          {!!query && (
+            <TouchableOpacity onPress={() => setQuery('')}>
+              <Ionicons name="close-circle" size={16} color={tc.subtext} />
+            </TouchableOpacity>
+          )}
+        </View>
+
         <FlatList
-          data={data}
+          data={filtered}
           keyExtractor={keyFn}
-          style={ss.sheetList}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[ss.sheetRow, { borderBottomColor: tc.border || '#F0F0F0' }]}
-              onPress={() => { onSelect(item); onClose(); }}
+              style={[bs.row, { borderBottomColor: tc.border || '#F0F0F0' }]}
+              onPress={() => { onSelect(item); onClose(); setQuery(''); }}
               activeOpacity={0.7}
             >
-              <Text style={[{ fontSize: 15, color: tc.heading }]}>{labelFn(item)}</Text>
+              <View style={[bs.rowDot, { backgroundColor: `${tc.primary}20` }]}>
+                <Ionicons name="location-outline" size={14} color={tc.primary} />
+              </View>
+              <Text style={[bs.rowText, { color: tc.heading }]}>{labelFn(item)}</Text>
+              <Ionicons name="chevron-forward" size={16} color={tc.subtext} />
             </TouchableOpacity>
           )}
           ListEmptyComponent={
-            <View style={{ padding: 24, alignItems: 'center' }}>
-              <Text style={[{ fontSize: 14, color: tc.subtext }]}>No items found</Text>
+            <View style={bs.empty}>
+              <Ionicons name="search-outline" size={32} color={tc.subtext} />
+              <Text style={[bs.emptyText, { color: tc.subheading }]}>No results for "{query}"</Text>
             </View>
           }
         />
@@ -98,350 +103,603 @@ const BottomSheet = ({ visible, title, data, keyFn, labelFn, onSelect, onClose, 
   );
 };
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+const bs = StyleSheet.create({
+  overlay:     { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end', zIndex: 1000 },
+  sheet:       { borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 10, height: '65%' },
+  handle:      { width: 44, height: 5, borderRadius: 3, alignSelf: 'center', marginBottom: 14 },
+  title:       { fontSize: 17, fontWeight: '800', paddingHorizontal: 20, marginBottom: 14, letterSpacing: -0.3 },
+  searchBox:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 16, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8 },
+  searchInput: { flex: 1, fontSize: 14 },
+  row:         { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  rowDot:      { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  rowText:     { flex: 1, fontSize: 15, fontWeight: '500' },
+  empty:       { alignItems: 'center', paddingVertical: 40, gap: 10 },
+  emptyText:   { fontSize: 14 },
+});
 
+// ─── Route Card — Cities are the hero ─────────────────────────────────────────
+const RouteCard = ({ route, tc, cardDate, onPickDate, onBook }) => {
+  const isLuxury   = /luxury|vip|executive/i.test(route.business?.type || route.schedule_type || '');
+  const fromCity   = placeLabel(route.from);
+  const toCity     = placeLabel(route.to);
+  const fromAddr   = route.from?.address || route.terminal?.name || '';
+  const toAddr     = route.to?.address   || '';
+  const hasPrice   = route.price != null;
+  const hasDate    = !!cardDate;
+
+  return (
+    <View
+      style={[rc.card, { backgroundColor: tc.card }]}
+    >
+      {/* ── Top strip: operator + price ── */}
+      <View style={rc.topRow}>
+        <View style={rc.operatorRow}>
+          <View style={[rc.busIcon, { backgroundColor: isLuxury ? '#FEF3C7' : `${tc.primary}15` }]}>
+            <Ionicons name="bus" size={16} color={isLuxury ? '#B45309' : tc.primary} />
+          </View>
+          <View>
+            <Text style={[rc.operatorName, { color: tc.heading }]} numberOfLines={1}>
+              {route.business?.name || 'Bus Operator'}
+            </Text>
+            <View style={[rc.typePill, { backgroundColor: isLuxury ? '#FEF3C7' : `${tc.primary}12` }]}>
+              <Text style={[rc.typePillText, { color: isLuxury ? '#92400E' : tc.primary }]}>
+                {isLuxury ? '✦ Luxury' : '● Standard'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {hasPrice && (
+          <View style={[rc.priceBadge, { backgroundColor: tc.primary }]}>
+            <Text style={rc.priceAmount}>{formatCurrency(route.price, 'NGN')}</Text>
+            <Text style={rc.priceSub}>per seat</Text>
+          </View>
+        )}
+      </View>
+
+      {/* ── Dashed ticket divider ── */}
+      <View style={rc.dashedRow}>
+        <View style={[rc.notch, rc.notchLeft, { backgroundColor: tc.background }]} />
+        <View style={rc.dashedLine}>
+          {Array.from({ length: 14 }).map((_, i) => (
+            <View key={i} style={[rc.dash, { backgroundColor: tc.border || '#E2E8F0' }]} />
+          ))}
+        </View>
+        <View style={[rc.notch, rc.notchRight, { backgroundColor: tc.background }]} />
+      </View>
+
+      {/* ── ROUTE: From → To  (the visual hero) ── */}
+      <View style={rc.routeRow}>
+        {/* FROM */}
+        <View style={rc.cityBlock}>
+          <View style={[rc.cityDot, { borderColor: tc.primary, backgroundColor: `${tc.primary}18` }]}>
+            <View style={[rc.cityDotInner, { backgroundColor: tc.primary }]} />
+          </View>
+          <Text style={[rc.cityName, { color: tc.heading }]} numberOfLines={2}>
+            {fromCity || '—'}
+          </Text>
+          {!!fromAddr && (
+            <Text style={[rc.cityAddr, { color: tc.subheading }]} numberOfLines={1}>
+              {fromAddr}
+            </Text>
+          )}
+        </View>
+
+        {/* Connector */}
+        <View style={rc.connector}>
+          <View style={[rc.connLine, { backgroundColor: tc.border || '#E2E8F0' }]} />
+          <View style={[rc.connBus, { backgroundColor: `${tc.primary}15` }]}>
+            <Ionicons name="arrow-forward" size={12} color={tc.primary} />
+          </View>
+          <View style={[rc.connLine, { backgroundColor: tc.border || '#E2E8F0' }]} />
+        </View>
+
+        {/* TO */}
+        <View style={[rc.cityBlock, rc.cityBlockRight]}>
+          <View style={[rc.cityDot, { borderColor: '#10B981', backgroundColor: '#D1FAE5' }]}>
+            <View style={[rc.cityDotInner, { backgroundColor: '#10B981' }]} />
+          </View>
+          <Text style={[rc.cityName, { color: tc.heading }]} numberOfLines={2}>
+            {toCity || '—'}
+          </Text>
+          {!!toAddr && (
+            <Text style={[rc.cityAddr, { color: tc.subheading, textAlign: 'right' }]} numberOfLines={1}>
+              {toAddr}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* ── Date selector row ── */}
+      <TouchableOpacity
+        style={[rc.dateRow, hasDate
+          ? { backgroundColor: `${tc.primary}12`, borderColor: tc.primary }
+          : { backgroundColor: '#FFF8E7', borderColor: '#F59E0B', borderWidth: 1.5 }
+        ]}
+        onPress={onPickDate}
+        activeOpacity={0.75}
+      >
+        <View style={[rc.dateIconBox, { backgroundColor: hasDate ? `${tc.primary}20` : '#FEF3C7' }]}>
+          <Ionicons name="calendar" size={20} color={hasDate ? tc.primary : '#D97706'} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[rc.dateLabel, { color: hasDate ? tc.primary : '#92400E' }]}>DEPARTURE DATE</Text>
+          <Text style={[rc.dateValue, { color: hasDate ? tc.heading : '#B45309' }]}>
+            {hasDate ? fmtDate(cardDate) : 'Tap here to pick a date'}
+          </Text>
+        </View>
+        {hasDate
+          ? <Ionicons name="checkmark-circle" size={22} color={tc.primary} />
+          : <View style={rc.tapBadge}>
+              <Text style={rc.tapBadgeText}>TAP</Text>
+            </View>
+        }
+      </TouchableOpacity>
+
+      {/* ── Book button ── */}
+      <TouchableOpacity
+        onPress={() => onBook(cardDate)}
+        activeOpacity={hasDate ? 0.82 : 1}
+        disabled={!hasDate}
+      >
+        <LinearGradient
+          colors={!hasDate ? ['#9CA3AF', '#9CA3AF'] : isLuxury ? ['#92400E', '#B45309'] : [tc.primary, tc.primary + 'CC']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={rc.bookBtn}
+        >
+          <Ionicons name="ticket-outline" size={15} color="#FFF" />
+          <Text style={rc.bookBtnText}>
+            {hasDate ? `Book for ${fmtDate(cardDate)}` : 'Select a date to book'}
+          </Text>
+          <Ionicons name="chevron-forward" size={15} color="#FFF" />
+        </LinearGradient>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const rc = StyleSheet.create({
+  card: {
+    borderRadius: RADIUS.lg,
+    marginBottom: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
+      android: { elevation: 4 },
+    }),
+  },
+
+  // Top row
+  topRow:       { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', padding: 16, paddingBottom: 0 },
+  operatorRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  busIcon:      { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  operatorName: { fontSize: 14, fontWeight: '700', maxWidth: 160, letterSpacing: -0.2 },
+  typePill:     { alignSelf: 'flex-start', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, marginTop: 3 },
+  typePillText: { fontSize: 10, fontWeight: '700' },
+
+  // Price badge
+  priceBadge:   { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, alignItems: 'center' },
+  priceAmount:  { fontSize: 15, fontWeight: '900', color: '#FFF', letterSpacing: -0.3 },
+  priceSub:     { fontSize: 9, color: 'rgba(255,255,255,0.8)', fontWeight: '600', marginTop: 1 },
+
+  // Dashed ticket divider
+  dashedRow:    { flexDirection: 'row', alignItems: 'center', marginTop: 14 },
+  notch:        { width: 18, height: 18, borderRadius: 9 },
+  notchLeft:    { marginLeft: -9 },
+  notchRight:   { marginRight: -9 },
+  dashedLine:   { flex: 1, flexDirection: 'row', gap: 4, overflow: 'hidden' },
+  dash:         { flex: 1, height: 1.5, borderRadius: 1 },
+
+  // Route cities — the visual hero
+  routeRow:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 18 },
+  cityBlock:     { flex: 1 },
+  cityBlockRight:{ alignItems: 'flex-end' },
+  cityDot:       { width: 28, height: 28, borderRadius: 14, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  cityDotInner:  { width: 10, height: 10, borderRadius: 5 },
+  cityName:      { fontSize: 20, fontWeight: '900', letterSpacing: -0.5, lineHeight: 24 },
+  cityAddr:      { fontSize: 11, marginTop: 3, fontWeight: '500' },
+
+  // Connector
+  connector:    { alignItems: 'center', paddingHorizontal: 8, gap: 4, flexDirection: 'row', flex: 0.6 },
+  connLine:     { flex: 1, height: 1.5, borderRadius: 1 },
+  connBus:      { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+
+  // Date row
+  dateRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginBottom: 10, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13 },
+  dateIconBox:  { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  dateLabel:    { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, marginBottom: 3 },
+  dateValue:    { fontSize: 14, fontWeight: '700' },
+  tapBadge:     { backgroundColor: '#F59E0B', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  tapBadgeText: { fontSize: 10, fontWeight: '900', color: '#FFF', letterSpacing: 0.5 },
+
+  // Book button
+  bookBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
+  bookBtnText:  { fontSize: 14, fontWeight: '800', color: '#FFF', letterSpacing: 0.2 },
+});
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function BusBookingScreen({ navigation }) {
-  const dark = useThem(), tc = dark ? colors.dark : colors.light;
+  const dark   = useThem();
+  const tc     = dark ? colors.dark : colors.light;
   const insets = useSafeAreaInsets();
 
-  const [step, setStep] = useState(1);
-  const [busy, setBusy] = useState(false);
-  const [loadError, setLoadError] = useState(null);
+  const [states,      setStates]      = useState([]);
+  const [allCities,   setAllCities]   = useState([]);
+  const [allRoutes,   setAllRoutes]   = useState([]);
+  const [nextPage,    setNextPage]    = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing,  setRefreshing]  = useState(false);
+  const [loadError,   setLoadError]   = useState(null);
+  const PER_PAGE = 20;
 
-  // Step 1 — search
-  const [states,    setStates]    = useState([]);
-  const [allCities, setAllCities] = useState([]); // full list — filter client-side by state
-  const [fromState, setFromState] = useState(null);
-  const [fromCity,  setFromCity]  = useState(null);
-  const [toState,   setToState]   = useState(null);
-  const [toCity,    setToCity]    = useState(null);
-  const [depDate, setDepDate]         = useState('');
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [filterFrom,       setFilterFrom]       = useState(null);
+  const [filterTo,         setFilterTo]         = useState(null);
+  const [cardDates,        setCardDates]        = useState({}); // { [routeId]: 'YYYY-MM-DD' }
+  const [showPickerForId,  setShowPickerForId]  = useState(null);
+  const [sheet,            setSheet]            = useState(null);
 
-  // Sheet
-  const [sheet, setSheet] = useState(null); // { key, title, data, onSelect }
+  // ── Data helpers ────────────────────────────────────────────────────────────
+  const extract = (r, key) => {
+    const d1 = r?.data, d2 = d1?.data;
+    const container = Array.isArray(d2?.[key]) ? d2 : Array.isArray(d1?.[key]) ? d1 : r;
+    return { list: Array.isArray(container?.[key]) ? container[key] : [], nextPage: container?.next_page ?? null };
+  };
 
-  // Step 2 — route cards (operator/price/terminal)
-  const [routes, setRoutes] = useState([]);
+  const fetchAllPages = async (fetchFn, key, baseParams = {}) => {
+    let all = [], page = 1;
+    for (let g = 0; g < 50; g++) {
+      const r = await fetchFn({ per_page: 200, page, ...baseParams });
+      const { list, nextPage } = extract(r, key);
+      all = all.concat(list);
+      if (!nextPage || !list.length) break;
+      page = Number(nextPage);
+    }
+    return all;
+  };
 
-  // Load states + all cities on mount (cities API returns full list, no server-side filter)
-  useEffect(() => {
-    const extract = (r, key) => {
-      // Backend wraps: { success, data: <merpi_body> }
-      // Merpi body: { data: { <key>: [...], next_page, ... } }  OR  { <key>: [...] }
-      const d1 = r?.data;          // backend's data field = merpi response body
-      const d2 = d1?.data;         // merpi's nested data field
-      const container = Array.isArray(d2?.[key]) ? d2 : Array.isArray(d1?.[key]) ? d1 : r;
-      return {
-        list:     Array.isArray(container?.[key]) ? container[key] : [],
-        nextPage: container?.next_page ?? null,
-      };
-    };
-
-    // States and cities are both paginated — a single page only covers a handful
-    // of entries, so walk every page and accumulate until next_page is null.
-    const fetchAllPages = async (fetchFn, key) => {
-      let all = [];
-      let page = 1;
-      for (let guard = 0; guard < 50; guard++) {
-        const r = await fetchFn({ per_page: 200, page });
-        const { list, nextPage } = extract(r, key);
-        all = all.concat(list);
-        if (!nextPage || !list.length) break;
-        page = Number(nextPage);
-      }
-      return all;
-    };
-
-    Promise.all([
-      fetchAllPages(merpiGetStates, 'states'),
-      fetchAllPages(merpiGetCities, 'cities'),
-    ])
-      .then(([stateList, cityList]) => {
-        console.log('[MERPI] states count:', stateList.length, '| cities count:', cityList.length);
-        setStates(stateList);
-        setAllCities(cityList);
-        if (!stateList.length) setLoadError('Could not load states. Tap to retry.');
-      })
-      .catch((e) => {
-        console.error('[MERPI] load failed:', e.message);
-        setLoadError('Failed to load locations: ' + (e.message || 'Network error'));
-      });
+  const loadData = useCallback(async (quiet = false) => {
+    if (!quiet) setLoading(true);
+    setLoadError(null);
+    try {
+      const [stateList, cityList, routeRes] = await Promise.all([
+        fetchAllPages(merpiGetStates, 'states'),
+        fetchAllPages(merpiGetCities, 'cities'),
+        merpiGetRoutes({ per_page: PER_PAGE, page: 1 }),
+      ]);
+      setStates(stateList);
+      setAllCities(cityList);
+      const { list, nextPage: np } = extract(routeRes, 'routes');
+      setAllRoutes(list);
+      setNextPage(np);
+    } catch (e) {
+      setLoadError(e.message || 'Could not load routes. Pull down to retry.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  // Client-side filter: cities whose state.id matches selected state
-  const citiesForState = useCallback((stateObj) => {
-    if (!stateObj) return [];
-    return allCities.filter(c => String(c.state?.id) === String(stateObj.id));
+  const loadMore = useCallback(async () => {
+    if (!nextPage || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const r = await merpiGetRoutes({ per_page: PER_PAGE, page: nextPage });
+      const { list, nextPage: np } = extract(r, 'routes');
+      setAllRoutes(prev => [...prev, ...list]);
+      setNextPage(np);
+    } catch { /* silent */ } finally { setLoadingMore(false); }
+  }, [nextPage, loadingMore]);
+
+  useEffect(() => { loadData(); }, []);
+  const onRefresh = () => { setRefreshing(true); setNextPage(null); loadData(true); };
+
+  // ── Filtering ───────────────────────────────────────────────────────────────
+  const cityIdsForState = useCallback((stateObj) => {
+    if (!stateObj) return null;
+    return new Set(allCities.filter(c => String(c.state?.id) === String(stateObj.id)).map(c => String(c.id)));
   }, [allCities]);
 
-  // Extract list from nested MERPI response: { data: { data: { <key>: [...] } } }
-  const extractList = (r, ...keys) => {
-    const payload = r?.data?.data || r?.data || {};
-    for (const k of keys) {
-      if (Array.isArray(payload[k])) return payload[k];
-      if (Array.isArray(payload?.data?.[k])) return payload.data[k];
-    }
-    // fallback: if payload itself is an array
-    return Array.isArray(payload) ? payload : [];
-  };
+  const filteredRoutes = useMemo(() => {
+    const fromSet = cityIdsForState(filterFrom);
+    const toSet   = cityIdsForState(filterTo);
+    return allRoutes.filter(route => {
+      if (fromSet && !fromSet.has(String(route.from?.city?.id ?? route.from?.id ?? ''))) return false;
+      if (toSet   && !toSet.has(String(route.to?.city?.id   ?? route.to?.id   ?? ''))) return false;
+      return true;
+    });
+  }, [allRoutes, filterFrom, filterTo, cityIdsForState]);
 
-  const searchRoutes = async () => {
-    if (!fromCity || !toCity || !depDate) {
-      Alert.alert('Missing fields', 'Please fill in origin, destination and departure date.');
+  const hasFilters = !!(filterFrom || filterTo);
+
+  // ── Route selection ─────────────────────────────────────────────────────────
+  const selectRoute = (route, date) => {
+    if (!date) {
+      Alert.alert('Pick a Date First', 'Please tap the date field on the route card to select a departure date.');
       return;
     }
-    setBusy(true);
-    try {
-      const r = await merpiGetRoutes({
-        from_city_id: fromCity.id,
-        to_city_id:   toCity.id,
-      });
-      const list = extractList(r, 'routes', 'data');
-      if (!list.length) {
-        Alert.alert(
-          'No Routes Available',
-          'Bus routes between these cities are not available at the moment. Please try a different city pair or check back later.',
-        );
-        return;
-      }
-      setRoutes(list);
-      setStep(2);
-    } catch (e) {
-      Alert.alert('Error', e.message || 'Could not search routes.');
-    } finally {
-      setBusy(false);
-    }
+    navigation.navigate('ScheduleAndBus', {
+      route, depDate: date,
+      fromCity: route.from?.city || { id: route.from?.id, name: placeLabel(route.from) },
+      toCity:   route.to?.city   || { id: route.to?.id,   name: placeLabel(route.to) },
+    });
   };
 
-  const selectRoute = (route) => {
-    navigation.navigate('ScheduleAndBus', { route, depDate, fromCity, toCity });
-  };
-
-  // ── Step renderers ──────────────────────────────────────────────────────────
-
-  const renderStep1 = () => (
-    <ScrollView contentContainerStyle={ss.sc} keyboardShouldPersistTaps="handled">
-      {loadError && (
-        <TouchableOpacity
-          style={{ backgroundColor: '#FEE2E2', borderRadius: 10, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
-          onPress={() => { setLoadError(null); }}
-        >
-          <Ionicons name="warning-outline" size={16} color="#EF4444" />
-          <Text style={{ color: '#EF4444', fontSize: 13, flex: 1 }}>{loadError}</Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Hero banner */}
+  // ── List header ─────────────────────────────────────────────────────────────
+  const ListHeader = () => (
+    <View>
+      {/* ── Hero gradient ── */}
       <LinearGradient
-        colors={['#2D1B69', '#6D28D9', '#DB7093']}
+        colors={['#1E3A5F', '#2563EB', '#7C3AED']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={ss.hero}
       >
-        <Ionicons name="bus" size={84} color="rgba(255,255,255,0.16)" style={ss.heroIcon} />
-        <Text style={ss.heroTitle}>Find Your Route</Text>
-        <Text style={ss.heroSub}>Secure your seats with PayFlex speed</Text>
-      </LinearGradient>
+        {/* Decorative circles */}
+        <View style={ss.heroBubble1} />
+        <View style={ss.heroBubble2} />
 
-      <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-        <View style={ss.cardHeader}>
-          <Ionicons name="bus-outline" size={20} color={tc.primary} />
-          <Text style={[ss.cardTitle, { color: tc.heading }]}>Where are you travelling?</Text>
+        <View style={ss.heroContent}>
+          <View style={ss.heroBadge}>
+            <Ionicons name="bus" size={14} color="#FFF" />
+            <Text style={ss.heroBadgeText}>Bus Tickets</Text>
+          </View>
+          <Text style={ss.heroTitle}>Where are you{'\n'}travelling to?</Text>
+          <Text style={ss.heroSub}>
+           
+            1000+ routes available across Nigeria
+     
+          </Text>
+          {/* <Text style={ss.heroSub}>
+            {filteredRoutes.length > 0
+              ? `${filteredRoutes.length} routes available across Nigeria`
+              : 'Explore routes across Nigeria'}
+          </Text> */}
         </View>
 
-        <Text style={[ss.sectionHead, { color: tc.subheading }]}>FROM</Text>
-        <FieldLabel text="State" tc={tc} />
-        <SelectDropdown
-          value={fromState?.name} placeholder="Select origin state" tc={tc}
-          onPress={() => setSheet({ key: 'fromState', title: 'Origin State', data: states,
-            onSelect: (s) => { setFromState(s); setFromCity(null); } })}
-        />
-        <FieldLabel text="City" tc={tc} />
-        <SelectDropdown
-          value={fromCity?.name} placeholder="Select origin city" tc={tc}
-          onPress={() => fromState
-            ? setSheet({ key: 'fromCity', title: 'Origin City', data: citiesForState(fromState),
-                onSelect: setFromCity })
-            : Alert.alert('Select state first', 'Please select your origin state first.')}
-        />
-
-        <View style={[ss.divider, { backgroundColor: tc.border || '#F0F0F0' }]} />
-
-        <Text style={[ss.sectionHead, { color: tc.subheading }]}>TO</Text>
-        <FieldLabel text="State" tc={tc} />
-        <SelectDropdown
-          value={toState?.name} placeholder="Select destination state" tc={tc}
-          onPress={() => setSheet({ key: 'toState', title: 'Destination State', data: states,
-            onSelect: (s) => { setToState(s); setToCity(null); } })}
-        />
-        <FieldLabel text="City" tc={tc} />
-        <SelectDropdown
-          value={toCity?.name} placeholder="Select destination city" tc={tc}
-          onPress={() => toState
-            ? setSheet({ key: 'toCity', title: 'Destination City', data: citiesForState(toState),
-                onSelect: setToCity })
-            : Alert.alert('Select state first', 'Please select your destination state first.')}
-        />
-
-        <View style={[ss.divider, { backgroundColor: tc.border || '#F0F0F0' }]} />
-
-        <FieldLabel text="Departure Date" tc={tc} />
-        <TouchableOpacity
-          style={[ss.inp, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', flexDirection: 'row', alignItems: 'center' }]}
-          onPress={() => setShowDatePicker(true)} activeOpacity={0.8}
-        >
-          <Text style={[{ flex: 1, fontSize: 15 }, { color: depDate ? tc.heading : tc.subtext }]}>
-            {depDate ? fmtDate(depDate) : 'Select departure date'}
-          </Text>
-          <Ionicons name="calendar-outline" size={18} color={tc.subtext} />
-        </TouchableOpacity>
-        {showDatePicker && (
-          <DateTimePicker
-            value={depDate ? new Date(depDate) : new Date()}
-            mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            minimumDate={new Date()}
-            onChange={(_, dt) => {
-              setShowDatePicker(Platform.OS === 'ios');
-              if (dt) setDepDate(toYMD(dt));
-            }}
-          />
-        )}
-      </View>
-
-      <TouchableOpacity
-        style={[ss.primaryBtn, { backgroundColor: tc.primary, opacity: busy ? 0.7 : 1 }]}
-        onPress={searchRoutes} disabled={busy} activeOpacity={0.85}
-      >
-        {busy
-          ? <ActivityIndicator color="#FFF" />
-          : <><Ionicons name="search-outline" size={18} color="#FFF" /><Text style={ss.primaryBtnText}>Search Buses</Text></>
-        }
-      </TouchableOpacity>
-    </ScrollView>
-  );
-
-  const renderStep2 = () => {
-    const originLabel = placeLabel(routes[0]?.from) || fromCity?.name || '';
-    const destLabel   = placeLabel(routes[0]?.to)   || toCity?.name   || '';
-
-    return (
-    <ScrollView contentContainerStyle={ss.sc}>
-      {/* Trip header */}
-      <Text style={[ss.rideRoute, { color: tc.subheading }]} numberOfLines={1}>
-        {originLabel.toUpperCase()} TO {destLabel.toUpperCase()}
-      </Text>
-      <Text style={[ss.rideTitle, { color: tc.heading }]}>Available Rides</Text>
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-        {!!depDate && (
-          <View style={[ss.pill, { backgroundColor: '#DCFCE7' }]}>
-            <Ionicons name="calendar-outline" size={13} color="#16A34A" />
-            <Text style={[ss.pillText, { color: '#16A34A' }]}>{fmtDate(depDate)}</Text>
+        {/* Route summary if filters are active */}
+        {hasFilters && (
+          <View style={ss.heroRoute}>
+            <Text style={ss.heroRouteText}>
+              {filterFrom?.name || 'Any'} → {filterTo?.name || 'Any'}
+            </Text>
           </View>
         )}
-        <View style={[ss.pill, { backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border || '#E5E5EA' }]}>
-          <Ionicons name="people-outline" size={13} color={tc.subheading} />
-          <Text style={[ss.pillText, { color: tc.subheading }]}>1 Passenger</Text>
-        </View>
-      </View>
+      </LinearGradient>
 
-      {/* Routes — each is a business's ride offering: price, terminal & company included */}
-      {routes.map((route) => {
-        const badgeIsLuxury = /luxury|vip|executive/i.test(route.business?.type || route.schedule_type || '');
-        return (
-          <TouchableOpacity key={route.id}
-            style={[ss.rideCard, { backgroundColor: tc.card, borderColor: tc.border || '#EFEFF4' }]}
-            onPress={() => selectRoute(route)} activeOpacity={0.8}
+      {/* ── Filter card ── */}
+      <View style={[ss.filterCard, { backgroundColor: tc.card }]}>
+
+        {/* From / To row */}
+        <View style={ss.fromToContainer}>
+          {/* FROM pill */}
+          <TouchableOpacity
+            style={[ss.locationPill, { backgroundColor: tc.background, borderColor: filterFrom ? tc.primary : tc.border || '#E5E5EA' }]}
+            onPress={() => setSheet({ title: 'Origin State', data: states, onSelect: setFilterFrom })}
+            activeOpacity={0.82}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-              <View style={[ss.rideIconBox, { backgroundColor: `${tc.primary}12` }]}>
-                <Ionicons name="bus" size={22} color={tc.primary} />
-              </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[ss.rideOperator, { color: tc.heading }]} numberOfLines={1}>{route.business?.name || 'Bus Operator'}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                  <View style={[ss.typeBadge, { backgroundColor: badgeIsLuxury ? '#FCE7DC' : '#DCFCE7' }]}>
-                    <Text style={[ss.typeBadgeText, { color: badgeIsLuxury ? '#C2410C' : '#15803D' }]}>
-                      {badgeIsLuxury ? 'Luxury' : 'Standard'}
-                    </Text>
-                  </View>
-                  {route.terminal?.name && (
-                    <Text style={[{ fontSize: 12, color: tc.subheading }]} numberOfLines={1}>
-                      <Ionicons name="location-outline" size={11} /> {route.terminal.name}
-                    </Text>
-                  )}
-                </View>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[ss.ridePrice, { color: tc.primary }]}>
-                  {route.price != null ? formatCurrency(route.price, 'NGN') : ''}
-                </Text>
-                <Text style={[ss.ridePriceSub, { color: tc.subtext }]}>per seat</Text>
-              </View>
+            <View style={[ss.locationDot, { backgroundColor: `${tc.primary}20` }]}>
+              <Ionicons name="radio-button-on" size={12} color={tc.primary} />
             </View>
-
-            <View style={[ss.rideDivider, { backgroundColor: tc.border || '#F0F0F0' }]} />
-
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ flex: 1 }}>
-                <Text style={[ss.rideCity, { color: tc.heading }]} numberOfLines={1}>{placeLabel(route.from)}</Text>
-                <Text style={[ss.rideAddr, { color: tc.subheading }]} numberOfLines={1}>{route.from?.address || ''}</Text>
-              </View>
-              <Ionicons name="arrow-forward" size={16} color={tc.subtext} style={{ marginHorizontal: 8 }} />
-              <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                <Text style={[ss.rideCity, { color: tc.heading }]} numberOfLines={1}>{placeLabel(route.to)}</Text>
-                <Text style={[ss.rideAddr, { color: tc.subheading, textAlign: 'right' }]} numberOfLines={1}>{route.to?.address || ''}</Text>
-              </View>
+            <View style={ss.locationTextWrap}>
+              <Text style={[ss.locationLabel, { color: tc.subtext }]}>FROM</Text>
+              <Text style={[ss.locationValue, { color: filterFrom ? tc.heading : tc.subtext }]} numberOfLines={1}>
+                {filterFrom?.name || 'Select origin state'}
+              </Text>
             </View>
+            {filterFrom
+              ? <TouchableOpacity onPress={() => setFilterFrom(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close-circle" size={18} color={tc.subtext} />
+                </TouchableOpacity>
+              : <Ionicons name="chevron-down" size={16} color={tc.subtext} />
+            }
           </TouchableOpacity>
-        );
-      })}
 
-      {/* Special offer banner */}
-      <View style={ss.offerCard}>
-        <Text style={ss.offerLabel}>SPECIAL OFFER</Text>
-        <Text style={ss.offerTitle}>Get 10% Off with PayFlex</Text>
-        <Text style={ss.offerSub}>Book this ride and pay via PayFlex wallet to instantly save 10%.</Text>
-        <Ionicons name="ticket-outline" size={64} color="rgba(255,255,255,0.15)" style={ss.offerIcon} />
+          {/* Swap-style divider */}
+          <View style={ss.swapDivider}>
+            <View style={[ss.swapLine, { backgroundColor: tc.border || '#E5E5EA' }]} />
+            <View style={[ss.swapCircle, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+              <Ionicons name="swap-vertical" size={14} color={tc.subtext} />
+            </View>
+            <View style={[ss.swapLine, { backgroundColor: tc.border || '#E5E5EA' }]} />
+          </View>
+
+          {/* TO pill */}
+          <TouchableOpacity
+            style={[ss.locationPill, { backgroundColor: tc.background, borderColor: filterTo ? '#10B981' : tc.border || '#E5E5EA' }]}
+            onPress={() => setSheet({ title: 'Destination State', data: states, onSelect: setFilterTo })}
+            activeOpacity={0.82}
+          >
+            <View style={[ss.locationDot, { backgroundColor: '#D1FAE5' }]}>
+              <Ionicons name="radio-button-on" size={12} color="#10B981" />
+            </View>
+            <View style={ss.locationTextWrap}>
+              <Text style={[ss.locationLabel, { color: tc.subtext }]}>TO</Text>
+              <Text style={[ss.locationValue, { color: filterTo ? tc.heading : tc.subtext }]} numberOfLines={1}>
+                {filterTo?.name || 'Select destination state'}
+              </Text>
+            </View>
+            {filterTo
+              ? <TouchableOpacity onPress={() => setFilterTo(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close-circle" size={18} color={tc.subtext} />
+                </TouchableOpacity>
+              : <Ionicons name="chevron-down" size={16} color={tc.subtext} />
+            }
+          </TouchableOpacity>
+        </View>
+
       </View>
 
-    </ScrollView>
+      {/* ── Routes count header ── */}
+      {!loading && (
+        <View style={ss.countRow}>
+          <View>
+            <Text style={[ss.countTitle, { color: tc.heading }]}>
+              {hasFilters ? 'Matching Routes' : 'All Routes'}
+            </Text>
+            <Text style={[ss.countSub, { color: tc.subheading }]}>
+              {filteredRoutes.length} {filteredRoutes.length === 1 ? 'route' : 'routes'} available
+              {hasFilters ? ` · ${filterFrom?.name || 'Any'} → ${filterTo?.name || 'Any'}` : ''}
+            </Text>
+          </View>
+          {hasFilters && (
+            <TouchableOpacity
+              style={[ss.clearBtn, { borderColor: tc.primary }]}
+              onPress={() => { setFilterFrom(null); setFilterTo(null); }}
+            >
+              <Ionicons name="close" size={12} color={tc.primary} />
+              <Text style={[ss.clearBtnText, { color: tc.primary }]}>Clear</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* ── Error box ── */}
+      {loadError && (
+        <TouchableOpacity style={ss.errorBox} onPress={() => loadData()}>
+          <Ionicons name="warning-outline" size={18} color="#EF4444" />
+          <Text style={ss.errorText}>{loadError}</Text>
+          <View style={ss.retryPill}>
+            <Text style={ss.retryPillText}>Retry</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+    </View>
   );
+
+  // ── Empty state ─────────────────────────────────────────────────────────────
+  const ListEmpty = () => {
+    if (loading) return null;
+    return (
+      <View style={ss.emptyBox}>
+        <LinearGradient
+          colors={[`${tc.primary}15`, `${tc.primary}05`]}
+          style={ss.emptyIconWrap}
+        >
+          <Ionicons name="bus-outline" size={44} color={tc.primary} />
+        </LinearGradient>
+        <Text style={[ss.emptyTitle, { color: tc.heading }]}>
+          {hasFilters ? 'No routes found' : 'No routes available'}
+        </Text>
+        <Text style={[ss.emptySub, { color: tc.subheading }]}>
+          {hasFilters
+            ? 'No routes match your selected states. Try a different combination.'
+            : 'Pull down to refresh and check for new routes.'}
+        </Text>
+        {hasFilters && (
+          <TouchableOpacity
+            style={[ss.emptyAction, { backgroundColor: tc.primary }]}
+            onPress={() => { setFilterFrom(null); setFilterTo(null); }}
+          >
+            <Text style={ss.emptyActionText}>Clear Filters</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
   };
 
-  const stepContent = step === 1 ? renderStep1() : renderStep2();
-
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[ss.container, { backgroundColor: tc.background }]}>
+    <SafeAreaView style={[ss.root, { backgroundColor: tc.background }]}>
       <StatusBarComponent />
 
-      <View style={[ss.header, { backgroundColor: tc.background, borderBottomColor: tc.border || '#E5E5EA', paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => step > 1 ? setStep(s => s - 1) : navigation.goBack()}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="arrow-back" size={24} color={tc.heading} />
+      {/* Top bar */}
+      <View style={[ss.topBar, { borderBottomColor: tc.border || '#E5E5EA', paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 4) }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={[ss.backBtn, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="arrow-back" size={20} color={tc.heading} />
         </TouchableOpacity>
-        <Text style={[ss.headerTitle, { color: tc.heading }]}>Bus Tickets</Text>
-        <View style={{ width: 24 }} />
+        <Text style={[ss.topBarTitle, { color: tc.heading }]}>Bus Booking</Text>
+        <View style={ss.backBtn} />
       </View>
 
-      {/* Step indicator */}
-      <View style={[ss.stepRow, { backgroundColor: tc.background }]}>
-        <Text style={[ss.stepText, { color: tc.primary }]}>Step {step} of 5</Text>
-        <Text style={[ss.stepName, { color: tc.subheading }]}>{STEPS[step - 1]}</Text>
-      </View>
-      <View style={[ss.progressBar, { backgroundColor: tc.border || '#E5E5EA' }]}>
-        <View style={[ss.progressFill, { backgroundColor: tc.primary, width: `${(step / 5) * 100}%` }]} />
-      </View>
+      {/* Body */}
+      {loading ? (
+        <View style={ss.loadingBox}>
+          <LinearGradient colors={[`${tc.primary}20`, `${tc.primary}05`]} style={ss.loadingIconWrap}>
+            <ActivityIndicator size="large" color={tc.primary} />
+          </LinearGradient>
+          <Text style={[ss.loadingTitle, { color: tc.heading }]}>Finding Routes</Text>
+          <Text style={[ss.loadingText, { color: tc.subheading }]}>Loading available bus routes…</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredRoutes}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
+          contentContainerStyle={ss.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={<ListHeader />}
+          ListEmptyComponent={<ListEmpty />}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tc.primary} />
+          }
+          renderItem={({ item }) => (
+            <RouteCard
+              route={item}
+              tc={tc}
+              cardDate={cardDates[item.id] || ''}
+              onPickDate={() => setShowPickerForId(item.id)}
+              onBook={(date) => selectRoute(item, date)}
+            />
+          )}
+          ListFooterComponent={
+            filteredRoutes.length > 0 ? (
+              <View style={ss.footer}>
+                {nextPage ? (
+                  <TouchableOpacity
+                    style={[ss.loadMoreBtn, { borderColor: tc.primary, opacity: loadingMore ? 0.6 : 1 }]}
+                    onPress={loadMore}
+                    disabled={loadingMore}
+                    activeOpacity={0.8}
+                  >
+                    {loadingMore
+                      ? <ActivityIndicator size="small" color={tc.primary} />
+                      : <>
+                          <Ionicons name="chevron-down-circle-outline" size={18} color={tc.primary} />
+                          <Text style={[ss.loadMoreText, { color: tc.primary }]}>Load More Routes</Text>
+                        </>
+                    }
+                  </TouchableOpacity>
+                ) : (
+                  <View style={ss.endRow}>
+                    <View style={[ss.endLine, { backgroundColor: tc.border || '#E5E5EA' }]} />
+                    <Text style={[ss.endText, { color: tc.subtext }]}>
+                      All {allRoutes.length} routes loaded
+                    </Text>
+                    <View style={[ss.endLine, { backgroundColor: tc.border || '#E5E5EA' }]} />
+                  </View>
+                )}
+              </View>
+            ) : null
+          }
+        />
+      )}
 
-      <View key={step} style={{ flex: 1 }}>{stepContent}</View>
+      {/* Per-card date picker — rendered at screen level to avoid FlatList issues */}
+      {showPickerForId !== null && (
+        <DateTimePicker
+          value={cardDates[showPickerForId] ? new Date(cardDates[showPickerForId]) : new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          minimumDate={new Date()}
+          onChange={(_, dt) => {
+            setShowPickerForId(Platform.OS === 'ios' ? showPickerForId : null);
+            if (dt) setCardDates(prev => ({ ...prev, [showPickerForId]: toYMD(dt) }));
+          }}
+        />
+      )}
 
       {/* Bottom sheet */}
       {sheet && (
         <BottomSheet
-          visible={!!sheet}
+          visible
           title={sheet.title}
           data={sheet.data}
           keyFn={(item) => String(item.id || item.name)}
-          labelFn={(item) => item.name || item.city_name || String(item.id)}
+          labelFn={(item) => item.name || String(item.id)}
           onSelect={(item) => { sheet.onSelect(item); setSheet(null); }}
           onClose={() => setSheet(null)}
           tc={tc}
@@ -451,57 +709,92 @@ export default function BusBookingScreen({ navigation }) {
   );
 }
 
+// ─── Screen-level Styles ─────────────────────────────────────────────────────
 const ss = StyleSheet.create({
-  container:    { flex: 1 },
-  header:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
-  headerTitle:  { fontSize: 16, fontWeight: '700' },
-  stepRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 },
-  stepText:     { fontSize: 13, fontWeight: '700' },
-  stepName:     { fontSize: 13 },
-  progressBar:  { height: 4, marginHorizontal: 16, borderRadius: 2, marginBottom: 4 },
-  progressFill: { height: 4, borderRadius: 2 },
-  sc:           { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24 },
-  card:         { borderRadius: 14, borderWidth: 1, padding: 16, marginBottom: 12 },
-  cardHeader:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
-  cardTitle:    { fontSize: 15, fontWeight: '700' },
-  sectionHead:  { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8, marginTop: 4 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },
-  fieldLabel:   { fontSize: 13, fontWeight: '600', marginBottom: 8, marginTop: 4 },
-  inp:          { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, marginBottom: 4 },
-  divider:      { height: 1, marginVertical: 12 },
-  primaryBtn:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 12, marginTop: 8 },
-  primaryBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  overlay:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end', zIndex: 1000 },
-  sheet:        { borderTopLeftRadius: 20, borderTopRightRadius: 20, height: '60%', paddingTop: 8 },
-  sheetList:    { flex: 1 },
-  sheetHandle:  { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
-  sheetTitle:   { fontSize: 16, fontWeight: '700', paddingHorizontal: 20, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F0F0F0' },
-  sheetRow:     { paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: StyleSheet.hairlineWidth },
+  root:         { flex: 1 },
+  listContent:  { paddingHorizontal: 16, paddingBottom: 40 },
 
-  // Hero banner (Step 1)
-  hero:         { borderRadius: 18, padding: 20, marginBottom: 16, minHeight: 140, justifyContent: 'flex-end', overflow: 'hidden' },
-  heroIcon:     { position: 'absolute', right: -10, top: -10 },
-  heroTitle:    { fontSize: 22, fontWeight: '800', color: '#FFF', marginBottom: 4 },
-  heroSub:      { fontSize: 13, color: 'rgba(255,255,255,0.85)' },
+  // Top bar
+  topBar:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  topBarTitle:  { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
+  backBtn:      { width: 38, height: 38, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 
-  // Route ("Select Bus") step
-  rideRoute:    { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 4 },
-  rideTitle:    { fontSize: 20, fontWeight: '800', marginBottom: 12 },
-  pill:         { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
-  pillText:     { fontSize: 12, fontWeight: '600' },
-  rideCard:     { borderRadius: 16, borderWidth: 1.5, padding: 16, marginBottom: 14 },
-  rideIconBox:  { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  rideOperator: { fontSize: 15, fontWeight: '700' },
-  typeBadge:    { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  typeBadgeText:{ fontSize: 11, fontWeight: '700' },
-  ridePrice:    { fontSize: 17, fontWeight: '800' },
-  ridePriceSub: { fontSize: 11, marginTop: 1 },
-  rideDivider:  { height: 1, marginVertical: 12 },
-  rideCity:     { fontSize: 14, fontWeight: '700' },
-  rideAddr:     { fontSize: 12, marginTop: 2 },
-  offerCard:    { borderRadius: 16, backgroundColor: '#7C3AED', padding: 18, marginTop: 4, marginBottom: 12, overflow: 'hidden' },
-  offerLabel:   { fontSize: 11, fontWeight: '800', letterSpacing: 1, color: 'rgba(255,255,255,0.8)', marginBottom: 6 },
-  offerTitle:   { fontSize: 17, fontWeight: '800', color: '#FFF', marginBottom: 6 },
-  offerSub:     { fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 19, maxWidth: '80%' },
-  offerIcon:    { position: 'absolute', right: -8, bottom: -10 },
+  // Loading
+  loadingBox:      { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 32 },
+  loadingIconWrap: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  loadingTitle:    { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  loadingText:     { fontSize: 14, textAlign: 'center' },
+
+  // Hero
+  hero: {
+    borderRadius: RADIUS.xl, marginBottom: 16, marginTop: 16,
+    minHeight: 160, overflow: 'hidden', padding: 24,
+  },
+  heroBubble1: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.06)', top: -60, right: -40 },
+  heroBubble2: { position: 'absolute', width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.06)', bottom: -30, left: 20 },
+  heroContent: { flex: 1 },
+  heroBadge:   { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.2)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, marginBottom: 12 },
+  heroBadgeText: { fontSize: 12, fontWeight: '700', color: '#FFF' },
+  heroTitle:   { fontSize: 26, fontWeight: '900', color: '#FFF', letterSpacing: -0.8, lineHeight: 32, marginBottom: 6 },
+  heroSub:     { fontSize: 13, color: 'rgba(255,255,255,0.80)', fontWeight: '500' },
+  heroRoute:   { marginTop: 16, backgroundColor: 'rgba(255,255,255,0.18)', alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
+  heroRouteText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+
+  // Filter card
+  filterCard: {
+    borderRadius: RADIUS.lg, padding: 16, marginBottom: 16, gap: 12,
+    ...Platform.select({
+      ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 },
+      android: { elevation: 3 },
+    }),
+  },
+
+  // From/To
+  fromToContainer: { gap: 0 },
+  locationPill:    { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 14 },
+  locationDot:     { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  locationTextWrap: { flex: 1 },
+  locationLabel:   { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, marginBottom: 2 },
+  locationValue:   { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
+
+  // Swap divider between From/To
+  swapDivider: { flexDirection: 'row', alignItems: 'center', paddingLeft: 22, marginVertical: -1 },
+  swapLine:    { flex: 1, height: 1 },
+  swapCircle:  { width: 28, height: 28, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginHorizontal: 8 },
+
+  // Date pill
+  datePill:    { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1.5, borderRadius: RADIUS.md, paddingHorizontal: 14, paddingVertical: 14 },
+  dateIconWrap:{ width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  dateTextWrap:{ flex: 1 },
+  dateLabel:   { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, marginBottom: 2 },
+  dateValue:   { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
+
+  // Count row
+  countRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  countTitle:  { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
+  countSub:    { fontSize: 12, marginTop: 2 },
+  clearBtn:    { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1.5, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  clearBtnText:{ fontSize: 12, fontWeight: '700' },
+
+  // Error
+  errorBox:    { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#FEE2E2', borderRadius: RADIUS.md, padding: 14, marginBottom: 12 },
+  errorText:   { flex: 1, fontSize: 13, color: '#EF4444', lineHeight: 18 },
+  retryPill:   { backgroundColor: '#EF4444', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  retryPillText:{ fontSize: 11, fontWeight: '700', color: '#FFF' },
+
+  // Empty
+  emptyBox:      { paddingVertical: 48, alignItems: 'center', paddingHorizontal: 32 },
+  emptyIconWrap: { width: 90, height: 90, borderRadius: 45, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  emptyTitle:    { fontSize: 18, fontWeight: '800', marginBottom: 8, letterSpacing: -0.3 },
+  emptySub:      { fontSize: 14, textAlign: 'center', lineHeight: 22 },
+  emptyAction:   { marginTop: 20, paddingHorizontal: 28, paddingVertical: 13, borderRadius: 14 },
+  emptyActionText:{ fontSize: 14, fontWeight: '800', color: '#FFF' },
+
+  // Footer
+  footer:       { paddingVertical: 24, alignItems: 'center' },
+  loadMoreBtn:  { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 },
+  loadMoreText: { fontSize: 14, fontWeight: '700' },
+  endRow:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16 },
+  endLine:      { flex: 1, height: 1 },
+  endText:      { fontSize: 12, fontWeight: '500' },
 });

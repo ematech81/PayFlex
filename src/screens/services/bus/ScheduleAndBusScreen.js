@@ -40,7 +40,9 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
           route_id:       route.id,
           departure_date: depDate ? depDate.slice(0, 10) : undefined,
         });
-        const list = extractList(r, 'schedules', 'data');
+        // Stamp each schedule with a unique _idx because MERPI test/live data
+        // frequently returns duplicate id values across schedule entries.
+        const list = extractList(r, 'schedules', 'data').map((s, i) => ({ ...s, _idx: i }));
         if (isRandom) {
           const pkg = list.find(s => s.route?.id === route.id) || list[0] || null;
           setSelectedSchedule(pkg);
@@ -59,7 +61,7 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
 
   const selectSchedule = (schedule) => {
     setSelectedSchedule(schedule);
-    setSelectedBus(schedule.bus || null);
+    setSelectedBus(schedule.bus ? { ...schedule.bus, _busIdx: schedule._idx } : null);
   };
 
   const proceed = () => {
@@ -155,11 +157,11 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
         ) : schedules.length === 0 ? (
           <StatusCard icon="information-circle-outline" color={tc.subheading} bg={tc.card} border={tc.border || '#E5E5EA'} message="No schedules available for this date." />
         ) : (
-          schedules.map(sch => {
-            const sel = selectedSchedule?.id === sch.id;
+          schedules.map((sch, idx) => {
+            const sel = selectedSchedule?._idx === sch._idx;
             return (
               <TouchableOpacity
-                key={sch.id}
+                key={`${sch.id}-${idx}`}
                 style={[ss.scheduleCard, {
                   backgroundColor: sel ? `${tc.primary}10` : tc.card,
                   borderColor: sel ? tc.primary : tc.border || '#E5E5EA',
@@ -235,19 +237,19 @@ export default function ScheduleAndBusScreen({ navigation, route: navRoute }) {
             ) : (
               buses.map((bus, idx) => {
                 const busKey  = isRandom ? bus.bus_id : bus.id;
-                const sel     = isRandom ? selectedBus?.bus_id === busKey : selectedBus?.id === busKey;
+                const sel     = selectedBus?._busIdx === idx;
                 const imageUri = bus.image || bus.image_url || bus.photo
                   || selectedSchedule?.business?.photo || null;
                 const busName = isRandom ? (bus.bus_type || 'Bus') : bus.name;
                 const priceVal = isRandom ? bus.price : route?.price;
                 return (
                   <TouchableOpacity
-                    key={busKey ?? idx}
+                    key={`${busKey ?? 'bus'}-${idx}`}
                     style={[ss.busCard, {
                       backgroundColor: sel ? `${tc.primary}10` : tc.card,
                       borderColor: sel ? tc.primary : tc.border || '#E5E5EA',
                     }]}
-                    onPress={() => setSelectedBus(bus)}
+                    onPress={() => setSelectedBus({ ...bus, _busIdx: idx })}
                     activeOpacity={0.8}
                   >
                     <BusImage uri={imageUri} primaryColor={tc.primary} />

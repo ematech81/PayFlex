@@ -253,16 +253,10 @@ export default function HomeScreen({route}) {
         StatusBar.setBackgroundColor('transparent');
         StatusBar.setTranslucent(true);
       }
+      refreshWallet();
+      fetchTransactions({ limit: 5, page: 1 }).catch(() => {});
     }, [])
   );
-
-  useEffect(() => {
-    refreshWallet();
-  }, []);
-
-  useEffect(() => {
-    fetchTransactions({ limit: 5, page: 1 }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (route.params?.user) {

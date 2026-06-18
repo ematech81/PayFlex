@@ -115,6 +115,7 @@ export const WalletProvider = ({ children }) => {
         const transactionPinSet =
           data.transactionPinSet === true || data.transactionPinSet === 'true';
         if (!user) throw new Error('Invalid user data received');
+        console.log(`[refreshWallet] server returned walletBalance=${data.user?.walletBalance} for phone=${data.user?.phone}`);
         await Promise.all([
           AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user)),
           AsyncStorage.setItem('transactionPinSet', String(transactionPinSet)),

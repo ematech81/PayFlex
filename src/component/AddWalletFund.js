@@ -6,14 +6,14 @@ import { ApiIPAddress } from 'utility/apiIPAdress';
 import { useWallet } from 'context/WalletContext';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 
-const DEV_PHONES = ['+2349011495230', '09011495230'];
+const DEV_PHONE_SUFFIX = '9011495230';
 
 export default function AddWalletFund() {
     const { refreshWallet, wallet } = useWallet();
     const [loading, setLoading] = useState(false);
 
     const userPhone = wallet?.user?.phone ?? '';
-    const isDevAccount = __DEV__ || DEV_PHONES.includes(userPhone);
+    const isDevAccount = __DEV__ || userPhone.endsWith(DEV_PHONE_SUFFIX);
   
     const addTestFunds = async (amount) => {
       try {

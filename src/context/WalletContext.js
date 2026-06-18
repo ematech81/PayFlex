@@ -103,12 +103,12 @@ export const WalletProvider = ({ children }) => {
 
   const refreshWallet = async (options = {}) => {
     const { maxRetries = 3, retryDelay = 1000 } = options;
-    if (!wallet.token) return { success: false };
+    if (!tokenRef.current) return { success: false };
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const { data } = await axios.get(`${BASE_URL}/me`, {
-          headers: { Authorization: `Bearer ${wallet.token}` },
+          headers: { Authorization: `Bearer ${tokenRef.current}` },
           timeout: 10000,
         });
         const user = normalizeUserData(data.user);

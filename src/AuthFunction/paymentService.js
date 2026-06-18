@@ -113,7 +113,7 @@ const makePaymentRequest = async (endpoint, paymentData) => {
 
 
 // POST helper for the new /api/* routes (exam-pins, betting)
-const makeGeneralRequest = async (path, body) => {
+const makeGeneralRequest = async (path, body, timeout = REQUEST_TIMEOUT) => {
   const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
   if (!token) throw new Error('Authentication required. Please log in again.');
 
@@ -121,7 +121,7 @@ const makeGeneralRequest = async (path, body) => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
-  });
+  }, timeout);
   return handleResponse(response);
 };
 
@@ -734,7 +734,7 @@ export const cacRegisterBusinessName = (pin, form) =>
       ...(form.proprietorProofOfAddress && { proprietorProofOfAddress: form.proprietorProofOfAddress }),
       ...(form.businessProofOfAddress   && { businessProofOfAddress:   form.businessProofOfAddress }),
     },
-  });
+  }, 120_000);
 
 /** Poll registration status by transactionRef */
 export const cacGetRegistrationStatus = (transactionRef) =>

@@ -1282,25 +1282,29 @@ export default function CACScreen({ navigation }) {
         <Text style={[ss.stepDesc, { color: tc.subheading }]}>Please verify all information before submitting your registration.</Text>
 
         {/* ── Pre-submission Validation Check ───────────────────────────── */}
-        <View style={[ss.preCheckCard, { backgroundColor: tc.card, borderColor: preCheckUnavail ? '#FFC107' : preCheckPassed ? '#4CAF50' : preCheckDone ? '#EF4444' : tc.border || '#E5E5EA' }]}>
+        <View style={[ss.preCheckCard, { backgroundColor: tc.primary }]}>
+
+          {/* Decorative top-right glow blob */}
+          <View style={ss.preCheckGlob} pointerEvents="none" />
+
           <View style={ss.preCheckHeader}>
-            <View style={[ss.preCheckIcon, { backgroundColor: preCheckUnavail ? '#FFF8E1' : preCheckPassed ? '#4CAF5018' : preCheckDone ? '#EF444418' : `${tc.primary}15` }]}>
+            <View style={ss.preCheckIcon}>
               <Ionicons
-                name={preCheckUnavail ? 'information-circle-outline' : preCheckPassed ? 'checkmark-circle' : preCheckDone ? 'alert-circle' : 'shield-checkmark-outline'}
-                size={20}
-                color={preCheckUnavail ? '#F59E0B' : preCheckPassed ? '#4CAF50' : preCheckDone ? '#EF4444' : tc.primary}
+                name={preCheckUnavail ? 'information-circle' : preCheckPassed ? 'checkmark-circle' : preCheckDone ? 'alert-circle' : 'shield-checkmark-outline'}
+                size={22}
+                color="#FFFFFF"
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[ss.preCheckTitle, { color: tc.heading }]}>Pre-Submission Validation</Text>
-              <Text style={[ss.preCheckSub, { color: tc.subheading }]}>
+              <Text style={ss.preCheckTitle}>Pre-Submission Validation</Text>
+              <Text style={ss.preCheckSub}>
                 {preCheckUnavail
                   ? 'Validation unavailable — you can still submit'
                   : preCheckPassed
-                    ? 'All fields validated — you can submit'
+                    ? 'All fields validated — ready to submit'
                     : preCheckDone
                       ? 'Issues found — fix them before submitting'
-                      : 'Run a free check to catch errors before paying'}
+                      : 'Free check — catch errors before paying'}
               </Text>
             </View>
           </View>
@@ -1311,20 +1315,17 @@ export default function CACScreen({ navigation }) {
               {Object.entries(preCheckErrors)
                 .filter(([, errs]) => errs?.length > 0)
                 .map(([field, errs]) => {
-                  const label    = FIELD_LABEL[field] || field;
-                  const stepNum  = FIELD_STEP[field];
+                  const label   = FIELD_LABEL[field] || field;
+                  const stepNum = FIELD_STEP[field];
                   return (
-                    <View key={field} style={[ss.preCheckErrorRow, { borderBottomColor: tc.border || '#F0F0F0' }]}>
+                    <View key={field} style={ss.preCheckErrorRow}>
                       <View style={{ flex: 1 }}>
                         <Text style={ss.preCheckFieldLabel}>{label}</Text>
                         {errs.map((e, i) => <Text key={i} style={ss.preCheckFieldErr}>• {e}</Text>)}
                       </View>
                       {stepNum && (
-                        <TouchableOpacity
-                          style={[ss.goFixBtn, { backgroundColor: `${tc.primary}15` }]}
-                          onPress={() => setStep(stepNum)}
-                        >
-                          <Text style={[ss.goFixBtnText, { color: tc.primary }]}>Step {stepNum}</Text>
+                        <TouchableOpacity style={ss.goFixBtn} onPress={() => setStep(stepNum)}>
+                          <Text style={ss.goFixBtnText}>Step {stepNum}</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -1334,32 +1335,30 @@ export default function CACScreen({ navigation }) {
           )}
 
           {preCheckDone && preCheckUnavail && (
-            <View style={[ss.preCheckSuccess, { backgroundColor: '#FFF8E1', borderWidth: 1, borderColor: '#FFC107' }]}>
-              <Ionicons name="information-circle-outline" size={15} color="#F59E0B" />
-              <Text style={[ss.preCheckSuccessText, { color: '#92400E' }]}>
-                {preCheckUnavailMsg}
-              </Text>
+            <View style={ss.preCheckBanner}>
+              <Ionicons name="information-circle-outline" size={15} color="rgba(255,255,255,0.9)" />
+              <Text style={ss.preCheckBannerText}>{preCheckUnavailMsg}</Text>
             </View>
           )}
 
           {preCheckDone && !preCheckUnavail && preCheckPassed && (
-            <View style={[ss.preCheckSuccess, { backgroundColor: '#4CAF5015' }]}>
-              <Ionicons name="checkmark-circle" size={15} color="#4CAF50" />
-              <Text style={[ss.preCheckSuccessText, { color: '#2E7D32' }]}>
-                No issues found. Your payload is valid and ready to submit.
-              </Text>
+            <View style={ss.preCheckBanner}>
+              <Ionicons name="checkmark-circle" size={15} color="rgba(255,255,255,0.9)" />
+              <Text style={ss.preCheckBannerText}>No issues found. Your payload is valid and ready to submit.</Text>
             </View>
           )}
 
           <TouchableOpacity
-            style={[ss.preCheckBtn, { backgroundColor: preCheckPassed ? '#4CAF50' : tc.primary, opacity: preChecking ? 0.7 : 1 }]}
+            style={[ss.preCheckBtn, { opacity: preChecking ? 0.7 : 1 }]}
             onPress={runPreCheck}
             disabled={preChecking}
             activeOpacity={0.85}
           >
             {preChecking
-              ? <><ActivityIndicator size="small" color="#FFF" /><Text style={ss.preCheckBtnText}>Checking…</Text></>
-              : <><Ionicons name="shield-checkmark-outline" size={16} color="#FFF" /><Text style={ss.preCheckBtnText}>{preCheckDone ? 'Re-run Check' : 'Run Pre-Check (Free)'}</Text></>
+              ? <><ActivityIndicator size="small" color={tc.primary} /><Text style={[ss.preCheckBtnText, { color: tc.primary }]}>Checking…</Text></>
+              : preCheckPassed
+                ? <><Ionicons name="checkmark-circle" size={16} color="#22C55E" /><Text style={[ss.preCheckBtnText, { color: '#15803D' }]}>Passed — Re-run Check</Text></>
+                : <><Ionicons name="shield-checkmark-outline" size={16} color={tc.primary} /><Text style={[ss.preCheckBtnText, { color: tc.primary }]}>{preCheckDone ? 'Re-run Check' : 'Run Pre-Check (Free)'}</Text></>
             }
           </TouchableOpacity>
         </View>
@@ -1700,22 +1699,51 @@ const ss = StyleSheet.create({
   idUploadCard:    { borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', padding: 14, marginTop: 8 },
   idTipRow:        { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 8, marginBottom: 12 },
   idTipText:       { flex: 1, fontSize: 12, lineHeight: 18, fontWeight: '500' },
-  // Pre-check card (Step 5)
-  preCheckCard:        { borderRadius: 14, borderWidth: 1.5, padding: 14, marginBottom: 16 },
-  preCheckHeader:      { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
-  preCheckIcon:        { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  preCheckTitle:       { fontSize: 14, fontWeight: '700', marginBottom: 2 },
-  preCheckSub:         { fontSize: 12, lineHeight: 17 },
-  preCheckErrors:      { marginBottom: 12 },
-  preCheckErrorRow:    { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, gap: 10 },
-  preCheckFieldLabel:  { fontSize: 13, fontWeight: '700', color: '#EF4444', marginBottom: 2 },
-  preCheckFieldErr:    { fontSize: 12, color: '#EF4444', lineHeight: 18 },
-  goFixBtn:            { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  goFixBtnText:        { fontSize: 12, fontWeight: '700' },
-  preCheckSuccess:     { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 8, marginBottom: 10 },
-  preCheckSuccessText: { fontSize: 12, flex: 1, fontWeight: '500' },
-  preCheckBtn:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 10 },
-  preCheckBtnText:     { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  // Pre-check card (Step 5) — purple background
+  preCheckCard:        { borderRadius: 18, padding: 18, marginBottom: 16, overflow: 'hidden' },
+  preCheckGlob:        {
+    position: 'absolute', top: -30, right: -30,
+    width: 120, height: 120, borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  preCheckHeader:      { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
+  preCheckIcon:        {
+    width: 44, height: 44, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  preCheckTitle:       { fontSize: 15, fontWeight: '800', color: '#FFFFFF', marginBottom: 3, letterSpacing: 0.2 },
+  preCheckSub:         { fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.75)' },
+  preCheckErrors:      {
+    backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: 10,
+    paddingHorizontal: 12, paddingTop: 4, paddingBottom: 4, marginBottom: 12,
+  },
+  preCheckErrorRow:    {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.12)', gap: 10,
+  },
+  preCheckFieldLabel:  { fontSize: 12, fontWeight: '700', color: '#FFD6D6', marginBottom: 2 },
+  preCheckFieldErr:    { fontSize: 11.5, color: 'rgba(255,255,255,0.7)', lineHeight: 18 },
+  goFixBtn:            {
+    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  goFixBtnText:        { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
+  preCheckBanner:      {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    padding: 10, borderRadius: 10, marginBottom: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  preCheckBannerText:  { fontSize: 12, flex: 1, fontWeight: '500', color: 'rgba(255,255,255,0.9)', lineHeight: 18 },
+  preCheckBtn:         {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 14, borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
+  },
+  preCheckBtnText:     { fontSize: 14, fontWeight: '800' },
   unavailBox:   { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 4 },
   missingBox:   { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 10 },
   missingTitle: { fontSize: 12, fontWeight: '700', color: '#E65100', marginBottom: 2 },

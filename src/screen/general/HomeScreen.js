@@ -283,9 +283,11 @@ export default function HomeScreen({route}) {
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setError(null);
-    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await Promise.all([
+        refreshWallet(),
+        fetchTransactions({ limit: 5, page: 1 }).catch(() => {}),
+      ]);
     } catch (err) {
       setError('Failed to refresh. Please try again.');
     } finally {

@@ -6,9 +6,14 @@ import { ApiIPAddress } from 'utility/apiIPAdress';
 import { useWallet } from 'context/WalletContext';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 
+const DEV_PHONES = ['+2349011495230', '09011495230'];
+
 export default function AddWalletFund() {
-    const {  refreshWallet, } = useWallet();
+    const { refreshWallet, wallet } = useWallet();
     const [loading, setLoading] = useState(false);
+
+    const userPhone = wallet?.user?.phone ?? '';
+    const isDevAccount = __DEV__ || DEV_PHONES.includes(userPhone);
   
     const addTestFunds = async (amount) => {
       try {
@@ -43,8 +48,7 @@ export default function AddWalletFund() {
       }
     };
   
-    // Only show in development
-    if (!__DEV__) return null;
+    if (!isDevAccount) return null;
   
     return (
       <View style={{ padding: 20, backgroundColor: '#fff3cd', borderRadius: 8, margin: 16 }}>

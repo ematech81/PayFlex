@@ -695,6 +695,9 @@ export const cacValidatePayload = (payload) =>
 export const cacGetPrices = () => makeGeneralGet('/cac/prices');
 
 /** Submit Business Name registration — PIN sent in body (backend verifyPin middleware) */
+const toTitleCase = (str) =>
+  str ? str.trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) : str;
+
 export const cacRegisterBusinessName = (pin, form) =>
   makeGeneralRequest('/cac/register/business-name', {
     proposedName:    form.proposedOption1,
@@ -715,14 +718,14 @@ export const cacRegisterBusinessName = (pin, form) =>
       proprietorEmail:             form.proprietorEmail,
       proprietorStreetNumber:      form.proprietorStreetNumber,
       proprietorServiceAddress:    form.proprietorServiceAddress,
-      proprietorCity:              form.proprietorCity,
+      proprietorCity:              toTitleCase(form.proprietorCity),
       proprietorState:             form.proprietorState,
-      proprietorLga:               form.proprietorLga,
+      proprietorLga:               toTitleCase(form.proprietorLga),
       proprietorPostcode:          form.proprietorPostcode,
       companyEmail:                form.companyEmail,
       companyStreetNumber:         form.companyStreetNumber,
       companyAddress:              form.companyAddress,
-      companyCity:                 form.companyCity,
+      companyCity:                 toTitleCase(form.companyCity),
       companyState:                form.companyState,
       passport:                    form.passport,
       meansOfId:                   form.meansOfId,

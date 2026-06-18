@@ -581,7 +581,12 @@ export default function CACScreen({ navigation }) {
       ];
       for (const [b64, uriKey] of uriPairs) {
         if (draft[uriKey] && !draft[b64]) {
-          draft[b64] = await uriToBase64DataUri(draft[uriKey]); // null if expired
+          const recovered = await uriToBase64DataUri(draft[uriKey]);
+          if (recovered) {
+            draft[b64] = recovered;
+          } else {
+            draft[uriKey] = ''; // clear expired URI so upload field shows as "not uploaded"
+          }
         }
       }
       setForm(prev => ({ ...prev, ...draft }));
@@ -625,6 +630,7 @@ export default function CACScreen({ navigation }) {
       if (!form.companyState)    m.push('State');
     }
     if (step === 4) {
+      if (!form.passport)                       m.push('Passport Photograph');
       if (!form.selectedIdType)                 m.push('Select a Means of Identification');
       if (!form.meansOfId)                      m.push('Upload your selected ID document');
       if (!form.signature)                      m.push('Signature');
@@ -725,9 +731,15 @@ export default function CACScreen({ navigation }) {
         if (!finalForm[b64Field] && finalForm[uriField]) {
           const encoded = await uriToBase64DataUri(finalForm[uriField]);
           if (!encoded) {
+            const labelMap = {
+              passport: 'Passport Photo', meansOfId: 'ID Document',
+              signature: 'Signature', supportingDoc: 'Supporting Document',
+              proprietorProofOfAddress: 'Proprietor Proof of Address',
+              businessProofOfAddress: 'Business Proof of Address',
+            };
             Alert.alert(
               'Image Expired',
-              `Could not read ${b64Field === 'passport' ? 'Passport Photo' : b64Field}. Please re-upload it.`
+              `Could not read ${labelMap[b64Field] || b64Field}. Please go to Step 4 and re-upload it.`
             );
             setBusy(false);
             return;
@@ -976,6 +988,30 @@ export default function CACScreen({ navigation }) {
             </View>
           )}
         </TouchableOpacity>
+
+        {/* 0 — Passport Photograph (headshot) */}
+        <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+          <View style={ss.idSectionHeader}>
+            <Ionicons name="person-circle-outline" size={18} color={tc.primary} />
+            <Text style={[ss.idSectionTitle, { color: tc.heading }]}>Passport Photograph</Text>
+            <View style={[ss.requiredBadge, { backgroundColor: `${tc.primary}15` }]}>
+              <Text style={[ss.requiredBadgeText, { color: tc.primary }]}>REQUIRED</Text>
+            </View>
+          </View>
+          <Text style={[ss.idSectionSub, { color: tc.subheading }]}>
+            A recent clear passport-size photo of the proprietor (white or light background, face clearly visible).
+          </Text>
+          <ImageUpload
+            label="Passport Photo" subtitle="Max 1MB · PNG or JPEG · Plain background"
+            required
+            value={form.passport} fileName={form.passportName} fileKB={form.passportKB}
+            onPick={(b, kb, n, uri) => {
+              setField('passport', b); setField('passportKB', kb);
+              setField('passportName', n); setField('passportUri', uri || '');
+            }}
+            tc={tc}
+          />
+        </View>
 
         {/* 1 — Means of ID: select type first, then upload appears */}
         <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>

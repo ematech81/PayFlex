@@ -206,21 +206,22 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
     const suggested = result.data?.suggestedNames || result.data?.data?.suggestedNames || [];
     const similar   = result.data?.similarNames   || result.data?.data?.similarNames   || [];
 
+    const statusColor = msg?.canProceed === true ? '#4ADE80' : msg?.canProceed === false ? '#FCA5A5' : '#FDE68A';
     return (
-      <View style={[ss.compCard, { backgroundColor: msg ? `${msg.color}08` : `${tc.primary}08`, borderColor: msg ? `${msg.color}30` : tc.border || '#E5E5EA' }]}>
+      <View style={ss.compCard}>
         <View style={ss.compCardHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={[ss.compCardName, { color: tc.heading }]} numberOfLines={1}>{name}</Text>
+            <Text style={ss.compCardName} numberOfLines={1}>{name}</Text>
           </View>
-          <View style={[ss.compBadge, { backgroundColor: msg ? `${msg.color}20` : `${tc.primary}20` }]}>
-            <Text style={[ss.compBadgeText, { color: msg?.color || tc.primary }]}>{result.code}</Text>
+          <View style={[ss.compBadge, { backgroundColor: msg?.canProceed ? 'rgba(74,222,128,0.25)' : 'rgba(252,165,165,0.25)' }]}>
+            <Text style={[ss.compBadgeText, { color: statusColor }]}>{result.code}</Text>
           </View>
         </View>
 
         {msg && (
-          <View style={[ss.compStatusRow, { backgroundColor: `${msg.color}12` }]}>
-            <Ionicons name={result.code === '00' ? 'checkmark-circle' : 'information-circle'} size={16} color={msg.color} />
-            <Text style={[ss.compStatusText, { color: msg.color }]}>{msg.label}</Text>
+          <View style={[ss.compStatusRow, { borderLeftColor: statusColor }]}>
+            <Ionicons name={msg.canProceed ? 'checkmark-circle' : 'alert-circle'} size={15} color={statusColor} />
+            <Text style={[ss.compStatusText, { color: statusColor }]}>{msg.label}</Text>
           </View>
         )}
 
@@ -229,20 +230,26 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
           <View style={ss.scoreRow}>
             {score !== undefined && (
               <View style={ss.scoreItem}>
-                <Text style={[ss.scoreLabel, { color: tc.subheading }]}>Compliance Score</Text>
-                <View style={[ss.scoreBar, { backgroundColor: tc.border || '#E5E5EA' }]}>
-                  <View style={[ss.scoreFill, { width: `${Math.min(score, 100)}%`, backgroundColor: score >= 70 ? '#4CAF50' : score >= 40 ? '#FF9800' : '#EF4444' }]} />
+                <View style={ss.scoreLabelPill}>
+                  <Ionicons name="analytics-outline" size={11} color="rgba(255,255,255,0.7)" />
+                  <Text style={ss.scoreLabel}>Compliance Score</Text>
                 </View>
-                <Text style={[ss.scoreVal, { color: score >= 70 ? '#4CAF50' : score >= 40 ? '#FF9800' : '#EF4444' }]}>{score?.toFixed(1)}%</Text>
+                <View style={ss.scoreBarTrack}>
+                  <View style={[ss.scoreFill, { width: `${Math.min(score, 100)}%`, backgroundColor: score >= 70 ? '#4ADE80' : score >= 40 ? '#FDE68A' : '#FCA5A5' }]} />
+                </View>
+                <Text style={[ss.scoreVal, { color: score >= 70 ? '#4ADE80' : score >= 40 ? '#FDE68A' : '#FCA5A5' }]}>{score?.toFixed(1)}%</Text>
               </View>
             )}
             {simScore !== undefined && (
               <View style={ss.scoreItem}>
-                <Text style={[ss.scoreLabel, { color: tc.subheading }]}>Similarity Score</Text>
-                <View style={[ss.scoreBar, { backgroundColor: tc.border || '#E5E5EA' }]}>
-                  <View style={[ss.scoreFill, { width: `${Math.min(simScore, 100)}%`, backgroundColor: '#FF9800' }]} />
+                <View style={ss.scoreLabelPill}>
+                  <Ionicons name="git-compare-outline" size={11} color="rgba(255,255,255,0.7)" />
+                  <Text style={ss.scoreLabel}>Similarity Score</Text>
                 </View>
-                <Text style={[ss.scoreVal, { color: '#FF9800' }]}>{simScore?.toFixed(1)}%</Text>
+                <View style={ss.scoreBarTrack}>
+                  <View style={[ss.scoreFill, { width: `${Math.min(simScore, 100)}%`, backgroundColor: '#FDE68A' }]} />
+                </View>
+                <Text style={[ss.scoreVal, { color: '#FDE68A' }]}>{simScore?.toFixed(1)}%</Text>
               </View>
             )}
           </View>
@@ -250,12 +257,15 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
 
         {/* Qualifier chips */}
         {chips.length > 0 && (
-          <View style={{ marginTop: 8 }}>
-            <Text style={[ss.chipSectionLabel, { color: tc.subheading }]}>Suggested qualifiers — tap to append:</Text>
+          <View style={{ marginTop: 10 }}>
+            <View style={ss.chipSectionLabel}>
+              <Ionicons name="add-circle-outline" size={12} color="rgba(255,255,255,0.6)" />
+              <Text style={ss.chipSectionLabelText}>Suggested qualifiers — tap to append</Text>
+            </View>
             <View style={ss.chipRow}>
               {chips.slice(0, 6).map((c, i) => (
-                <TouchableOpacity key={i} style={[ss.chip, { borderColor: tc.primary, backgroundColor: `${tc.primary}10` }]} onPress={() => onChip?.(`${name} ${c}`)}>
-                  <Text style={[ss.chipT, { color: tc.primary }]}>+ {c}</Text>
+                <TouchableOpacity key={i} style={ss.chip} onPress={() => onChip?.(`${name} ${c}`)}>
+                  <Text style={ss.chipT}>+ {c}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -264,12 +274,15 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
 
         {/* Suggested names */}
         {suggested.length > 0 && (
-          <View style={{ marginTop: 8 }}>
-            <Text style={[ss.chipSectionLabel, { color: tc.subheading }]}>Suggested alternatives:</Text>
+          <View style={{ marginTop: 10 }}>
+            <View style={ss.chipSectionLabel}>
+              <Ionicons name="bulb-outline" size={12} color="rgba(255,255,255,0.6)" />
+              <Text style={ss.chipSectionLabelText}>Suggested alternatives</Text>
+            </View>
             <View style={ss.chipRow}>
               {suggested.slice(0, 4).map((n, i) => (
-                <TouchableOpacity key={i} style={[ss.chip, { borderColor: '#4CAF50', backgroundColor: '#4CAF5010' }]} onPress={() => onChip?.(n)}>
-                  <Text style={[ss.chipT, { color: '#4CAF50' }]}>{n}</Text>
+                <TouchableOpacity key={i} style={[ss.chip, ss.chipGreen]} onPress={() => onChip?.(n)}>
+                  <Text style={[ss.chipT, { color: '#4ADE80' }]}>{n}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -278,12 +291,15 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
 
         {/* Similar names */}
         {similar.length > 0 && (
-          <View style={{ marginTop: 8 }}>
-            <Text style={[ss.chipSectionLabel, { color: tc.subheading }]}>Similar existing names:</Text>
+          <View style={{ marginTop: 10 }}>
+            <View style={ss.chipSectionLabel}>
+              <Ionicons name="copy-outline" size={12} color="rgba(255,255,255,0.6)" />
+              <Text style={ss.chipSectionLabelText}>Similar existing names</Text>
+            </View>
             {similar.slice(0, 3).map((n, i) => (
-              <View key={i} style={[ss.similarRow, { borderBottomColor: tc.border || '#F0F0F0' }]}>
-                <Ionicons name="business-outline" size={14} color={tc.subtext} />
-                <Text style={[{ fontSize: 13, color: tc.subheading, flex: 1 }]}>{n}</Text>
+              <View key={i} style={ss.similarRow}>
+                <Ionicons name="business-outline" size={13} color="rgba(255,255,255,0.5)" />
+                <Text style={ss.similarText}>{n}</Text>
               </View>
             ))}
           </View>
@@ -293,43 +309,43 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
   };
 
   return (
-    <View style={[ss.compCheckerCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+    <View style={[ss.compCheckerCard, { backgroundColor: tc.primary }]}>
+      <View style={ss.preCheckGlob} pointerEvents="none" />
+
       <TouchableOpacity style={ss.compCheckerHeader} onPress={() => setExpanded(v => !v)} activeOpacity={0.8}>
-        <View style={[ss.compCheckerIcon, { backgroundColor: `${tc.primary}15` }]}>
-          <Ionicons name="shield-checkmark-outline" size={20} color={tc.primary} />
+        <View style={ss.compCheckerIcon}>
+          <Ionicons name="shield-checkmark-outline" size={20} color="#FFFFFF" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[ss.compCheckerTitle, { color: tc.heading }]}>Check Business Name Compliance</Text>
-          <Text style={[ss.compCheckerSub, { color: tc.subheading }]}>Verify your names meet CAC requirements before submitting</Text>
+          <Text style={ss.compCheckerTitle}>Check Business Name Compliance</Text>
+          <Text style={ss.compCheckerSub}>Verify your names meet CAC requirements before submitting</Text>
         </View>
-        <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={tc.subtext} />
+        <View style={ss.compCheckerChevron}>
+          <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color="#FFFFFF" />
+        </View>
       </TouchableOpacity>
 
       {expanded && (
         <View style={ss.compCheckerBody}>
           <TouchableOpacity
-            style={[ss.checkBtn, { backgroundColor: tc.primary, opacity: checking ? 0.7 : 1 }]}
+            style={[ss.checkBtn, { opacity: checking ? 0.7 : 1 }]}
             onPress={runCheck} disabled={checking} activeOpacity={0.85}
           >
             {checking
-              ? <><ActivityIndicator size="small" color="#FFF" /><Text style={ss.checkBtnText}>Checking…</Text></>
-              : <><Ionicons name="search-outline" size={18} color="#FFF" /><Text style={ss.checkBtnText}>Run Compliance Check</Text></>
+              ? <><ActivityIndicator size="small" color={tc.primary} /><Text style={[ss.checkBtnText, { color: tc.primary }]}>Checking…</Text></>
+              : <><Ionicons name="search-outline" size={16} color={tc.primary} /><Text style={[ss.checkBtnText, { color: tc.primary }]}>Run Compliance Check</Text></>
             }
           </TouchableOpacity>
 
           {/* Not available — 403 from VAS */}
           {unavailable && (
-            <View style={[ss.unavailBox, { backgroundColor: '#FFF8E1', borderColor: '#FFC107' }]}>
-              <Ionicons name="information-circle-outline" size={18} color="#F59E0B" />
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E' }}>
-                  Compliance Check Unavailable
-                </Text>
-                <Text style={{ fontSize: 12, color: '#92400E', lineHeight: 18 }}>
-                  {unavailMsg}
-                </Text>
-                <Text style={{ fontSize: 12, color: '#92400E', marginTop: 4, fontStyle: 'italic' }}>
-                  You can still proceed with your registration. The CAC team will review your name during processing.
+            <View style={ss.compUnavailBox}>
+              <Ionicons name="information-circle-outline" size={18} color="rgba(255,255,255,0.85)" />
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={ss.compUnavailTitle}>Compliance Check Unavailable</Text>
+                <Text style={ss.compUnavailMsg}>{unavailMsg}</Text>
+                <Text style={ss.compUnavailNote}>
+                  You can still proceed — CAC will review your name during processing.
                 </Text>
               </View>
             </View>
@@ -1769,28 +1785,80 @@ const ss = StyleSheet.create({
   // "Need Help?" floating button
   helpFloat:      { position: 'absolute', right: 16, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#25D366', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, zIndex: 999 },
   helpFloatText:  { color: '#FFF', fontSize: 13, fontWeight: '700' },
-  // ComplianceChecker
-  compCheckerCard:   { borderRadius: 14, borderWidth: 1, marginBottom: 14 },
-  compCheckerHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
-  compCheckerIcon:   { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  compCheckerTitle:  { fontSize: 14, fontWeight: '700' },
-  compCheckerSub:    { fontSize: 11, marginTop: 1 },
-  compCheckerBody:   { paddingHorizontal: 14, paddingBottom: 14 },
-  checkBtn:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 10, marginBottom: 12 },
-  checkBtnText:      { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  compCard:          { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 2 },
+  // ComplianceChecker — purple card theme
+  compCheckerCard:   { borderRadius: 18, marginBottom: 14, overflow: 'hidden' },
+  compCheckerHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18 },
+  compCheckerIcon:   {
+    width: 44, height: 44, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  compCheckerTitle:  { fontSize: 15, fontWeight: '800', color: '#FFFFFF', marginBottom: 3, letterSpacing: 0.2 },
+  compCheckerSub:    { fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 17 },
+  compCheckerChevron:{ width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  compCheckerBody:   { paddingHorizontal: 14, paddingBottom: 16 },
+  checkBtn:          {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 14, borderRadius: 12, marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
+  },
+  checkBtnText:      { fontSize: 14, fontWeight: '800' },
+  compUnavailBox:    {
+    flexDirection: 'row', gap: 10, padding: 12, borderRadius: 12, marginBottom: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'flex-start',
+  },
+  compUnavailTitle:  { fontSize: 13, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
+  compUnavailMsg:    { fontSize: 12, color: 'rgba(255,255,255,0.8)', lineHeight: 18 },
+  compUnavailNote:   { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4, fontStyle: 'italic' },
+  // ResultCard — frosted pane inside the purple card
+  compCard:          {
+    borderRadius: 12, padding: 14, marginBottom: 2,
+    backgroundColor: 'rgba(255,255,255,0.11)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+  },
   compCardHeader:    { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  compCardName:      { fontSize: 14, fontWeight: '700' },
-  compBadge:         { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  compCardName:      { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  compBadge:         { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
   compBadgeText:     { fontSize: 11, fontWeight: '800' },
-  compStatusRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderRadius: 8, marginBottom: 8 },
-  compStatusText:    { fontSize: 12, fontWeight: '600', flex: 1 },
-  scoreRow:          { gap: 10, marginBottom: 8 },
-  scoreItem:         { gap: 4 },
-  scoreLabel:        { fontSize: 11, fontWeight: '600' },
-  scoreBar:          { height: 6, borderRadius: 3, overflow: 'hidden' },
-  scoreFill:         { height: 6, borderRadius: 3 },
-  scoreVal:          { fontSize: 12, fontWeight: '700' },
-  chipSectionLabel:  { fontSize: 11, marginBottom: 6 },
-  similarRow:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth },
+  compStatusRow:     {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, marginBottom: 10,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderLeftWidth: 3,
+  },
+  compStatusText:    { fontSize: 12, fontWeight: '700', flex: 1 },
+  scoreRow:          { gap: 10, marginBottom: 10 },
+  scoreItem:         { gap: 6 },
+  scoreLabelPill:    {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  scoreLabel:        { fontSize: 10.5, fontWeight: '700', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.3 },
+  scoreBarTrack:     { height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)' },
+  scoreBar:          { height: 7, borderRadius: 4, overflow: 'hidden' },
+  scoreFill:         { height: 7, borderRadius: 4 },
+  scoreVal:          { fontSize: 13, fontWeight: '800' },
+  // Section label pills
+  chipSectionLabel:  {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    alignSelf: 'flex-start', marginBottom: 8,
+    paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  chipSectionLabelText: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.2 },
+  chip:              {
+    paddingHorizontal: 11, paddingVertical: 5, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  chipGreen:         { backgroundColor: 'rgba(74,222,128,0.15)' },
+  chipT:             { fontSize: 12, fontWeight: '600', color: '#FFFFFF' },
+  similarRow:        {
+    flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 7,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.12)',
+  },
+  similarText:       { fontSize: 13, color: 'rgba(255,255,255,0.75)', flex: 1 },
 });

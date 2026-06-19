@@ -1,12 +1,11 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-import { StatusBarComponent } from 'component/StatusBar';
 
 const CARDS = [
   {
@@ -40,7 +39,7 @@ export default function CACHubScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: tc.background }]}>
-      <StatusBarComponent />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 8, backgroundColor: tc.primary }]}>

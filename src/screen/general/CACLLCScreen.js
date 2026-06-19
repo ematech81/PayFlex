@@ -14,14 +14,13 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Modal, FlatList, Image,
+  TextInput, ActivityIndicator, Alert, Modal, FlatList, Image, StatusBar,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
-import { StatusBarComponent } from 'component/StatusBar';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import {
   cacLlcReserveName, cacLlcGenerateMemo, cacLlcAnalyseMemo,
@@ -1142,7 +1141,7 @@ export default function CACLLCScreen({ navigation }) {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: tc.background }]}>
-      <StatusBarComponent />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       {/* Header */}
       <View style={[s.header, { paddingTop: insets.top + 8, backgroundColor: tc.primary }]}>

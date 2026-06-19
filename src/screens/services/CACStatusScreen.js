@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
-  TouchableOpacity, ActivityIndicator, Linking, Animated, TextInput,
+  TouchableOpacity, ActivityIndicator, Linking, Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,10 +28,8 @@ export default function CACStatusScreen({ navigation, route }) {
 
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
-  const [certLoading,       setCertLoading]       = useState(false);
-  const [certPin,           setCertPin]           = useState('');
-  const [showCertPin,       setShowCertPin]       = useState(false);
-  const [reportLoading,     setReportLoading]     = useState(false);
+  const [certLoading,   setCertLoading]   = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
   const [error,   setError]   = useState('');
   const pollRef   = useRef(null);
   const statusRef = useRef(null); // tracks terminal status for polling closure
@@ -87,15 +85,9 @@ export default function CACStatusScreen({ navigation, route }) {
   }, [data?.status]);
 
   const handleDownloadCert = async () => {
-    if (!certPin || certPin.length !== 4) {
-      alert('Enter your 4-digit transaction PIN to download the certificate.');
-      return;
-    }
     setCertLoading(true);
     try {
-      const res = await cacDownloadCertificate(certPin, transactionRef);
-      const { fileUri } = res;
-      // Try expo-sharing first (shows native share sheet); fall back to Linking
+      const { fileUri } = await cacDownloadCertificate(transactionRef);
       try {
         const Sharing = await import('expo-sharing');
         const canShare = await Sharing.isAvailableAsync();
@@ -107,8 +99,6 @@ export default function CACStatusScreen({ navigation, route }) {
       } catch {
         await Linking.openURL(fileUri);
       }
-      setShowCertPin(false);
-      setCertPin('');
     } catch (e) {
       alert(e.message || 'Could not download certificate');
     } finally {
@@ -201,43 +191,20 @@ export default function CACStatusScreen({ navigation, route }) {
         {isApproved && (
           <View style={[styles.actionsCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
             <Text style={[styles.sectionTitle, { color: tc.subheading }]}>NEXT STEPS</Text>
-            {showCertPin ? (
-              <>
-                <Text style={[styles.pinLabel, { color: tc.heading }]}>Enter Transaction PIN to download:</Text>
-                <TextInput
-                  style={[styles.pinInput, { backgroundColor: tc.background, color: tc.heading, borderColor: tc.border || '#E5E5EA' }]}
-                  value={certPin} onChangeText={setCertPin}
-                  placeholder="••••" placeholderTextColor={tc.subtext}
-                  keyboardType="number-pad" secureTextEntry maxLength={4}
-                />
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: tc.primary, opacity: (certLoading || certPin.length !== 4) ? 0.6 : 1 }]}
-                  onPress={handleDownloadCert}
-                  disabled={certLoading || certPin.length !== 4}
-                  activeOpacity={0.85}
-                >
-                  {certLoading
-                    ? <ActivityIndicator color="#FFF" />
-                    : <>
-                        <Ionicons name="document-text-outline" size={20} color="#FFF" />
-                        <Text style={styles.actionBtnText}>Confirm & Download</Text>
-                      </>
-                  }
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => { setShowCertPin(false); setCertPin(''); }} style={{ alignItems: 'center', marginTop: 4 }}>
-                  <Text style={[{ fontSize: 13, color: tc.subheading }]}>Cancel</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: tc.primary }]}
-                onPress={() => setShowCertPin(true)}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="document-text-outline" size={20} color="#FFF" />
-                <Text style={styles.actionBtnText}>Download Certificate</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: tc.primary, opacity: certLoading ? 0.7 : 1 }]}
+              onPress={handleDownloadCert}
+              disabled={certLoading}
+              activeOpacity={0.85}
+            >
+              {certLoading
+                ? <ActivityIndicator color="#FFF" />
+                : <>
+                    <Ionicons name="document-text-outline" size={20} color="#FFF" />
+                    <Text style={styles.actionBtnText}>Download Certificate</Text>
+                  </>
+              }
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.actionBtn, { backgroundColor: '#0F766E', opacity: reportLoading ? 0.7 : 1 }]}
@@ -319,9 +286,6 @@ const styles = StyleSheet.create({
   actionsCard:  { borderRadius: 14, borderWidth: 1, padding: 16, marginBottom: 14 },
   actionBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginBottom: 10 },
   actionBtnText:{ color: '#FFF', fontSize: 15, fontWeight: '700' },
-  pinLabel:     { fontSize: 13, fontWeight: '600', marginBottom: 8 },
-  pinInput:     { borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12, fontSize: 20, letterSpacing: 8, textAlign: 'center', marginBottom: 12 },
-
   centered:    { paddingVertical: 40, alignItems: 'center', gap: 12 },
   loadingText: { fontSize: 14 },
   errorBox:    { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEE2E2', padding: 12, borderRadius: 10, marginBottom: 16 },

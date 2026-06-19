@@ -745,7 +745,7 @@ export const cacGetRegistrationStatus = (transactionRef) =>
  * VAS returns a binary PDF blob, so we use expo-file-system to save it to
  * the device cache directory, then return the local file URI for sharing/opening.
  */
-export const cacDownloadCertificate = async (pin, transactionRef) => {
+export const cacDownloadCertificate = async (transactionRef) => {
   const FileSystem = (await import('expo-file-system')).default;
   const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
   if (!token) throw new Error('Authentication required. Please log in again.');
@@ -753,7 +753,7 @@ export const cacDownloadCertificate = async (pin, transactionRef) => {
   const response = await fetchWithTimeout(`${GENERAL_BASE}/cac/registration/${transactionRef}/certificate`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body:    JSON.stringify({ transactionRef, pin }),
+    body:    JSON.stringify({ transactionRef }),
   }, 60_000);
 
   if (!response.ok) {

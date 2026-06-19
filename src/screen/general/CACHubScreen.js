@@ -5,6 +5,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
+import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 
 const CARDS = [
@@ -33,11 +34,12 @@ const CARDS = [
 ];
 
 export default function CACHubScreen({ navigation }) {
-  const { tc }     = useThem();
-  const insets     = useSafeAreaInsets();
+  const dark   = useThem();
+  const tc     = dark ? colors.dark : colors.light;
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: tc.bg }]}>
+    <SafeAreaView style={[s.safe, { backgroundColor: tc.background }]}>
       <StatusBarComponent />
 
       {/* Header */}

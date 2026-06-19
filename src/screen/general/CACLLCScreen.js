@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
+import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import {
@@ -177,7 +178,8 @@ const EMPTY_AFFILIATE = {
 };
 
 export default function CACLLCScreen({ navigation }) {
-  const { tc }       = useThem();
+  const dark         = useThem();
+  const tc           = dark ? colors.dark : colors.light;
   const insets       = useSafeAreaInsets();
   const scrollRef    = useRef(null);
 
@@ -435,7 +437,7 @@ export default function CACLLCScreen({ navigation }) {
 
         <Text style={[s.label, { color: tc.heading }]}>Proposed Company Name *</Text>
         <TextInput
-          style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+          style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
           value={form.proposedName}
           onChangeText={v => setField('proposedName', v.toUpperCase())}
           placeholder="E.G. PAYFLEX TECHNOLOGIES"
@@ -447,7 +449,7 @@ export default function CACLLCScreen({ navigation }) {
 
         <Text style={[s.label, { color: tc.heading }]}>Company Type *</Text>
         <TouchableOpacity
-          style={[s.picker, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA' }]}
+          style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
           onPress={() => openPicker('companyType', 'Select Company Type', LLC_COMPANY_TYPES)}
         >
           <Text style={[s.pickerText, { color: form.companyType ? tc.heading : tc.placeholder || '#AAA' }]}>
@@ -499,7 +501,7 @@ export default function CACLLCScreen({ navigation }) {
 
           <Text style={[s.label, { color: tc.heading }]}>Nature of Business Category *</Text>
           <TouchableOpacity
-            style={[s.picker, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA' }]}
+            style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
             onPress={() => openPicker('natureOfBusinessCategory', 'Select Category', categories)}
           >
             <Text style={[s.pickerText, { color: form.natureOfBusinessCategory ? tc.heading : tc.placeholder || '#AAA' }]} numberOfLines={1}>
@@ -510,7 +512,7 @@ export default function CACLLCScreen({ navigation }) {
 
           <Text style={[s.label, { color: tc.heading }]}>Nature of Business *</Text>
           <TouchableOpacity
-            style={[s.picker, { backgroundColor: tc.inputBg || tc.card, borderColor: !form.natureOfBusinessCategory ? '#E5E5EA' : (tc.border || '#E5E5EA'), opacity: !form.natureOfBusinessCategory ? 0.5 : 1 }]}
+            style={[s.picker, { backgroundColor: tc.card, borderColor: !form.natureOfBusinessCategory ? '#E5E5EA' : (tc.border || '#E5E5EA'), opacity: !form.natureOfBusinessCategory ? 0.5 : 1 }]}
             onPress={() => form.natureOfBusinessCategory && openPicker('natureOfBusiness', 'Select Nature of Business', subItems)}
             disabled={!form.natureOfBusinessCategory}
           >
@@ -647,7 +649,7 @@ export default function CACLLCScreen({ navigation }) {
 
         <Text style={[s.label, { color: tc.heading }]}>Principal Activity Description *</Text>
         <TextInput
-          style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading, height: 80 }]}
+          style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading, height: 80 }]}
           value={form.principalActivityDescription}
           onChangeText={v => setField('principalActivityDescription', v)}
           placeholder="e.g. Production of packaged fruit juices"
@@ -657,7 +659,7 @@ export default function CACLLCScreen({ navigation }) {
 
         <Text style={[s.label, { color: tc.heading }]}>Company Email *</Text>
         <TextInput
-          style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+          style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
           value={form.companyEmail}
           onChangeText={v => setField('companyEmail', v)}
           placeholder="info@yourcompany.com"
@@ -667,7 +669,7 @@ export default function CACLLCScreen({ navigation }) {
 
         <Text style={[s.label, { color: tc.heading }]}>Company Phone *</Text>
         <TextInput
-          style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+          style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
           value={form.phoneNumber}
           onChangeText={v => setField('phoneNumber', v)}
           placeholder="08012345678"
@@ -687,7 +689,7 @@ export default function CACLLCScreen({ navigation }) {
             <Text style={[s.label, { color: tc.heading }]}>{label} *</Text>
             {isPicker ? (
               <TouchableOpacity
-                style={[s.picker, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA' }]}
+                style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
                 onPress={() => openPicker(key, `Select ${label}`, opts)}
               >
                 <Text style={[s.pickerText, { color: form[key] ? tc.heading : tc.placeholder || '#AAA' }]}>{form[key] || `Select ${label.toLowerCase()}…`}</Text>
@@ -695,7 +697,7 @@ export default function CACLLCScreen({ navigation }) {
               </TouchableOpacity>
             ) : (
               <TextInput
-                style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+                style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
                 value={form[key]} onChangeText={v => setField(key, v)}
                 placeholder={label} placeholderTextColor={tc.placeholder || '#AAA'}
               />
@@ -727,7 +729,7 @@ export default function CACLLCScreen({ navigation }) {
                 <Text style={[s.label, { color: tc.heading }]}>{label} *</Text>
                 {isPicker ? (
                   <TouchableOpacity
-                    style={[s.picker, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA' }]}
+                    style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
                     onPress={() => openPicker(key, `Select ${label}`, opts)}
                   >
                     <Text style={[s.pickerText, { color: form[key] ? tc.heading : tc.placeholder || '#AAA' }]}>{form[key] || `Select ${label.toLowerCase()}…`}</Text>
@@ -735,7 +737,7 @@ export default function CACLLCScreen({ navigation }) {
                   </TouchableOpacity>
                 ) : (
                   <TextInput
-                    style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+                    style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
                     value={form[key]} onChangeText={v => setField(key, v)}
                     placeholder={label} placeholderTextColor={tc.placeholder || '#AAA'}
                   />
@@ -777,7 +779,7 @@ export default function CACLLCScreen({ navigation }) {
 
         <Text style={[s.label, { color: tc.heading }]}>Ordinary Issued Shares *</Text>
         <TextInput
-          style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+          style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
           value={form.ordinaryIssuedShare}
           onChangeText={v => setField('ordinaryIssuedShare', v.replace(/[^0-9]/g, ''))}
           placeholder="e.g. 1000000"
@@ -787,7 +789,7 @@ export default function CACLLCScreen({ navigation }) {
 
         <Text style={[s.label, { color: tc.heading }]}>Price Per Share (₦) *</Text>
         <TextInput
-          style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+          style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
           value={form.pricePerShare}
           onChangeText={v => setField('pricePerShare', v.replace(/[^0-9.]/g, ''))}
           placeholder="1"
@@ -797,7 +799,7 @@ export default function CACLLCScreen({ navigation }) {
 
         <Text style={[s.label, { color: tc.heading }]}>Preference Shares (optional)</Text>
         <TextInput
-          style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+          style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
           value={form.preferenceIssuedShare}
           onChangeText={v => setField('preferenceIssuedShare', v.replace(/[^0-9]/g, ''))}
           placeholder="0"
@@ -904,7 +906,7 @@ export default function CACLLCScreen({ navigation }) {
 
   const renderAffiliateModal = () => (
     <Modal visible={affModal} animationType="slide" onRequestClose={() => setAffModal(false)}>
-      <SafeAreaView style={[s.safe, { backgroundColor: tc.bg }]}>
+      <SafeAreaView style={[s.safe, { backgroundColor: tc.background }]}>
         {/* Modal header */}
         <View style={[s.modalHeader, { backgroundColor: tc.primary, paddingTop: insets.top + 8 }]}>
           <TouchableOpacity style={s.backBtn2} onPress={() => setAffModal(false)} activeOpacity={0.7}>
@@ -918,7 +920,7 @@ export default function CACLLCScreen({ navigation }) {
           {/* Affiliate type */}
           <Text style={[s.label, { color: tc.heading }]}>Affiliate Type *</Text>
           <TouchableOpacity
-            style={[s.picker, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA' }]}
+            style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
             onPress={() => openPicker('affType', 'Select Affiliate Type', LLC_AFFILIATE_TYPES)}
           >
             <Text style={[s.pickerText, { color: affForm.affiliateType ? tc.heading : tc.placeholder || '#AAA' }]}>
@@ -946,26 +948,26 @@ export default function CACLLCScreen({ navigation }) {
               {[['surname','Surname *'], ['firstname','First Name *'], ['othername','Other Name']].map(([k, lbl]) => (
                 <View key={k}>
                   <Text style={[s.label, { color: tc.heading }]}>{lbl}</Text>
-                  <TextInput style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+                  <TextInput style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
                     value={affForm[k]} onChangeText={v => setAffField(k, v)} placeholder={lbl.replace(' *','')} placeholderTextColor={tc.placeholder || '#AAA'} />
                 </View>
               ))}
 
               <Text style={[s.label, { color: tc.heading }]}>Gender *</Text>
-              <TouchableOpacity style={[s.picker, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA' }]}
+              <TouchableOpacity style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
                 onPress={() => openPicker('affGender', 'Select Gender', [{ value:'MALE', label:'Male' }, { value:'FEMALE', label:'Female' }])}>
                 <Text style={[s.pickerText, { color: affForm.gender ? tc.heading : tc.placeholder || '#AAA' }]}>{affForm.gender || 'Select gender…'}</Text>
                 <Ionicons name="chevron-down" size={16} color={tc.subtext} />
               </TouchableOpacity>
 
               <Text style={[s.label, { color: tc.heading }]}>Date of Birth *</Text>
-              <TextInput style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+              <TextInput style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
                 value={affForm.dob} onChangeText={v => setAffField('dob', v)} placeholder="YYYY-MM-DD" placeholderTextColor={tc.placeholder || '#AAA'} keyboardType="numeric" />
 
               {[['email','Email *','email-address'], ['phone','Phone *','phone-pad']].map(([k, lbl, kb]) => (
                 <View key={k}>
                   <Text style={[s.label, { color: tc.heading }]}>{lbl}</Text>
-                  <TextInput style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+                  <TextInput style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
                     value={affForm[k]} onChangeText={v => setAffField(k, v)} placeholder={lbl.replace(' *','')} placeholderTextColor={tc.placeholder || '#AAA'}
                     keyboardType={kb} autoCapitalize="none" />
                 </View>
@@ -976,13 +978,13 @@ export default function CACLLCScreen({ navigation }) {
                 <View key={k}>
                   <Text style={[s.label, { color: tc.heading }]}>{lbl} *</Text>
                   {isPicker ? (
-                    <TouchableOpacity style={[s.picker, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA' }]}
+                    <TouchableOpacity style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
                       onPress={() => openPicker(k, `Select ${lbl}`, NIGERIAN_STATES.map(st => ({ value: st, label: st })))}>
                       <Text style={[s.pickerText, { color: affForm[k] ? tc.heading : tc.placeholder || '#AAA' }]}>{affForm[k] || `Select ${lbl.toLowerCase()}…`}</Text>
                       <Ionicons name="chevron-down" size={16} color={tc.subtext} />
                     </TouchableOpacity>
                   ) : (
-                    <TextInput style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+                    <TextInput style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
                       value={affForm[k]} onChangeText={v => setAffField(k, v)} placeholder={lbl} placeholderTextColor={tc.placeholder || '#AAA'} />
                   )}
                 </View>
@@ -1002,13 +1004,13 @@ export default function CACLLCScreen({ navigation }) {
                     <View key={k}>
                       <Text style={[s.label, { color: tc.heading }]}>{lbl} *</Text>
                       {isPicker ? (
-                        <TouchableOpacity style={[s.picker, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA' }]}
+                        <TouchableOpacity style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
                           onPress={() => openPicker(k, `Select ${lbl}`, NIGERIAN_STATES.map(st => ({ value: st, label: st })))}>
                           <Text style={[s.pickerText, { color: affForm[k] ? tc.heading : tc.placeholder || '#AAA' }]}>{affForm[k] || `Select ${lbl.toLowerCase()}…`}</Text>
                           <Ionicons name="chevron-down" size={16} color={tc.subtext} />
                         </TouchableOpacity>
                       ) : (
-                        <TextInput style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+                        <TextInput style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
                           value={affForm[k]} onChangeText={v => setAffField(k, v)} placeholder={lbl} placeholderTextColor={tc.placeholder || '#AAA'} />
                       )}
                     </View>
@@ -1026,7 +1028,7 @@ export default function CACLLCScreen({ navigation }) {
               {[['rcNumber','RC Number *','default'], ['companyName','Company Name *','words'], ['contactEmail','Contact Email *','email-address'], ['contactPhone','Contact Phone *','phone-pad']].map(([k, lbl, kb]) => (
                 <View key={k}>
                   <Text style={[s.label, { color: tc.heading }]}>{lbl}</Text>
-                  <TextInput style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+                  <TextInput style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
                     value={affForm[k]} onChangeText={v => setAffField(k, v)} placeholder={lbl.replace(' *','')} placeholderTextColor={tc.placeholder || '#AAA'}
                     keyboardType={kb} autoCapitalize={kb === 'email-address' ? 'none' : 'words'} />
                 </View>
@@ -1037,13 +1039,13 @@ export default function CACLLCScreen({ navigation }) {
                 <View key={k}>
                   <Text style={[s.label, { color: tc.heading }]}>{lbl} *</Text>
                   {isPicker ? (
-                    <TouchableOpacity style={[s.picker, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA' }]}
+                    <TouchableOpacity style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
                       onPress={() => openPicker(k, `Select ${lbl}`, NIGERIAN_STATES.map(st => ({ value: st, label: st })))}>
                       <Text style={[s.pickerText, { color: affForm[k] ? tc.heading : tc.placeholder || '#AAA' }]}>{affForm[k] || `Select ${lbl.toLowerCase()}…`}</Text>
                       <Ionicons name="chevron-down" size={16} color={tc.subtext} />
                     </TouchableOpacity>
                   ) : (
-                    <TextInput style={[s.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+                    <TextInput style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
                       value={affForm[k]} onChangeText={v => setAffField(k, v)} placeholder={lbl} placeholderTextColor={tc.placeholder || '#AAA'} />
                   )}
                 </View>
@@ -1139,7 +1141,7 @@ export default function CACLLCScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: tc.bg }]}>
+    <SafeAreaView style={[s.safe, { backgroundColor: tc.background }]}>
       <StatusBarComponent />
 
       {/* Header */}

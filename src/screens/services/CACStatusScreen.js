@@ -93,14 +93,21 @@ export default function CACStatusScreen({ navigation, route }) {
     setCertLoading(true);
     try {
       const res = await cacDownloadCertificate(certPin, transactionRef);
-      const url = res?.data?.certificateUrl || res?.certificateUrl;
-      if (url) {
-        await Linking.openURL(url);
-        setShowCertPin(false);
-        setCertPin('');
-      } else {
-        alert('Certificate not yet available. Try again shortly.');
+      const { fileUri } = res;
+      // Try expo-sharing first (shows native share sheet); fall back to Linking
+      try {
+        const Sharing = await import('expo-sharing');
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(fileUri, { mimeType: 'application/pdf', dialogTitle: 'CAC Certificate' });
+        } else {
+          await Linking.openURL(fileUri);
+        }
+      } catch {
+        await Linking.openURL(fileUri);
       }
+      setShowCertPin(false);
+      setCertPin('');
     } catch (e) {
       alert(e.message || 'Could not download certificate');
     } finally {

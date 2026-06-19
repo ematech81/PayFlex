@@ -740,9 +740,40 @@ export const cacRegisterBusinessName = (pin, form) =>
 export const cacGetRegistrationStatus = (transactionRef) =>
   makeGeneralGet(`/cac/registration/${transactionRef}`);
 
-/** Download CAC certificate after approval — PIN required (wallet deduction) */
-export const cacDownloadCertificate = (pin, transactionRef) =>
-  makeGeneralRequest(`/cac/registration/${transactionRef}/certificate`, { transactionRef, pin });
+/**
+ * Download CAC certificate after approval — PIN required (wallet deduction).
+ * VAS returns a binary PDF blob, so we use expo-file-system to save it to
+ * the device cache directory, then return the local file URI for sharing/opening.
+ */
+export const cacDownloadCertificate = async (pin, transactionRef) => {
+  const FileSystem = (await import('expo-file-system')).default;
+  const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+  if (!token) throw new Error('Authentication required. Please log in again.');
+
+  const response = await fetchWithTimeout(`${GENERAL_BASE}/cac/registration/${transactionRef}/certificate`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body:    JSON.stringify({ transactionRef, pin }),
+  }, 60_000);
+
+  if (!response.ok) {
+    // Error responses are JSON
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || `Certificate download failed (${response.status})`);
+  }
+
+  // Save blob to device cache
+  const reader = await response.blob();
+  const fileUri = `${FileSystem.cacheDirectory}CAC-Certificate-${transactionRef}.pdf`;
+  const base64  = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload  = () => resolve(fr.result.split(',')[1]);
+    fr.onerror = reject;
+    fr.readAsDataURL(reader);
+  });
+  await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+  return { fileUri };
+};
 
 /** Business validation search — PIN sent in body */
 export const cacSearchBusiness = (pin, validationType, searchParam) =>

@@ -775,6 +775,35 @@ export const cacDownloadCertificate = async (pin, transactionRef) => {
   return { fileUri };
 };
 
+/** Download CAC status report after approval — no PIN required */
+export const cacDownloadStatusReport = async (transactionRef) => {
+  const FileSystem = (await import('expo-file-system')).default;
+  const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
+  if (!token) throw new Error('Authentication required. Please log in again.');
+
+  const response = await fetchWithTimeout(`${GENERAL_BASE}/cac/registration/${transactionRef}/status-report`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body:    JSON.stringify({ transactionRef }),
+  }, 60_000);
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || `Status report download failed (${response.status})`);
+  }
+
+  const reader = await response.blob();
+  const fileUri = `${FileSystem.cacheDirectory}CAC-StatusReport-${transactionRef}.pdf`;
+  const base64  = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload  = () => resolve(fr.result.split(',')[1]);
+    fr.onerror = reject;
+    fr.readAsDataURL(reader);
+  });
+  await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+  return { fileUri };
+};
+
 /** Business validation search — PIN sent in body */
 export const cacSearchBusiness = (pin, validationType, searchParam) =>
   makeGeneralRequest('/cac/search', { validationType, searchParam, pin });

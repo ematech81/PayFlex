@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
-import { cacGetRegistrationStatus, cacDownloadCertificate } from 'AuthFunction/paymentService';
+import { cacGetRegistrationStatus, cacDownloadCertificate, cacDownloadStatusReport } from 'AuthFunction/paymentService';
 
 const POLL_INTERVAL = 30000; // 30 seconds
 const TERMINAL_STATUSES = ['approved', 'queried', 'failed'];
@@ -28,9 +28,10 @@ export default function CACStatusScreen({ navigation, route }) {
 
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
-  const [certLoading, setCertLoading] = useState(false);
-  const [certPin, setCertPin] = useState('');
-  const [showCertPin, setShowCertPin] = useState(false);
+  const [certLoading,       setCertLoading]       = useState(false);
+  const [certPin,           setCertPin]           = useState('');
+  const [showCertPin,       setShowCertPin]       = useState(false);
+  const [reportLoading,     setReportLoading]     = useState(false);
   const [error,   setError]   = useState('');
   const pollRef   = useRef(null);
   const statusRef = useRef(null); // tracks terminal status for polling closure
@@ -112,6 +113,29 @@ export default function CACStatusScreen({ navigation, route }) {
       alert(e.message || 'Could not download certificate');
     } finally {
       setCertLoading(false);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    setReportLoading(true);
+    try {
+      const res = await cacDownloadStatusReport(transactionRef);
+      const { fileUri } = res;
+      try {
+        const Sharing = await import('expo-sharing');
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(fileUri, { mimeType: 'application/pdf', dialogTitle: 'CAC Status Report' });
+        } else {
+          await Linking.openURL(fileUri);
+        }
+      } catch {
+        await Linking.openURL(fileUri);
+      }
+    } catch (e) {
+      alert(e.message || 'Could not download status report');
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -214,6 +238,21 @@ export default function CACStatusScreen({ navigation, route }) {
                 <Text style={styles.actionBtnText}>Download Certificate</Text>
               </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#0F766E', opacity: reportLoading ? 0.7 : 1 }]}
+              onPress={handleDownloadReport}
+              disabled={reportLoading}
+              activeOpacity={0.85}
+            >
+              {reportLoading
+                ? <ActivityIndicator color="#FFF" />
+                : <>
+                    <Ionicons name="bar-chart-outline" size={20} color="#FFF" />
+                    <Text style={styles.actionBtnText}>Download Status Report</Text>
+                  </>
+              }
+            </TouchableOpacity>
           </View>
         )}
 

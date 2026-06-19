@@ -751,6 +751,39 @@ export const cacSearchBusiness = (pin, validationType, searchParam) =>
 /** CAC registration + validation history */
 export const cacGetHistory = () => makeGeneralGet('/cac/history');
 
+// ─── CAC LLC (Company Registration) ──────────────────────────────────────────
+
+/** Step 1 — Reserve company name; creates a session, returns sessionId + reservationCode */
+export const cacLlcReserveName = (proposedName, companyType) =>
+  makeGeneralRequest('/cac/llc/name-reservation', { proposedName, companyType });
+
+/** Step 2 — Generate memorandum objects via AI */
+export const cacLlcGenerateMemo = (sessionId, natureOfBusiness, countOfObjects = 5) =>
+  makeGeneralRequest('/cac/llc/memorandum/generate', { sessionId, natureOfBusiness, countOfObjects });
+
+/** Step 3 — Analyse memorandum objects; returns minimumShareCapital if applicable */
+export const cacLlcAnalyseMemo = (sessionId, objects) =>
+  makeGeneralRequest('/cac/llc/memorandum/analyse', { sessionId, objects });
+
+/** Step 4 — Create the company */
+export const cacLlcCreateCompany = (sessionId, data) =>
+  makeGeneralRequest('/cac/llc/company', { sessionId, ...data });
+
+/** Step 5 — Register shares */
+export const cacLlcRegisterShares = (sessionId, shareData) =>
+  makeGeneralRequest('/cac/llc/shares', { sessionId, ...shareData });
+
+/** Step 6 — Register an affiliate (individual or corporate); carries base64 images */
+export const cacLlcAddAffiliate = (sessionId, affiliatePayload) =>
+  makeGeneralRequest('/cac/llc/affiliate', { sessionId, ...affiliatePayload }, 120_000);
+
+/** Get session + affiliates by sessionId */
+export const cacLlcGetSession = (sessionId) =>
+  makeGeneralGet(`/cac/llc/registration/${sessionId}`);
+
+/** User's LLC registration history */
+export const cacLlcGetHistory = () => makeGeneralGet('/cac/llc/history');
+
 // ─── GET helper with query params ────────────────────────────────────────────
 const makeGeneralGetQuery = async (path, params = {}) => {
   const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);

@@ -69,6 +69,8 @@ import LoginSettingsScreen from 'screen/Settings/LoginSettingsScreen';
 import ChangeLoginScreen from 'screen/Settings/ChangeLoginScreen';
 import NINScreen from 'screen/general/NINScreen';
 import CACScreen from 'screen/general/CACScreen';
+import CACHubScreen from 'screen/general/CACHubScreen';
+import CACLLCScreen from 'screen/general/CACLLCScreen';
 import CACStatusScreen from 'screens/services/CACStatusScreen';
 import BusBookingScreen from 'screens/services/BusBookingScreen';
 import BusTicketConfirmationScreen from 'screens/services/BusTicketConfirmationScreen';
@@ -424,8 +426,16 @@ function AppContent({ initialRoute, navigationRef }) {
                 component={NINScreen}
               />
               <Stack.Screen
+                name="CACHub"
+                component={CACHubScreen}
+              />
+              <Stack.Screen
                 name="CACScreen"
                 component={CACScreen}
+              />
+              <Stack.Screen
+                name="CACLLCScreen"
+                component={CACLLCScreen}
               />
               <Stack.Screen
                 name="CACStatus"

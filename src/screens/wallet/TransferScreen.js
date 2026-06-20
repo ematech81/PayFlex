@@ -32,6 +32,7 @@ export default function TransferScreen({ navigation }) {
   const [step,          setStep]          = useState(0); // 0 = Recipient, 1 = Amount, 2 = Confirm+PIN
   const [banks,         setBanks]         = useState([]);
   const [banksLoading,  setBanksLoading]  = useState(true);
+  const [banksError,    setBanksError]    = useState('');
   const [bankSearch,    setBankSearch]    = useState('');
   const [bankModal,     setBankModal]     = useState(false);
   const [selectedBank,  setSelectedBank]  = useState(null);   // { name, code }
@@ -48,12 +49,23 @@ export default function TransferScreen({ navigation }) {
   const resolveTimer = useRef(null);
 
   // ── Load banks once ────────────────────────────────────────────────────────
-  useEffect(() => {
+  const loadBanks = useCallback(() => {
+    setBanksLoading(true);
+    setBanksError('');
     transferGetBanks()
-      .then(res => setBanks(res?.data || res || []))
-      .catch(() => {})
+      .then(res => {
+        const list = res?.data || res || [];
+        if (!Array.isArray(list) || list.length === 0) {
+          setBanksError('No banks returned. Please retry.');
+        } else {
+          setBanks(list);
+        }
+      })
+      .catch(err => setBanksError(err.message || 'Failed to load banks.'))
       .finally(() => setBanksLoading(false));
   }, []);
+
+  useEffect(() => { loadBanks(); }, []);
 
   // ── Auto-resolve account when 10 digits entered ────────────────────────────
   useEffect(() => {
@@ -294,10 +306,23 @@ export default function TransferScreen({ navigation }) {
           value={bankSearch} onChangeText={setBankSearch}
           placeholder="Search bank…" placeholderTextColor={tc.subtext}
         />
-        {banksLoading ? <ActivityIndicator color={tc.primary} style={{ marginTop: 24 }} /> : (
+        {banksLoading ? (
+          <ActivityIndicator color={tc.primary} style={{ marginTop: 24 }} />
+        ) : banksError ? (
+          <View style={{ alignItems: 'center', paddingVertical: 24, gap: 12 }}>
+            <Ionicons name="alert-circle-outline" size={32} color="#EF4444" />
+            <Text style={{ color: '#EF4444', fontSize: 13, textAlign: 'center' }}>{banksError}</Text>
+            <TouchableOpacity
+              style={[ss.nextBtn, { backgroundColor: tc.primary, paddingHorizontal: 24 }]}
+              onPress={loadBanks} activeOpacity={0.8}
+            >
+              <Text style={ss.nextBtnText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
           <FlatList
             data={filteredBanks}
-            keyExtractor={item => item.code || item.slug}
+            keyExtractor={item => item.code || item.slug || item.name}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={[ss.bankItem, { borderBottomColor: tc.border || '#F0F0F0' }]}
@@ -310,6 +335,7 @@ export default function TransferScreen({ navigation }) {
             )}
             style={{ maxHeight: 360 }}
             showsVerticalScrollIndicator={false}
+            ListEmptyComponent={<Text style={{ color: tc.subtext, textAlign: 'center', paddingVertical: 16 }}>No banks found</Text>}
           />
         )}
       </View>

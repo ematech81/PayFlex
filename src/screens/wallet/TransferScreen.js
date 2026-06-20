@@ -26,7 +26,7 @@ export default function TransferScreen({ navigation }) {
   const isDark   = useThem();
   const tc       = isDark ? colors.dark : colors.light;
   const { wallet, refreshWallet } = useWallet();
-  const balance  = wallet?.walletBalance ?? 0;
+  const balance  = wallet?.user?.walletBalance ?? 0;
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [step,          setStep]          = useState(0); // 0 = Recipient, 1 = Amount, 2 = Confirm+PIN

@@ -71,6 +71,7 @@ import NINScreen from 'screen/general/NINScreen';
 import CACScreen from 'screen/general/CACScreen';
 import CACHubScreen from 'screen/general/CACHubScreen';
 import CACLLCScreen from 'screen/general/CACLLCScreen';
+import TransferScreen from 'screens/wallet/TransferScreen';
 import CACStatusScreen from 'screens/services/CACStatusScreen';
 import BusBookingScreen from 'screens/services/BusBookingScreen';
 import BusTicketConfirmationScreen from 'screens/services/BusTicketConfirmationScreen';
@@ -441,6 +442,7 @@ function AppContent({ initialRoute, navigationRef }) {
                 name="CACStatus"
                 component={CACStatusScreen}
               />
+              <Stack.Screen name="TransferScreen" component={TransferScreen} />
               {/* ── MERPI / Syticks ── */}
               <Stack.Screen name="BusBooking"           component={BusBookingScreen} />
               <Stack.Screen name="BusTicketConfirmation" component={BusTicketConfirmationScreen} options={{ gestureEnabled: false }} />

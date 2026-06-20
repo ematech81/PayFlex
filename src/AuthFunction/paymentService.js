@@ -891,6 +891,15 @@ export const merpiGetHotels          = (params) => makeGeneralGetQuery('/merpi/h
 export const merpiGetHotelRooms      = (hotelId, params) => makeGeneralGetQuery(`/merpi/hotels/${hotelId}/rooms`, params);
 export const merpiBookHotelRoom      = (pin, data) => makeGeneralRequest('/merpi/hotels/buy', { ...data, pin });
 
+// ─── Bank Transfers ───────────────────────────────────────────────────────────
+export const transferGetBanks      = ()                       => makeGeneralGet('/transfers/banks');
+export const transferResolveAccount = (bankCode, accountNumber) =>
+  makeGeneralRequest('/transfers/resolve', { bankCode, accountNumber });
+export const transferInitiate      = (pin, data)              =>
+  makeGeneralRequest('/transfers/initiate', { ...data, pin });
+export const transferGetStatus     = (reference)              => makeGeneralGet(`/transfers/status/${reference}`);
+export const transferGetHistory    = ()                       => makeGeneralGet('/transfers/history');
+
 // ─── MERPI / Syticks — General ────────────────────────────────────────────────
 export const merpiGetCategories  = ()          => makeGeneralGet('/merpi/categories');
 export const merpiGetBusinesses  = (params)    => makeGeneralGetQuery('/merpi/businesses', params);

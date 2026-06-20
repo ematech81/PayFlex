@@ -484,22 +484,21 @@ export default function HomeScreen({route}) {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      style={styles.cardDetails}
-                      onPress={() => navigation.navigate('Wallet')}
-                      accessibilityLabel="View linked card details"
+                      style={styles.actionBtn}
+                      onPress={() => navigation.navigate('TransferScreen')}
+                      activeOpacity={0.8}
+                      accessibilityLabel="Bank transfer"
                       accessibilityRole="button"
                     >
-                      <Ionicons 
-                        name="card-outline" 
-                        size={16} 
-                        color={isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)'} 
-                      />
-                      <Text style={[
-                        styles.actionText,
-                        { color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)' }
-                      ]}>
-                        •••• 7890
-                      </Text>
+                      <LinearGradient
+                        colors={['#11998E', '#38EF7D']}
+                        style={styles.actionBtnGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                      >
+                        <Ionicons name="arrow-up-circle-outline" size={20} color="#ffffff" />
+                        <Text style={styles.topText}>Transfer</Text>
+                      </LinearGradient>
                     </TouchableOpacity>
                   </View>
                 </View>

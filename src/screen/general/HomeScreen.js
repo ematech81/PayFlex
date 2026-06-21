@@ -87,7 +87,7 @@ const services = [
     id: 'cac',
     label: 'CAC',
     icon: <Ionicons name="business" size={ICON_SIZE} />,
-    screen: 'CACScreen',
+    screen: 'CACHub',
     gradient: ['#0d6e6e', '#14b8a6'],
   },
   {

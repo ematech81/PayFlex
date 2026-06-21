@@ -485,7 +485,7 @@ export default function HomeScreen({route}) {
 
                     <TouchableOpacity
                       style={styles.actionBtn}
-                      onPress={() => navigation.navigate('TransferScreen')}
+                      onPress={() => navigation.navigate('VtuTransferScreen')}
                       activeOpacity={0.8}
                       accessibilityLabel="Bank transfer"
                       accessibilityRole="button"

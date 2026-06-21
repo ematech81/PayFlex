@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput,
-  ScrollView, ActivityIndicator, Alert, FlatList, Modal, StatusBar, KeyboardAvoidingView, Platform,
+  ScrollView, ActivityIndicator, Alert, FlatList, Modal, StatusBar,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { useWallet } from 'context/WalletContext';
+import PaymentSummaryModal from 'component/PaymentSummaryModal';
 import {
   vtuTransferGetBanks, vtuTransferResolveAccount, vtuTransferInitiate,
 } from 'AuthFunction/paymentService';
@@ -15,8 +17,7 @@ import {
 const MIN_AMOUNT  = 500;
 const DAILY_LIMIT = 200_000;
 
-const STEPS = ['Recipient', 'Amount', 'Confirm'];
-const PAD   = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+const STEPS = ['Recipient', 'Amount'];
 
 export default function VtuTransferScreen({ navigation }) {
   const insets  = useSafeAreaInsets();
@@ -37,6 +38,8 @@ export default function VtuTransferScreen({ navigation }) {
   const [accountName,   setAccountName]   = useState('');
   const [amount,        setAmount]        = useState('');
   const [narration,     setNarration]     = useState('');
+
+  const [showPayModal,  setShowPayModal]  = useState(false);
   const [pin,           setPin]           = useState('');
   const [loading,       setLoading]       = useState(false);
 
@@ -86,22 +89,12 @@ export default function VtuTransferScreen({ navigation }) {
 
   const amountNum   = parseFloat(amount.replace(/,/g, '')) || 0;
   const canProceed0 = selectedBank && accountNumber.length === 10 && accountName;
-  const canProceed1 = amountNum >= MIN_AMOUNT && amountNum <= balance;
+  const canProceed1 = amountNum >= MIN_AMOUNT && amountNum <= balance && amountNum <= DAILY_LIMIT;
 
-  const handlePinPress = (key) => {
-    if (key === '⌫') { setPin(p => p.slice(0, -1)); return; }
-    if (key === '' || pin.length >= 4) return;
-    setPin(p => p + key);
-  };
-
-  useEffect(() => {
-    if (pin.length === 4) handleSubmit(pin);
-  }, [pin]);
-
-  const handleSubmit = async (enteredPin) => {
+  const handleConfirm = async () => {
     setLoading(true);
     try {
-      const res = await vtuTransferInitiate(enteredPin, {
+      const res = await vtuTransferInitiate(pin, {
         amount:        amountNum,
         bankCode:      selectedBank.code,
         bankName:      selectedBank.name,
@@ -110,6 +103,7 @@ export default function VtuTransferScreen({ navigation }) {
         narration:     narration.trim() || `Transfer to ${accountName}`,
       });
       await refreshWallet();
+      setShowPayModal(false);
       const msg = res.status === 'success'
         ? `₦${amountNum.toLocaleString()} sent successfully to ${accountName}.`
         : `₦${amountNum.toLocaleString()} transfer is being processed. You'll be notified once confirmed.`;
@@ -126,6 +120,7 @@ export default function VtuTransferScreen({ navigation }) {
     }
   };
 
+  // ── Step 0: Recipient ──────────────────────────────────────────────────────
   const renderStep0 = () => (
     <ScrollView contentContainerStyle={ss.stepContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <Text style={[ss.stepTitle, { color: tc.heading }]}>Who are you sending to?</Text>
@@ -175,6 +170,7 @@ export default function VtuTransferScreen({ navigation }) {
     </ScrollView>
   );
 
+  // ── Step 1: Amount ─────────────────────────────────────────────────────────
   const renderStep1 = () => (
     <ScrollView contentContainerStyle={ss.stepContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <View style={[ss.recipientCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
@@ -203,6 +199,12 @@ export default function VtuTransferScreen({ navigation }) {
         <Text style={[ss.hint, { color: tc.subtext }]}>Balance: ₦{balance.toLocaleString()}</Text>
       </View>
 
+      {amountNum > 0 && amountNum < MIN_AMOUNT && (
+        <View style={[ss.errorBadge, { backgroundColor: '#FEF3C7' }]}>
+          <Ionicons name="warning-outline" size={14} color="#D97706" />
+          <Text style={{ fontSize: 12, color: '#D97706' }}>Minimum transfer is ₦{MIN_AMOUNT.toLocaleString()}</Text>
+        </View>
+      )}
       {amountNum > balance && (
         <View style={[ss.errorBadge, { backgroundColor: '#FEE2E2' }]}>
           <Ionicons name="alert-circle-outline" size={14} color="#EF4444" />
@@ -228,7 +230,9 @@ export default function VtuTransferScreen({ navigation }) {
 
       <TouchableOpacity
         style={[ss.nextBtn, { backgroundColor: tc.primary, opacity: canProceed1 ? 1 : 0.4 }]}
-        onPress={() => setStep(2)} disabled={!canProceed1} activeOpacity={0.85}
+        onPress={() => { setPin(''); setShowPayModal(true); }}
+        disabled={!canProceed1}
+        activeOpacity={0.85}
       >
         <Text style={ss.nextBtnText}>Review Transfer</Text>
         <Ionicons name="arrow-forward" size={18} color="#FFF" />
@@ -236,46 +240,7 @@ export default function VtuTransferScreen({ navigation }) {
     </ScrollView>
   );
 
-  const renderStep2 = () => (
-    <ScrollView contentContainerStyle={ss.stepContent} showsVerticalScrollIndicator={false}>
-      <Text style={[ss.stepTitle, { color: tc.heading }]}>Confirm & Enter PIN</Text>
-
-      <View style={[ss.summaryCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-        <SummaryRow label="To"      value={accountName}                    tc={tc} />
-        <SummaryRow label="Bank"    value={selectedBank?.name}             tc={tc} />
-        <SummaryRow label="Account" value={accountNumber}                  tc={tc} />
-        <SummaryRow label="Amount"  value={`₦${amountNum.toLocaleString()}`} tc={tc} highlight />
-        <SummaryRow label="Fee"     value="Free"                           tc={tc} />
-        {narration ? <SummaryRow label="Note" value={narration} tc={tc} /> : null}
-      </View>
-
-      <View style={ss.pinDotsRow}>
-        {[0,1,2,3].map(i => (
-          <View key={i} style={[ss.pinDot, { borderColor: tc.primary, backgroundColor: pin.length > i ? tc.primary : 'transparent' }]} />
-        ))}
-      </View>
-      <Text style={[ss.pinHint, { color: tc.subtext }]}>Enter your 4-digit transaction PIN</Text>
-
-      {loading ? (
-        <ActivityIndicator size="large" color={tc.primary} style={{ marginTop: 32 }} />
-      ) : (
-        <View style={ss.pad}>
-          {PAD.map((key, i) => (
-            <TouchableOpacity
-              key={i}
-              style={[ss.padKey, key === '' && { opacity: 0 }]}
-              onPress={() => handlePinPress(key)}
-              activeOpacity={0.7}
-              disabled={key === ''}
-            >
-              <Text style={[ss.padKeyText, { color: tc.heading }]}>{key}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </ScrollView>
-  );
-
+  // ── Bank picker modal ──────────────────────────────────────────────────────
   const renderBankModal = () => (
     <Modal visible={bankModal} animationType="slide" transparent onRequestClose={() => setBankModal(false)}>
       <TouchableOpacity style={ss.modalOverlay} activeOpacity={1} onPress={() => setBankModal(false)} />
@@ -355,70 +320,80 @@ export default function VtuTransferScreen({ navigation }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {step === 0 && renderStep0()}
         {step === 1 && renderStep1()}
-        {step === 2 && renderStep2()}
       </KeyboardAvoidingView>
 
       {renderBankModal()}
+
+      <PaymentSummaryModal
+        visible={showPayModal}
+        onClose={() => setShowPayModal(false)}
+        tc={tc}
+        title="Transfer Summary"
+        rows={[
+          { label: 'To',        value: accountName },
+          { label: 'Bank',      value: selectedBank?.name },
+          { label: 'Account',   value: accountNumber },
+          { label: 'Narration', value: narration.trim() || `Transfer to ${accountName}` },
+          { label: 'Fee',       value: 'Free' },
+        ]}
+        totalLabel="Amount"
+        totalAmount={amountNum}
+        walletBalance={balance}
+        pin={pin}
+        onPinChange={setPin}
+        onConfirm={handleConfirm}
+        confirmLabel={`Send ₦${amountNum.toLocaleString()}`}
+        loading={loading}
+      />
     </SafeAreaView>
   );
 }
 
-const SummaryRow = ({ label, value, tc, highlight }) => (
-  <View style={ss.summaryRow}>
-    <Text style={[ss.summaryLabel, { color: tc.subheading }]}>{label}</Text>
-    <Text style={[ss.summaryValue, { color: highlight ? tc.primary : tc.heading }]}>{value}</Text>
-  </View>
-);
-
 const ss = StyleSheet.create({
-  safe:             { flex: 1 },
-  header:           { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 16 },
-  backBtn:          { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
-  headerTitle:      { fontSize: 17, fontWeight: '800', color: '#FFF' },
-  headerSub:        { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
-  headerBalance:    { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  headerBalanceText:{ fontSize: 13, fontWeight: '700', color: '#FFF' },
-  progressBar:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  progressItem:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  progressDot:      { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  progressDotText:  { fontSize: 11, fontWeight: '700' },
-  progressLbl:      { fontSize: 11, fontWeight: '600' },
-  progressLine:     { width: 20, height: 2, marginHorizontal: 2 },
-  stepContent:      { padding: 20, gap: 12, paddingBottom: 40 },
-  stepTitle:        { fontSize: 17, fontWeight: '800', marginBottom: 4 },
-  label:            { fontSize: 13, fontWeight: '600', marginTop: 4 },
-  field:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14 },
-  input:            { justifyContent: 'flex-start' },
-  amountInput:      { fontSize: 22, fontWeight: '800' },
-  amountHints:      { flexDirection: 'row', justifyContent: 'space-between' },
-  hint:             { fontSize: 12 },
-  fieldText:        { fontSize: 14 },
-  resolveRow:       { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  resolveText:      { fontSize: 13 },
-  resolveSuccess:   { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
-  resolveNameText:  { fontSize: 13, fontWeight: '700', color: '#15803D', flex: 1 },
-  errorBadge:       { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderRadius: 8 },
-  recipientCard:    { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 8 },
-  recipientIcon:    { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  recipientName:    { fontSize: 15, fontWeight: '700' },
-  recipientMeta:    { fontSize: 12, marginTop: 2 },
-  nextBtn:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 13, marginTop: 8 },
-  nextBtnText:      { fontSize: 15, fontWeight: '800', color: '#FFF' },
-  summaryCard:      { borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
-  summaryRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F0F0F0' },
-  summaryLabel:     { fontSize: 13 },
-  summaryValue:     { fontSize: 13, fontWeight: '700' },
-  pinDotsRow:       { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 24, marginBottom: 8 },
-  pinDot:           { width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
-  pinHint:          { textAlign: 'center', fontSize: 12, marginBottom: 20 },
-  pad:              { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 0 },
-  padKey:           { width: '33.33%', paddingVertical: 18, alignItems: 'center', justifyContent: 'center' },
-  padKeyText:       { fontSize: 22, fontWeight: '600' },
-  modalOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
-  modalSheet:       { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 12, paddingHorizontal: 16 },
-  modalHandle:      { width: 36, height: 4, borderRadius: 2, backgroundColor: '#DDD', alignSelf: 'center', marginBottom: 14 },
-  modalTitle:       { fontSize: 16, fontWeight: '800', marginBottom: 12 },
-  modalSearch:      { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 8 },
-  bankItem:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  bankItemText:     { fontSize: 14 },
+  safe:              { flex: 1 },
+  header:            { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 16 },
+  backBtn:           { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  headerTitle:       { fontSize: 17, fontWeight: '800', color: '#FFF' },
+  headerSub:         { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
+  headerBalance:     { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  headerBalanceText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+
+  progressBar:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  progressItem:      { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  progressDot:       { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  progressDotText:   { fontSize: 11, fontWeight: '700' },
+  progressLbl:       { fontSize: 11, fontWeight: '600' },
+  progressLine:      { width: 20, height: 2, marginHorizontal: 2 },
+
+  stepContent:       { padding: 20, gap: 12, paddingBottom: 40 },
+  stepTitle:         { fontSize: 17, fontWeight: '800', marginBottom: 4 },
+  label:             { fontSize: 13, fontWeight: '600', marginTop: 4 },
+  field:             { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14 },
+  input:             { justifyContent: 'flex-start' },
+  amountInput:       { fontSize: 22, fontWeight: '800' },
+  amountHints:       { flexDirection: 'row', justifyContent: 'space-between' },
+  hint:              { fontSize: 12 },
+  fieldText:         { fontSize: 14 },
+
+  resolveRow:        { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  resolveText:       { fontSize: 13 },
+  resolveSuccess:    { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1 },
+  resolveNameText:   { fontSize: 13, fontWeight: '700', color: '#15803D', flex: 1 },
+  errorBadge:        { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderRadius: 8 },
+
+  recipientCard:     { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 8 },
+  recipientIcon:     { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  recipientName:     { fontSize: 15, fontWeight: '700' },
+  recipientMeta:     { fontSize: 12, marginTop: 2 },
+
+  nextBtn:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 15, borderRadius: 13, marginTop: 8 },
+  nextBtnText:       { fontSize: 15, fontWeight: '800', color: '#FFF' },
+
+  modalOverlay:      { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalSheet:        { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 12, paddingHorizontal: 16 },
+  modalHandle:       { width: 36, height: 4, borderRadius: 2, backgroundColor: '#DDD', alignSelf: 'center', marginBottom: 14 },
+  modalTitle:        { fontSize: 16, fontWeight: '800', marginBottom: 12 },
+  modalSearch:       { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 8 },
+  bankItem:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  bankItemText:      { fontSize: 14 },
 });

@@ -148,13 +148,43 @@ const NameInput = React.memo(({ optLabel, value, onChange, tc }) => {
 });
 
 // ComplianceChecker: manual compliance check for both names — defined OUTSIDE CACScreen
-const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onChipPress2, onSupportingDocRequired }) => {
+const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onChipPress2, onSupportingDocRequired, onResult }) => {
   const [result1,     setResult1]     = useState(null);
   const [result2,     setResult2]     = useState(null);
   const [checking,    setChecking]    = useState(false);
   const [expanded,    setExpanded]    = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const [unavailMsg,  setUnavailMsg]  = useState('');
+
+  const parseScore = (s) => {
+    if (!s) return null;
+    const n = parseFloat(String(s).replace('%', ''));
+    return isNaN(n) ? null : n;
+  };
+
+  const parse = (r) => {
+    if (!r) return null;
+    const outer = r?.data || r;       // { statusCode: 200, message: "...", data: { complianceScore, similarityScore, ... } }
+    const inner = outer?.data || {};   // { complianceScore: "50.0%", similarityScore: "81.8%", mostSimilarName: "..." }
+
+    const complianceScore = parseScore(inner.complianceScore);
+    const similarityScore = parseScore(inner.similarityScore);
+    const httpOk = outer.statusCode === 200 || outer.success === true;
+
+    const passed = httpOk && (complianceScore === null || complianceScore >= 70);
+    const warn   = httpOk && complianceScore !== null && complianceScore >= 40 && complianceScore < 70;
+    const failed = !httpOk || (complianceScore !== null && complianceScore < 40);
+
+    return {
+      message:         outer.message || (httpOk ? 'Name check completed.' : 'Name check failed.'),
+      complianceScore,
+      similarityScore,
+      mostSimilarName: inner.mostSimilarName || null,
+      passed,
+      warn,
+      failed,
+    };
+  };
 
   const runCheck = async () => {
     if (!name1?.trim() && !name2?.trim()) {
@@ -170,25 +200,18 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
         name2?.trim() ? cacCheckCompliance(name2.trim(), lob || '') : Promise.resolve(null),
       ]);
 
-      // Handle graceful "not available" response from backend (403 from VAS)
       const anyUnavailable = r1?.unavailable || r2?.unavailable;
       if (anyUnavailable) {
         setUnavailable(true);
         setUnavailMsg(r1?.message || r2?.message || 'Compliance check is not available for your account.');
         setExpanded(true);
+        onResult?.(null, null);
         return;
       }
 
-      const parse = (r) => {
-        if (!r) return null;
-        const d = r?.data || r;
-        return { code: String(d?.statusCode ?? d?.data?.statusCode ?? ''), data: d };
-      };
       const p1 = parse(r1), p2 = parse(r2);
       setResult1(p1); setResult2(p2);
-      if (p1?.code === '03' || p1?.code === '04' || p2?.code === '03' || p2?.code === '04') {
-        onSupportingDocRequired?.();
-      }
+      onResult?.(p1, p2);
       setExpanded(true);
     } catch (e) {
       Alert.alert('Check failed', e.message || 'Could not run compliance check. Please try again.');
@@ -197,111 +220,70 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
     }
   };
 
-  const ResultCard = ({ name, result, onChip }) => {
+  const ResultCard = ({ name, result }) => {
     if (!result) return null;
-    const msg     = COMPLIANCE_MESSAGES[result.code];
-    const score   = result.data?.complianceScorePercentage ?? result.data?.data?.complianceScorePercentage;
-    const simScore= result.data?.similarityScorePercentage ?? result.data?.data?.similarityScorePercentage;
-    const chips   = result.data?.recommendedActions?.[0]?.keywords || result.data?.data?.recommendedActions?.[0]?.keywords || [];
-    const suggested = result.data?.suggestedNames || result.data?.data?.suggestedNames || [];
-    const similar   = result.data?.similarNames   || result.data?.data?.similarNames   || [];
+    const statusColor = result.passed ? '#4ADE80' : result.warn ? '#FDE68A' : '#FCA5A5';
+    const icon  = result.passed ? 'checkmark-circle' : result.warn ? 'warning' : 'close-circle';
+    const label = result.passed ? 'Passed' : result.warn ? 'Warning' : 'Failed';
 
-    const statusColor = msg?.canProceed === true ? '#4ADE80' : msg?.canProceed === false ? '#FCA5A5' : '#FDE68A';
     return (
       <View style={ss.compCard}>
         <View style={ss.compCardHeader}>
           <View style={{ flex: 1 }}>
             <Text style={ss.compCardName} numberOfLines={1}>{name}</Text>
           </View>
-          <View style={[ss.compBadge, { backgroundColor: msg?.canProceed ? 'rgba(74,222,128,0.25)' : 'rgba(252,165,165,0.25)' }]}>
-            <Text style={[ss.compBadgeText, { color: statusColor }]}>{result.code}</Text>
+          <View style={[ss.compBadge, { backgroundColor: `${statusColor}25`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+            <Ionicons name={icon} size={13} color={statusColor} />
+            <Text style={[ss.compBadgeText, { color: statusColor }]}>{label}</Text>
           </View>
         </View>
 
-        {msg && (
-          <View style={[ss.compStatusRow, { borderLeftColor: statusColor }]}>
-            <Ionicons name={msg.canProceed ? 'checkmark-circle' : 'alert-circle'} size={15} color={statusColor} />
-            <Text style={[ss.compStatusText, { color: statusColor }]}>{msg.label}</Text>
-          </View>
-        )}
+        <View style={[ss.compStatusRow, { borderLeftColor: statusColor }]}>
+          <Ionicons name={icon} size={15} color={statusColor} />
+          <Text style={[ss.compStatusText, { color: statusColor }]}>{result.message}</Text>
+        </View>
 
         {/* Scores */}
-        {(score !== undefined || simScore !== undefined) && (
+        {(result.complianceScore !== null || result.similarityScore !== null) && (
           <View style={ss.scoreRow}>
-            {score !== undefined && (
+            {result.complianceScore !== null && (
               <View style={ss.scoreItem}>
                 <View style={ss.scoreLabelPill}>
                   <Ionicons name="analytics-outline" size={11} color="rgba(255,255,255,0.7)" />
                   <Text style={ss.scoreLabel}>Compliance Score</Text>
                 </View>
                 <View style={ss.scoreBarTrack}>
-                  <View style={[ss.scoreFill, { width: `${Math.min(score, 100)}%`, backgroundColor: score >= 70 ? '#4ADE80' : score >= 40 ? '#FDE68A' : '#FCA5A5' }]} />
+                  <View style={[ss.scoreFill, { width: `${Math.min(result.complianceScore, 100)}%`, backgroundColor: result.complianceScore >= 70 ? '#4ADE80' : result.complianceScore >= 40 ? '#FDE68A' : '#FCA5A5' }]} />
                 </View>
-                <Text style={[ss.scoreVal, { color: score >= 70 ? '#4ADE80' : score >= 40 ? '#FDE68A' : '#FCA5A5' }]}>{score?.toFixed(1)}%</Text>
+                <Text style={[ss.scoreVal, { color: result.complianceScore >= 70 ? '#4ADE80' : result.complianceScore >= 40 ? '#FDE68A' : '#FCA5A5' }]}>{result.complianceScore.toFixed(1)}%</Text>
               </View>
             )}
-            {simScore !== undefined && (
+            {result.similarityScore !== null && (
               <View style={ss.scoreItem}>
                 <View style={ss.scoreLabelPill}>
                   <Ionicons name="git-compare-outline" size={11} color="rgba(255,255,255,0.7)" />
                   <Text style={ss.scoreLabel}>Similarity Score</Text>
                 </View>
                 <View style={ss.scoreBarTrack}>
-                  <View style={[ss.scoreFill, { width: `${Math.min(simScore, 100)}%`, backgroundColor: '#FDE68A' }]} />
+                  <View style={[ss.scoreFill, { width: `${Math.min(result.similarityScore, 100)}%`, backgroundColor: result.similarityScore <= 70 ? '#4ADE80' : result.similarityScore <= 85 ? '#FDE68A' : '#FCA5A5' }]} />
                 </View>
-                <Text style={[ss.scoreVal, { color: '#FDE68A' }]}>{simScore?.toFixed(1)}%</Text>
+                <Text style={[ss.scoreVal, { color: result.similarityScore <= 70 ? '#4ADE80' : result.similarityScore <= 85 ? '#FDE68A' : '#FCA5A5' }]}>{result.similarityScore.toFixed(1)}%</Text>
               </View>
             )}
           </View>
         )}
 
-        {/* Qualifier chips */}
-        {chips.length > 0 && (
-          <View style={{ marginTop: 10 }}>
-            <View style={ss.chipSectionLabel}>
-              <Ionicons name="add-circle-outline" size={12} color="rgba(255,255,255,0.6)" />
-              <Text style={ss.chipSectionLabelText}>Suggested qualifiers — tap to append</Text>
-            </View>
-            <View style={ss.chipRow}>
-              {chips.slice(0, 6).map((c, i) => (
-                <TouchableOpacity key={i} style={ss.chip} onPress={() => onChip?.(`${name} ${c}`)}>
-                  <Text style={ss.chipT}>+ {c}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Suggested names */}
-        {suggested.length > 0 && (
-          <View style={{ marginTop: 10 }}>
-            <View style={ss.chipSectionLabel}>
-              <Ionicons name="bulb-outline" size={12} color="rgba(255,255,255,0.6)" />
-              <Text style={ss.chipSectionLabelText}>Suggested alternatives</Text>
-            </View>
-            <View style={ss.chipRow}>
-              {suggested.slice(0, 4).map((n, i) => (
-                <TouchableOpacity key={i} style={[ss.chip, ss.chipGreen]} onPress={() => onChip?.(n)}>
-                  <Text style={[ss.chipT, { color: '#4ADE80' }]}>{n}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Similar names */}
-        {similar.length > 0 && (
-          <View style={{ marginTop: 10 }}>
+        {/* Most similar existing name */}
+        {result.mostSimilarName && (
+          <View style={{ marginTop: 8 }}>
             <View style={ss.chipSectionLabel}>
               <Ionicons name="copy-outline" size={12} color="rgba(255,255,255,0.6)" />
-              <Text style={ss.chipSectionLabelText}>Similar existing names</Text>
+              <Text style={ss.chipSectionLabelText}>Most similar existing name</Text>
             </View>
-            {similar.slice(0, 3).map((n, i) => (
-              <View key={i} style={ss.similarRow}>
-                <Ionicons name="business-outline" size={13} color="rgba(255,255,255,0.5)" />
-                <Text style={ss.similarText}>{n}</Text>
-              </View>
-            ))}
+            <View style={ss.similarRow}>
+              <Ionicons name="business-outline" size={13} color="rgba(255,255,255,0.5)" />
+              <Text style={ss.similarText}>{result.mostSimilarName}</Text>
+            </View>
           </View>
         )}
       </View>
@@ -579,7 +561,8 @@ export default function CACScreen({ navigation }) {
   const [preCheckUnavail,  setPreCheckUnavail]  = useState(false);
   const [preCheckUnavailMsg, setPreCheckUnavailMsg] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
-  const [tipExpanded,   setTipExpanded]   = useState(false);
+  const [tipExpanded,       setTipExpanded]       = useState(false);
+  const [compliancePassed,  setCompliancePassed]  = useState(false);
 
   // Load saved draft on mount; try to re-encode image URIs immediately
   useEffect(() => {
@@ -809,7 +792,15 @@ export default function CACScreen({ navigation }) {
         onChipPress1={v => setField('proposedOption1', v)}
         onChipPress2={v => setField('proposedOption2', v)}
         onSupportingDocRequired={() => setField('requiresSupportingDoc', true)}
+        onResult={(p1, p2) => {
+          setCompliancePassed(
+            !!(p1 && !p1.failed) && !!(p2 && !p2.failed)
+          );
+        }}
       />
+
+      {/* Industry & Operations and below — only revealed after compliance passes */}
+      {compliancePassed && <>
 
       {/* Industry & Operations card */}
       <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
@@ -851,6 +842,8 @@ export default function CACScreen({ navigation }) {
         <View style={ss.summRow}><Text style={[ss.summLabel, { color: tc.subheading }]}>Service Charge</Text><Text style={[ss.summVal, { color: tc.heading }]}>{formatCurrency(form.priorityService ? 3000 : 5000, 'NGN')}</Text></View>
         <View style={[ss.summRow, ss.totalRow]}><Text style={[ss.totalLabel, { color: tc.heading }]}>Total</Text><Text style={[ss.totalAmt, { color: tc.primary }]}>{formatCurrency(fee, 'NGN')}</Text></View>
       </View>
+
+      </>}
     </ScrollView>
   );
 

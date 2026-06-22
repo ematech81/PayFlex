@@ -556,7 +556,7 @@ const FIELD_LABEL = {
   proprietorFirstname: 'First Name', proprietorOthername: 'Other Name',
   proprietorSurname: 'Surname', proprietorGender: 'Gender', proprietorDob: 'Date of Birth',
   proprietorNationality: 'Nationality', proprietorPhonenumber: 'Phone Number',
-  proprietorEmail: 'Email', proprietorStreetNumber: 'Street Number',
+  proprietorEmail: 'Email', proprietorStreetNumber: 'Street Number', proprietorNumber: 'Street Number',
   proprietorServiceAddress: 'Service Address', proprietorCity: 'City',
   proprietorState: 'State', proprietorLga: 'LGA', proprietorPostcode: 'Postcode',
   companyEmail: 'Company Email', companyStreetNumber: 'Company Street No.',
@@ -567,7 +567,7 @@ const FIELD_STEP = {
   lineOfBusiness: 2, businessCommencementDate: 2,
   proprietorFirstname: 3, proprietorOthername: 3, proprietorSurname: 3, proprietorGender: 3,
   proprietorDob: 3, proprietorNationality: 3, proprietorPhonenumber: 3, proprietorEmail: 3,
-  proprietorStreetNumber: 3, proprietorServiceAddress: 3, proprietorCity: 3,
+  proprietorStreetNumber: 3, proprietorNumber: 3, proprietorServiceAddress: 3, proprietorCity: 3,
   proprietorState: 3, proprietorLga: 3, proprietorPostcode: 3,
   companyEmail: 4, companyStreetNumber: 4, companyAddress: 4, companyCity: 4, companyState: 4,
 };
@@ -680,6 +680,7 @@ export default function CACScreen({ navigation }) {
       else if (getAge(form.proprietorDob) < 18) m.push('Date of Birth (must be 18+)');
       if (!form.proprietorPhonenumber)    m.push('Phone Number');
       if (!form.proprietorEmail)          m.push('Email');
+      if (!form.proprietorStreetNumber)   m.push('Street Number');
       if (!form.proprietorServiceAddress) m.push('Service Address');
       if (!form.proprietorCity)           m.push('City');
       if (!form.proprietorState)          m.push('State');

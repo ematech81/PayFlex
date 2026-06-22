@@ -1585,13 +1585,13 @@ export default function CACScreen({ navigation }) {
         onPress={() => Linking.openURL('https://wa.me/2349011495230?text=Hello%2C%20I%20need%20help%20with%20my%20CAC%20Business%20Registration%20on%20PayFlex')}
         activeOpacity={0.85}
       >
-        <Ionicons name="logo-whatsapp" size={16} color="#FFF" />
+        <Ionicons name="logo-whatsapp" size={13} color="#FFF" />
         <Text style={ss.helpFloatText}>Need Help?</Text>
       </TouchableOpacity>
 
       {/* Bottom nav — hidden on step 1 (Yes/No handles navigation) and step 6 (review/submit) */}
       {step > 1 && step < 6 && (
-        <View style={[ss.nav, { backgroundColor: tc.background, borderTopColor: tc.border || '#E5E5EA', paddingBottom: insets.bottom + 4 }]}>
+        <View style={[ss.nav, { backgroundColor: tc.background, borderTopColor: tc.border || '#E5E5EA', paddingBottom: insets.bottom + 2 }]}>
 
           <View style={ss.navRow}>
             <TouchableOpacity
@@ -1745,11 +1745,11 @@ const ss = StyleSheet.create({
   sheetHandle:  { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
   sheetTitle:   { fontSize: 16, fontWeight: '700', paddingHorizontal: 20, paddingBottom: 12 },
   sheetRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  nav:          { paddingHorizontal: 16, paddingTop: 8, borderTopWidth: 1 },
+  nav:          { paddingHorizontal: 16, paddingTop: 6, borderTopWidth: 1 },
   navRow:       { flexDirection: 'row', gap: 8 },
-  nextBtn:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 11, borderRadius: 11 },
+  nextBtn:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 9, borderRadius: 10 },
   nextTxt:      { color: '#FFF', fontSize: 13, fontWeight: '700' },
-  prevBtn:      { flex: 0.45, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 11, borderRadius: 11, borderWidth: 1 },
+  prevBtn:      { flex: 0.45, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 9, borderRadius: 10, borderWidth: 1 },
   prevTxt:      { fontSize: 13, fontWeight: '500' },
   // ID type selector (Step 4)
   idSection:       { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 14 },
@@ -1832,8 +1832,8 @@ const ss = StyleSheet.create({
   draftBanner:    { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#E8F5E9', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#C8E6C9' },
   draftBannerText:{ flex: 1, fontSize: 12, color: '#2E7D32', fontWeight: '500' },
   // "Need Help?" floating button
-  helpFloat:      { position: 'absolute', right: 16, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#25D366', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, zIndex: 999 },
-  helpFloatText:  { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  helpFloat:      { position: 'absolute', right: 16, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#25D366', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, zIndex: 999 },
+  helpFloatText:  { color: '#FFF', fontSize: 11, fontWeight: '700' },
   // ComplianceChecker — flat label style (no background)
   compCheckerWrap:    { marginBottom: 14 },
   compCheckerLabelRow:{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },

@@ -407,7 +407,7 @@ const ImageUpload = React.memo(({ label, subtitle, required, value, fileName, fi
   const pick = async () => {
     const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (p.status !== 'granted') { Alert.alert('Permission needed', 'Allow photo library access.'); return; }
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85, base64: true, allowsEditing: false });
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85, base64: true, allowsEditing: false });
     if (r.canceled) return;
     const a  = r.assets[0];
     const kb = a.fileSize ? a.fileSize / 1024 : (a.base64?.length * 0.75) / 1024;
@@ -767,7 +767,10 @@ export default function CACScreen({ navigation }) {
 
   const preCheckPassed = preCheckDone && (
     preCheckUnavail ||
-    Object.keys(preCheckErrors).filter(k => preCheckErrors[k]?.length > 0).length === 0
+    Object.keys(preCheckErrors).filter(k => {
+      const v = preCheckErrors[k];
+      return Array.isArray(v) ? v.length > 0 : !!v;
+    }).length === 0
   );
 
   // ── Submit ───────────────────────────────────────────────────────────────
@@ -1390,7 +1393,8 @@ export default function CACScreen({ navigation }) {
           {preCheckDone && Object.keys(preCheckErrors).length > 0 && (
             <View style={ss.preCheckErrors}>
               {Object.entries(preCheckErrors)
-                .filter(([, errs]) => errs?.length > 0)
+                .map(([field, raw]) => [field, Array.isArray(raw) ? raw : (raw ? [String(raw)] : [])])
+                .filter(([, errs]) => errs.length > 0)
                 .map(([field, errs]) => {
                   const label   = FIELD_LABEL[field] || field;
                   const stepNum = FIELD_STEP[field];

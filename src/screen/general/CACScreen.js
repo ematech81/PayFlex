@@ -756,7 +756,14 @@ export default function CACScreen({ navigation }) {
       }
 
       const vasBody = res?.data || {};          // VAS response: { statusCode, data, success }
-      const errors  = vasBody?.data || {};      // actual field errors: { proprietorDob: [...] }
+      const rawErrors = vasBody?.data || {};    // actual field errors: { proprietorDob: [...] }
+      // Image fields are stripped server-side before sending to VAS, so VAS always
+      // reports them as "missing key". Filter them out — they are validated client-side.
+      const IMAGE_KEYS = new Set(['passport', 'meansOfId', 'signature', 'supportingDoc',
+                                   'proprietorProofOfAddress', 'businessProofOfAddress']);
+      const errors = Object.fromEntries(
+        Object.entries(rawErrors).filter(([k]) => !IMAGE_KEYS.has(k))
+      );
       setPreCheckErrors(errors);
       setPreCheckDone(true);
     } catch (e) {

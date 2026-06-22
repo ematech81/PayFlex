@@ -621,6 +621,7 @@ export default function CACScreen({ navigation }) {
   const [draftRestored, setDraftRestored] = useState(false);
   const [tipExpanded,       setTipExpanded]       = useState(false);
   const [compliancePassed,  setCompliancePassed]  = useState(false);
+  const [idDropOpen,        setIdDropOpen]        = useState(false);
 
   // Load saved draft on mount; try to re-encode image URIs immediately
   useEffect(() => {
@@ -1076,7 +1077,7 @@ export default function CACScreen({ navigation }) {
           />
         </View>
 
-        {/* 1 — Means of ID: select type first, then upload appears */}
+        {/* 1 — Means of ID: dropdown select, then upload */}
         <View style={[ss.idSection, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
           <View style={ss.idSectionHeader}>
             <Ionicons name="shield-checkmark-outline" size={18} color={tc.primary} />
@@ -1085,45 +1086,58 @@ export default function CACScreen({ navigation }) {
               <Text style={[ss.requiredBadgeText, { color: tc.primary }]}>REQUIRED</Text>
             </View>
           </View>
-          <Text style={[ss.idSectionSub, { color: tc.subheading }]}>
-            Select one of the government-issued IDs accepted by CAC Nigeria:
-          </Text>
 
-          {ID_TYPES.map((idType) => {
-            const isSelected = form.selectedIdType === idType.key;
-            return (
-              <TouchableOpacity
-                key={idType.key}
-                style={[ss.idTypeRow, {
-                  backgroundColor: isSelected ? `${tc.primary}10` : tc.background,
-                  borderColor: isSelected ? tc.primary : tc.border || '#E5E5EA',
-                  borderWidth: isSelected ? 1.5 : 1,
-                }]}
-                onPress={() => {
-                  if (form.selectedIdType !== idType.key) {
-                    setField('meansOfId', null); setField('meansOfIdKB', 0);
-                    setField('meansOfIdName', ''); setField('meansOfIdUri', '');
-                  }
-                  setField('selectedIdType', idType.key);
-                }}
-                activeOpacity={0.8}
-              >
-                <View style={[ss.idTypeIcon, { backgroundColor: isSelected ? `${tc.primary}20` : `${tc.subtext}12` }]}>
-                  <Ionicons name={idType.icon} size={20} color={isSelected ? tc.primary : tc.subtext} />
-                </View>
-                <Text style={[ss.idTypeLabel, { color: isSelected ? tc.primary : tc.heading, fontWeight: isSelected ? '700' : '500' }]}>
-                  {idType.label}
-                </Text>
-                {isSelected
-                  ? <Ionicons name="checkmark-circle" size={20} color={tc.primary} />
-                  : <Ionicons name="chevron-forward" size={18} color={tc.subtext} />
-                }
-              </TouchableOpacity>
-            );
-          })}
+          {/* Dropdown trigger */}
+          <TouchableOpacity
+            style={[ss.inp, { backgroundColor: tc.background, borderColor: selectedId ? tc.primary : tc.border || '#E5E5EA', flexDirection: 'row', alignItems: 'center', borderWidth: selectedId ? 1.5 : 1 }]}
+            onPress={() => setIdDropOpen(true)} activeOpacity={0.8}
+          >
+            {selectedId
+              ? <><Ionicons name={selectedId.icon} size={16} color={tc.primary} style={{ marginRight: 8 }} /><Text style={{ flex: 1, fontSize: 15, color: tc.heading, fontWeight: '600' }}>{selectedId.label}</Text></>
+              : <Text style={{ flex: 1, fontSize: 15, color: tc.subtext }}>Select means of identification</Text>
+            }
+            <Ionicons name="chevron-down" size={18} color={tc.subtext} />
+          </TouchableOpacity>
 
+          {/* Bottom-sheet modal */}
+          <Modal visible={idDropOpen} animationType="slide" transparent>
+            <TouchableOpacity style={ss.overlay} onPress={() => setIdDropOpen(false)} activeOpacity={1}>
+              <View style={[ss.sheet, { backgroundColor: tc.card }]}>
+                <View style={[ss.sheetHandle, { backgroundColor: tc.border || '#E5E5EA' }]} />
+                <Text style={[ss.sheetTitle, { color: tc.heading }]}>Select Means of Identification</Text>
+                <FlatList
+                  data={ID_TYPES}
+                  keyExtractor={i => i.key}
+                  renderItem={({ item }) => {
+                    const isSel = form.selectedIdType === item.key;
+                    return (
+                      <TouchableOpacity
+                        style={[ss.sheetRow, { borderBottomColor: tc.border || '#F0F0F0' }, isSel && { backgroundColor: `${tc.primary}10` }]}
+                        onPress={() => {
+                          if (form.selectedIdType !== item.key) {
+                            setField('meansOfId', null); setField('meansOfIdKB', 0);
+                            setField('meansOfIdName', ''); setField('meansOfIdUri', '');
+                          }
+                          setField('selectedIdType', item.key);
+                          setIdDropOpen(false);
+                        }}
+                      >
+                        <View style={[ss.idTypeIcon, { backgroundColor: isSel ? `${tc.primary}20` : `${tc.subtext}12` }]}>
+                          <Ionicons name={item.icon} size={18} color={isSel ? tc.primary : tc.subtext} />
+                        </View>
+                        <Text style={[{ flex: 1, fontSize: 15, color: tc.heading }, isSel && { color: tc.primary, fontWeight: '700' }]}>{item.label}</Text>
+                        {isSel && <Ionicons name="checkmark-circle" size={18} color={tc.primary} />}
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+              </View>
+            </TouchableOpacity>
+          </Modal>
+
+          {/* Upload appears after selection */}
           {selectedId && (
-            <View style={[ss.idUploadCard, { backgroundColor: tc.background, borderColor: tc.border || '#E5E5EA' }]}>
+            <View style={[ss.idUploadCard, { backgroundColor: tc.background, borderColor: tc.border || '#E5E5EA', marginTop: 12 }]}>
               <View style={[ss.idTipRow, { backgroundColor: `${tc.primary}10` }]}>
                 <Ionicons name="bulb-outline" size={15} color={tc.primary} />
                 <Text style={[ss.idTipText, { color: tc.primary }]}>{selectedId.tip}</Text>
@@ -1581,7 +1595,7 @@ export default function CACScreen({ navigation }) {
 
       {/* "Need Help?" floating button — visible on all steps, clears nav + tab bar */}
       <TouchableOpacity
-        style={[ss.helpFloat, { bottom: insets.bottom + (step < 6 ? 90 : 40) }]}
+        style={[ss.helpFloat, { bottom: insets.bottom + (step < 6 ? 45 : 20) }]}
         onPress={() => Linking.openURL('https://wa.me/2349011495230?text=Hello%2C%20I%20need%20help%20with%20my%20CAC%20Business%20Registration%20on%20PayFlex')}
         activeOpacity={0.85}
       >

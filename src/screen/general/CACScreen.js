@@ -148,11 +148,10 @@ const NameInput = React.memo(({ optLabel, value, onChange, tc }) => {
 });
 
 // ComplianceChecker: manual compliance check for both names — defined OUTSIDE CACScreen
-const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onChipPress2, onSupportingDocRequired, onResult }) => {
+const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRequired, onResult, onProceed }) => {
   const [result1,     setResult1]     = useState(null);
   const [result2,     setResult2]     = useState(null);
   const [checking,    setChecking]    = useState(false);
-  const [expanded,    setExpanded]    = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const [unavailMsg,  setUnavailMsg]  = useState('');
 
@@ -164,25 +163,19 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
 
   const parse = (r) => {
     if (!r) return null;
-    const outer = r?.data || r;       // { statusCode: 200, message: "...", data: { complianceScore, similarityScore, ... } }
-    const inner = outer?.data || {};   // { complianceScore: "50.0%", similarityScore: "81.8%", mostSimilarName: "..." }
-
+    const outer = r?.data || r;
+    const inner = outer?.data || {};
     const complianceScore = parseScore(inner.complianceScore);
     const similarityScore = parseScore(inner.similarityScore);
     const httpOk = outer.statusCode === 200 || outer.success === true;
-
-    const passed = httpOk && (complianceScore === null || complianceScore >= 70);
-    const warn   = httpOk && complianceScore !== null && complianceScore >= 40 && complianceScore < 70;
-    const failed = !httpOk || (complianceScore !== null && complianceScore < 40);
-
     return {
       message:         outer.message || (httpOk ? 'Name check completed.' : 'Name check failed.'),
       complianceScore,
       similarityScore,
       mostSimilarName: inner.mostSimilarName || null,
-      passed,
-      warn,
-      failed,
+      passed:  httpOk && (complianceScore === null || complianceScore >= 70),
+      warn:    httpOk && complianceScore !== null && complianceScore >= 40 && complianceScore < 70,
+      failed: !httpOk || (complianceScore !== null && complianceScore < 40),
     };
   };
 
@@ -199,20 +192,15 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
         name1?.trim() ? cacCheckCompliance(name1.trim(), lob || '') : Promise.resolve(null),
         name2?.trim() ? cacCheckCompliance(name2.trim(), lob || '') : Promise.resolve(null),
       ]);
-
-      const anyUnavailable = r1?.unavailable || r2?.unavailable;
-      if (anyUnavailable) {
+      if (r1?.unavailable || r2?.unavailable) {
         setUnavailable(true);
         setUnavailMsg(r1?.message || r2?.message || 'Compliance check is not available for your account.');
-        setExpanded(true);
         onResult?.(null, null);
         return;
       }
-
       const p1 = parse(r1), p2 = parse(r2);
       setResult1(p1); setResult2(p2);
       onResult?.(p1, p2);
-      setExpanded(true);
     } catch (e) {
       Alert.alert('Check failed', e.message || 'Could not run compliance check. Please try again.');
     } finally {
@@ -220,69 +208,106 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
     }
   };
 
+  const clearResults = () => {
+    setResult1(null); setResult2(null);
+    setUnavailable(false); setUnavailMsg('');
+    onResult?.(null, null);
+  };
+
+  const ScoreExplainer = ({ score, type }) => {
+    if (score === null || score === undefined) return null;
+    let color, text;
+    if (type === 'compliance') {
+      if (score >= 70) {
+        color = '#15803D';
+        text  = `${score.toFixed(0)}% — Your name fully meets CAC naming standards. This is a strong choice.`;
+      } else if (score >= 40) {
+        color = '#92400E';
+        text  = `${score.toFixed(0)}% — Your name partially meets CAC standards. It may still be approved, but CAC could request minor changes.`;
+      } else {
+        color = '#991B1B';
+        text  = `${score.toFixed(0)}% — Your name does not meet CAC standards. We strongly recommend choosing a different name.`;
+      }
+    } else {
+      if (score <= 50) {
+        color = '#15803D';
+        text  = `${score.toFixed(0)}% — No similar name found. Your name is very unique — excellent!`;
+      } else if (score <= 80) {
+        color = '#92400E';
+        text  = `${score.toFixed(0)}% — A business with a similar name exists. CAC will review carefully, but your name may still be registered.`;
+      } else {
+        color = '#991B1B';
+        text  = `${score.toFixed(0)}% — Your name is very similar to an existing business. CAC may reject it. Consider a more unique name.`;
+      }
+    }
+    return (
+      <View style={[ss.scoreExplain, { backgroundColor: `${color}12`, borderColor: `${color}30` }]}>
+        <Text style={[ss.scoreExplainText, { color }]}>{text}</Text>
+      </View>
+    );
+  };
+
   const ResultCard = ({ name, result }) => {
     if (!result) return null;
-    const statusColor = result.passed ? '#4ADE80' : result.warn ? '#FDE68A' : '#FCA5A5';
+    const statusColor = result.passed ? '#16A34A' : result.warn ? '#D97706' : '#DC2626';
+    const bgColor     = result.passed ? '#F0FDF4' : result.warn ? '#FFFBEB' : '#FEF2F2';
+    const borderColor = result.passed ? '#86EFAC' : result.warn ? '#FDE68A' : '#FECACA';
     const icon  = result.passed ? 'checkmark-circle' : result.warn ? 'warning' : 'close-circle';
-    const label = result.passed ? 'Passed' : result.warn ? 'Warning' : 'Failed';
+    const label = result.passed ? 'Passed' : result.warn ? 'Needs Review' : 'Failed';
 
     return (
-      <View style={ss.compCard}>
+      <View style={[ss.compCard, { backgroundColor: bgColor, borderColor }]}>
+        {/* Name + verdict badge */}
         <View style={ss.compCardHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={ss.compCardName} numberOfLines={1}>{name}</Text>
+            <Text style={[ss.compCardName, { color: '#1E293B' }]} numberOfLines={1}>{name}</Text>
           </View>
-          <View style={[ss.compBadge, { backgroundColor: `${statusColor}25`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+          <View style={[ss.compBadge, { backgroundColor: `${statusColor}18`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
             <Ionicons name={icon} size={13} color={statusColor} />
             <Text style={[ss.compBadgeText, { color: statusColor }]}>{label}</Text>
           </View>
         </View>
 
-        <View style={[ss.compStatusRow, { borderLeftColor: statusColor }]}>
-          <Ionicons name={icon} size={15} color={statusColor} />
+        {/* API message */}
+        <View style={[ss.compStatusRow, { borderLeftColor: statusColor, borderLeftWidth: 3 }]}>
           <Text style={[ss.compStatusText, { color: statusColor }]}>{result.message}</Text>
         </View>
 
-        {/* Scores */}
-        {(result.complianceScore !== null || result.similarityScore !== null) && (
-          <View style={ss.scoreRow}>
-            {result.complianceScore !== null && (
-              <View style={ss.scoreItem}>
-                <View style={ss.scoreLabelPill}>
-                  <Ionicons name="analytics-outline" size={11} color="rgba(255,255,255,0.7)" />
-                  <Text style={ss.scoreLabel}>Compliance Score</Text>
-                </View>
-                <View style={ss.scoreBarTrack}>
-                  <View style={[ss.scoreFill, { width: `${Math.min(result.complianceScore, 100)}%`, backgroundColor: result.complianceScore >= 70 ? '#4ADE80' : result.complianceScore >= 40 ? '#FDE68A' : '#FCA5A5' }]} />
-                </View>
-                <Text style={[ss.scoreVal, { color: result.complianceScore >= 70 ? '#4ADE80' : result.complianceScore >= 40 ? '#FDE68A' : '#FCA5A5' }]}>{result.complianceScore.toFixed(1)}%</Text>
-              </View>
-            )}
-            {result.similarityScore !== null && (
-              <View style={ss.scoreItem}>
-                <View style={ss.scoreLabelPill}>
-                  <Ionicons name="git-compare-outline" size={11} color="rgba(255,255,255,0.7)" />
-                  <Text style={ss.scoreLabel}>Similarity Score</Text>
-                </View>
-                <View style={ss.scoreBarTrack}>
-                  <View style={[ss.scoreFill, { width: `${Math.min(result.similarityScore, 100)}%`, backgroundColor: result.similarityScore <= 70 ? '#4ADE80' : result.similarityScore <= 85 ? '#FDE68A' : '#FCA5A5' }]} />
-                </View>
-                <Text style={[ss.scoreVal, { color: result.similarityScore <= 70 ? '#4ADE80' : result.similarityScore <= 85 ? '#FDE68A' : '#FCA5A5' }]}>{result.similarityScore.toFixed(1)}%</Text>
-              </View>
-            )}
+        {/* Compliance Score */}
+        {result.complianceScore !== null && (
+          <View style={ss.scoreItem}>
+            <View style={[ss.scoreLabelPill, { backgroundColor: `${statusColor}15` }]}>
+              <Ionicons name="analytics-outline" size={11} color={statusColor} />
+              <Text style={[ss.scoreLabel, { color: statusColor }]}>Compliance Score</Text>
+            </View>
+            <View style={[ss.scoreBarTrack, { backgroundColor: '#E2E8F0' }]}>
+              <View style={[ss.scoreFill, { width: `${Math.min(result.complianceScore, 100)}%`, backgroundColor: result.complianceScore >= 70 ? '#16A34A' : result.complianceScore >= 40 ? '#D97706' : '#DC2626' }]} />
+            </View>
+            <ScoreExplainer score={result.complianceScore} type="compliance" />
+          </View>
+        )}
+
+        {/* Similarity Score */}
+        {result.similarityScore !== null && (
+          <View style={[ss.scoreItem, { marginTop: 10 }]}>
+            <View style={[ss.scoreLabelPill, { backgroundColor: result.similarityScore <= 50 ? '#F0FDF4' : result.similarityScore <= 80 ? '#FFFBEB' : '#FEF2F2' }]}>
+              <Ionicons name="git-compare-outline" size={11} color={result.similarityScore <= 50 ? '#16A34A' : result.similarityScore <= 80 ? '#D97706' : '#DC2626'} />
+              <Text style={[ss.scoreLabel, { color: result.similarityScore <= 50 ? '#16A34A' : result.similarityScore <= 80 ? '#D97706' : '#DC2626' }]}>Similarity Score</Text>
+            </View>
+            <View style={[ss.scoreBarTrack, { backgroundColor: '#E2E8F0' }]}>
+              <View style={[ss.scoreFill, { width: `${Math.min(result.similarityScore, 100)}%`, backgroundColor: result.similarityScore <= 50 ? '#16A34A' : result.similarityScore <= 80 ? '#D97706' : '#DC2626' }]} />
+            </View>
+            <ScoreExplainer score={result.similarityScore} type="similarity" />
           </View>
         )}
 
         {/* Most similar existing name */}
         {result.mostSimilarName && (
-          <View style={{ marginTop: 8 }}>
-            <View style={ss.chipSectionLabel}>
-              <Ionicons name="copy-outline" size={12} color="rgba(255,255,255,0.6)" />
-              <Text style={ss.chipSectionLabelText}>Most similar existing name</Text>
-            </View>
-            <View style={ss.similarRow}>
-              <Ionicons name="business-outline" size={13} color="rgba(255,255,255,0.5)" />
-              <Text style={ss.similarText}>{result.mostSimilarName}</Text>
+          <View style={[ss.similarRow, { backgroundColor: '#F1F5F9', borderRadius: 8, marginTop: 10, padding: 8 }]}>
+            <Ionicons name="business-outline" size={14} color="#64748B" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '600', marginBottom: 2 }}>MOST SIMILAR EXISTING NAME</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>{result.mostSimilarName}</Text>
             </View>
           </View>
         )}
@@ -290,55 +315,87 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onChipPress1, onC
     );
   };
 
+  const hasResults = result1 || result2;
+
   return (
-    <View style={[ss.compCheckerCard, { backgroundColor: tc.primary }]}>
-      <View style={ss.preCheckGlob} pointerEvents="none" />
-
-      <TouchableOpacity style={ss.compCheckerHeader} onPress={() => setExpanded(v => !v)} activeOpacity={0.8}>
-        <View style={ss.compCheckerIcon}>
-          <Ionicons name="shield-checkmark-outline" size={20} color="#FFFFFF" />
-        </View>
+    <View style={ss.compCheckerWrap}>
+      {/* Title — no background, plain label */}
+      <View style={ss.compCheckerLabelRow}>
+        <Ionicons name="shield-checkmark-outline" size={20} color={tc.primary} />
         <View style={{ flex: 1 }}>
-          <Text style={ss.compCheckerTitle}>Check Business Name Compliance</Text>
-          <Text style={ss.compCheckerSub}>Verify your names meet CAC requirements before submitting</Text>
+          <Text style={[ss.compCheckerTitle2, { color: tc.heading }]}>Check Business Name Compliance</Text>
+          <Text style={[ss.compCheckerSub2, { color: tc.subheading }]}>Verify your names meet CAC requirements before submitting</Text>
         </View>
-        <View style={ss.compCheckerChevron}>
-          <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color="#FFFFFF" />
+      </View>
+
+      {/* Run button — always visible */}
+      {!hasResults && (
+        <TouchableOpacity
+          style={[ss.checkBtn2, { backgroundColor: tc.primary, opacity: checking ? 0.7 : 1 }]}
+          onPress={runCheck} disabled={checking} activeOpacity={0.85}
+        >
+          {checking
+            ? <><ActivityIndicator size="small" color="#FFF" /><Text style={ss.checkBtnText2}>Checking…</Text></>
+            : <><Ionicons name="search-outline" size={16} color="#FFF" /><Text style={ss.checkBtnText2}>Run Compliance Check</Text></>
+          }
+        </TouchableOpacity>
+      )}
+
+      {/* Re-check button (shown after results) */}
+      {hasResults && !checking && (
+        <TouchableOpacity style={[ss.checkBtn2, { backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border || '#E5E5EA' }]} onPress={runCheck} activeOpacity={0.85}>
+          <Ionicons name="refresh-outline" size={16} color={tc.primary} />
+          <Text style={[ss.checkBtnText2, { color: tc.primary }]}>Re-check Names</Text>
+        </TouchableOpacity>
+      )}
+      {checking && hasResults && (
+        <View style={[ss.checkBtn2, { backgroundColor: tc.card }]}>
+          <ActivityIndicator size="small" color={tc.primary} />
+          <Text style={[ss.checkBtnText2, { color: tc.primary }]}>Checking…</Text>
         </View>
-      </TouchableOpacity>
+      )}
 
-      {expanded && (
-        <View style={ss.compCheckerBody}>
-          <TouchableOpacity
-            style={[ss.checkBtn, { opacity: checking ? 0.7 : 1 }]}
-            onPress={runCheck} disabled={checking} activeOpacity={0.85}
-          >
-            {checking
-              ? <><ActivityIndicator size="small" color={tc.primary} /><Text style={[ss.checkBtnText, { color: tc.primary }]}>Checking…</Text></>
-              : <><Ionicons name="search-outline" size={16} color={tc.primary} /><Text style={[ss.checkBtnText, { color: tc.primary }]}>Run Compliance Check</Text></>
-            }
-          </TouchableOpacity>
+      {/* Not available — 403 from VAS */}
+      {unavailable && (
+        <View style={[ss.compUnavailBox, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1, borderRadius: 10 }]}>
+          <Ionicons name="information-circle-outline" size={18} color="#2563EB" />
+          <View style={{ flex: 1, gap: 3 }}>
+            <Text style={[ss.compUnavailTitle, { color: '#1E40AF' }]}>Compliance Check Unavailable</Text>
+            <Text style={[ss.compUnavailMsg, { color: '#1D4ED8' }]}>{unavailMsg}</Text>
+            <Text style={[ss.compUnavailNote, { color: '#3B82F6' }]}>You can still proceed — CAC will review your name during processing.</Text>
+          </View>
+        </View>
+      )}
 
-          {/* Not available — 403 from VAS */}
-          {unavailable && (
-            <View style={ss.compUnavailBox}>
-              <Ionicons name="information-circle-outline" size={18} color="rgba(255,255,255,0.85)" />
-              <View style={{ flex: 1, gap: 3 }}>
-                <Text style={ss.compUnavailTitle}>Compliance Check Unavailable</Text>
-                <Text style={ss.compUnavailMsg}>{unavailMsg}</Text>
-                <Text style={ss.compUnavailNote}>
-                  You can still proceed — CAC will review your name during processing.
-                </Text>
-              </View>
+      {/* Results */}
+      {hasResults && !unavailable && (
+        <View style={{ gap: 12, marginTop: 4 }}>
+          {result1 && name1?.trim() && <ResultCard name={name1} result={result1} />}
+          {result2 && name2?.trim() && <ResultCard name={name2} result={result2} />}
+
+          {/* Yes / No decision */}
+          <View style={[ss.proceedCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+            <Text style={[ss.proceedQuestion, { color: tc.heading }]}>Do you want to continue with these names?</Text>
+            <Text style={[ss.proceedSub, { color: tc.subheading }]}>
+              Selecting "Yes" will take you to the next step. "No" will let you enter different names.
+            </Text>
+            <View style={ss.proceedBtnRow}>
+              <TouchableOpacity
+                style={[ss.proceedBtn, { backgroundColor: tc.primary }]}
+                onPress={onProceed} activeOpacity={0.85}
+              >
+                <Ionicons name="checkmark" size={16} color="#FFF" />
+                <Text style={ss.proceedBtnText}>Yes, Continue</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[ss.proceedBtnOutline, { borderColor: tc.border || '#E5E5EA' }]}
+                onPress={clearResults} activeOpacity={0.85}
+              >
+                <Ionicons name="close" size={16} color={tc.subheading} />
+                <Text style={[ss.proceedBtnOutlineText, { color: tc.subheading }]}>No, Change Names</Text>
+              </TouchableOpacity>
             </View>
-          )}
-
-          {(result1 || result2) && !unavailable && (
-            <View style={{ gap: 10, marginTop: 4 }}>
-              {result1 && name1?.trim() && <ResultCard name={name1} result={result1} onChip={v => onChipPress1?.(v)} />}
-              {result2 && name2?.trim() && <ResultCard name={name2} result={result2} onChip={v => onChipPress2?.(v)} />}
-            </View>
-          )}
+          </View>
         </View>
       )}
     </View>
@@ -506,17 +563,18 @@ const FIELD_LABEL = {
   companyAddress: 'Company Address', companyCity: 'Company City', companyState: 'Company State',
 };
 const FIELD_STEP = {
-  proposedOption1: 1, proposedOption2: 1, lineOfBusiness: 1, businessCommencementDate: 1,
-  proprietorFirstname: 2, proprietorOthername: 2, proprietorSurname: 2, proprietorGender: 2,
-  proprietorDob: 2, proprietorNationality: 2, proprietorPhonenumber: 2, proprietorEmail: 2,
-  proprietorStreetNumber: 2, proprietorServiceAddress: 2, proprietorCity: 2,
-  proprietorState: 2, proprietorLga: 2, proprietorPostcode: 2,
-  companyEmail: 3, companyStreetNumber: 3, companyAddress: 3, companyCity: 3, companyState: 3,
+  proposedOption1: 1, proposedOption2: 1,
+  lineOfBusiness: 2, businessCommencementDate: 2,
+  proprietorFirstname: 3, proprietorOthername: 3, proprietorSurname: 3, proprietorGender: 3,
+  proprietorDob: 3, proprietorNationality: 3, proprietorPhonenumber: 3, proprietorEmail: 3,
+  proprietorStreetNumber: 3, proprietorServiceAddress: 3, proprietorCity: 3,
+  proprietorState: 3, proprietorLga: 3, proprietorPostcode: 3,
+  companyEmail: 4, companyStreetNumber: 4, companyAddress: 4, companyCity: 4, companyState: 4,
 };
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-const TAB_LABELS = ['Details', 'Proprietor', 'Address', 'Uploads', 'Review'];
+const TAB_LABELS = ['Names', 'Details', 'Proprietor', 'Address', 'Uploads', 'Review'];
 const EMPTY_FORM = {
   proposedOption1: '', proposedOption2: '',
   lineOfBusiness: '', businessCommencementDate: '',
@@ -608,10 +666,12 @@ export default function CACScreen({ navigation }) {
       const nameOk = (n) => !!n?.trim() && !isSingle(n) && !findProhibited(n);
       if (!nameOk(form.proposedOption1)) m.push('Desired Business Name (must be 2+ words, no prohibited words)');
       if (!nameOk(form.proposedOption2)) m.push('Alternative Business Name (must be 2+ words, no prohibited words)');
-      if (!form.lineOfBusiness)          m.push('Line of Business');
-      if (!form.businessCommencementDate) m.push('Commencement Date');
     }
     if (step === 2) {
+      if (!form.lineOfBusiness)           m.push('Line of Business');
+      if (!form.businessCommencementDate) m.push('Commencement Date');
+    }
+    if (step === 3) {
       if (!form.proprietorFirstname)      m.push('First Name');
       if (!form.proprietorSurname)        m.push('Surname');
       if (!form.proprietorGender)         m.push('Gender');
@@ -623,12 +683,12 @@ export default function CACScreen({ navigation }) {
       if (!form.proprietorCity)           m.push('City');
       if (!form.proprietorState)          m.push('State');
     }
-    if (step === 3) {
+    if (step === 4) {
       if (!form.companyEmail)    m.push('Company Email');
       if (!form.companyAddress)  m.push('Company Address');
       if (!form.companyState)    m.push('State');
     }
-    if (step === 4) {
+    if (step === 5) {
       if (!form.passport)                       m.push('Passport Photograph');
       if (!form.selectedIdType)                 m.push('Select a Means of Identification');
       if (!form.meansOfId)                      m.push('Upload your selected ID document');
@@ -783,26 +843,22 @@ export default function CACScreen({ navigation }) {
         <NameInput value={form.proposedOption2} onChange={v => setField('proposedOption2', v)} tc={tc} />
       </View>
 
-      {/* Compliance Checker card */}
+      {/* Compliance Checker — no background, flat label style */}
       <ComplianceChecker
         name1={form.proposedOption1}
         name2={form.proposedOption2}
         lob={form.lineOfBusiness}
         tc={tc}
-        onChipPress1={v => setField('proposedOption1', v)}
-        onChipPress2={v => setField('proposedOption2', v)}
         onSupportingDocRequired={() => setField('requiresSupportingDoc', true)}
-        onResult={(p1, p2) => {
-          setCompliancePassed(
-            !!(p1 && !p1.failed) && !!(p2 && !p2.failed)
-          );
-        }}
+        onResult={(p1, p2) => setCompliancePassed(!!(p1 && !p1.failed) && !!(p2 && !p2.failed))}
+        onProceed={() => { saveDraft(form); setStep(2); }}
       />
+    </ScrollView>
+  );
 
-      {/* Industry & Operations and below — only revealed after compliance passes */}
-      {compliancePassed && <>
-
-      {/* Industry & Operations card */}
+  const renderStep2 = () => (
+    <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      {/* Industry & Operations */}
       <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
         <View style={ss.cardHeader}>
           <Ionicons name="briefcase-outline" size={20} color={tc.primary} />
@@ -814,7 +870,7 @@ export default function CACScreen({ navigation }) {
         <DatePicker value={form.businessCommencementDate} onChange={v => setField('businessCommencementDate', v)} tc={tc} maxDate={new Date()} placeholder="mm/dd/yyyy" />
       </View>
 
-      {/* Priority Processing card */}
+      {/* Priority Processing */}
       <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
         <View style={ss.cardHeader}>
           <Ionicons name="flash-outline" size={20} color={tc.primary} />
@@ -842,12 +898,10 @@ export default function CACScreen({ navigation }) {
         <View style={ss.summRow}><Text style={[ss.summLabel, { color: tc.subheading }]}>Service Charge</Text><Text style={[ss.summVal, { color: tc.heading }]}>{formatCurrency(form.priorityService ? 3000 : 5000, 'NGN')}</Text></View>
         <View style={[ss.summRow, ss.totalRow]}><Text style={[ss.totalLabel, { color: tc.heading }]}>Total</Text><Text style={[ss.totalAmt, { color: tc.primary }]}>{formatCurrency(fee, 'NGN')}</Text></View>
       </View>
-
-      </>}
     </ScrollView>
   );
 
-  const renderStep2 = () => (
+  const renderStep3 = () => (
     <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <Text style={[ss.stepDesc, { color: tc.subheading }]}>Please provide the legal information for the primary business owner.</Text>
 
@@ -936,7 +990,7 @@ export default function CACScreen({ navigation }) {
     </ScrollView>
   );
 
-  const renderStep3 = () => (
+  const renderStep4 = () => (
     <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <Text style={[ss.stepTitle, { color: tc.heading }]}>Physical & Digital Presence</Text>
       <Text style={[ss.stepDesc, { color: tc.subheading }]}>Please provide the registered business address and official contact details for your company.</Text>
@@ -970,7 +1024,7 @@ export default function CACScreen({ navigation }) {
     </ScrollView>
   );
 
-  const renderStep4 = () => {
+  const renderStep5 = () => {
     const selectedId = ID_TYPES.find(t => t.key === form.selectedIdType);
     return (
       <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false}>
@@ -1242,10 +1296,10 @@ export default function CACScreen({ navigation }) {
     );
   };
 
-  const renderStep5 = () => {
+  const renderStep6 = () => {
     const sections = [
       {
-        icon: 'briefcase-outline', title: 'Business Details', editStep: 1,
+        icon: 'briefcase-outline', title: 'Business Details', editStep: 2,
         rows: [
           ['BUSINESS NAME', form.proposedOption1],
           ['REGISTRATION TYPE', 'Business Name (Sole Proprietorship)'],
@@ -1253,7 +1307,7 @@ export default function CACScreen({ navigation }) {
         ],
       },
       {
-        icon: 'person-outline', title: 'Proprietor Information', editStep: 2,
+        icon: 'person-outline', title: 'Proprietor Information', editStep: 3,
         rows: [
           ['FULL NAME', `${form.proprietorFirstname} ${form.proprietorOthername || ''} ${form.proprietorSurname}`.trim()],
           ['EMAIL ADDRESS', form.proprietorEmail],
@@ -1261,7 +1315,7 @@ export default function CACScreen({ navigation }) {
         ],
       },
       {
-        icon: 'location-outline', title: 'Registered Address', editStep: 3,
+        icon: 'location-outline', title: 'Registered Address', editStep: 4,
         rows: [
           ['PHYSICAL ADDRESS', [form.companyStreetNumber, form.companyAddress, form.companyCity, `${form.companyState} State, Nigeria.`].filter(Boolean).join(', ')],
         ],
@@ -1468,14 +1522,15 @@ export default function CACScreen({ navigation }) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   const stepsOk = [canGoNext]; // evaluated lazily
-  const btnLabel = step < 5 ? (step === 3 ? 'Continue to Uploads' : step === 4 ? 'Continue' : 'Save & Continue') : null;
-  const prevLabel = step === 3 ? 'Previous Step' : step === 4 ? 'Save Draft' : '< Save & Previous';
+  const btnLabel = step > 1 && step < 6 ? (step === 4 ? 'Continue to Uploads' : step === 5 ? 'Continue' : 'Save & Continue') : null;
+  const prevLabel = step === 4 ? 'Previous Step' : step === 5 ? 'Save Draft' : '< Save & Previous';
 
   const stepContent = step === 1 ? renderStep1()
     : step === 2 ? renderStep2()
     : step === 3 ? renderStep3()
     : step === 4 ? renderStep4()
-    : renderStep5();
+    : step === 5 ? renderStep5()
+    : renderStep6();
 
   return (
     <SafeAreaView style={[ss.container, { backgroundColor: tc.background }]}>
@@ -1496,15 +1551,16 @@ export default function CACScreen({ navigation }) {
 
       {/* Step indicator */}
       <View style={[ss.stepRow, { backgroundColor: tc.background }]}>
-        <Text style={[ss.stepText, { color: tc.primary }]}>Step {step} of 5</Text>
-        <Text style={[ss.stepName, { color: tc.subheading }]}>{step < 5 ? TAB_LABELS[step - 1] : 'Review'}</Text>
+        <Text style={[ss.stepText, { color: tc.primary }]}>Step {step} of 6</Text>
+        <Text style={[ss.stepName, { color: tc.subheading }]}>{TAB_LABELS[step - 1] || 'Review'}</Text>
       </View>
       <View style={[ss.progressBar, { backgroundColor: tc.border || '#E5E5EA' }]}>
-        <View style={[ss.progressFill, { backgroundColor: tc.primary, width: `${(step / 5) * 100}%` }]} />
+        <View style={[ss.progressFill, { backgroundColor: tc.primary, width: `${(step / 6) * 100}%` }]} />
       </View>
 
-      {/* Step titles (only on step > 1) */}
-      {step === 2 && <View style={[ss.pageTitleWrap, { backgroundColor: tc.background }]}><Text style={[ss.pageTitle, { color: tc.heading }]}>Proprietor Details</Text></View>}
+      {/* Step titles */}
+      {step === 2 && <View style={[ss.pageTitleWrap, { backgroundColor: tc.background }]}><Text style={[ss.pageTitle, { color: tc.heading }]}>Business Details</Text></View>}
+      {step === 3 && <View style={[ss.pageTitleWrap, { backgroundColor: tc.background }]}><Text style={[ss.pageTitle, { color: tc.heading }]}>Proprietor Details</Text></View>}
 
       {/* Draft restored banner */}
       {draftRestored && (
@@ -1526,7 +1582,7 @@ export default function CACScreen({ navigation }) {
 
       {/* "Need Help?" floating button — visible on all steps, clears nav + tab bar */}
       <TouchableOpacity
-        style={[ss.helpFloat, { bottom: insets.bottom + (step < 5 ? 160 : 100) }]}
+        style={[ss.helpFloat, { bottom: insets.bottom + (step < 6 ? 160 : 100) }]}
         onPress={() => Linking.openURL('https://wa.me/2349011495230?text=Hello%2C%20I%20need%20help%20with%20my%20CAC%20Business%20Registration%20on%20PayFlex')}
         activeOpacity={0.85}
       >
@@ -1534,8 +1590,8 @@ export default function CACScreen({ navigation }) {
         <Text style={ss.helpFloatText}>Need Help?</Text>
       </TouchableOpacity>
 
-      {/* Bottom nav */}
-      {step < 5 && (
+      {/* Bottom nav — hidden on step 1 (Yes/No handles navigation) and step 6 (review/submit) */}
+      {step > 1 && step < 6 && (
         <View style={[ss.nav, { backgroundColor: tc.background, borderTopColor: tc.border || '#E5E5EA', paddingBottom: insets.bottom + 8 }]}>
 
           <TouchableOpacity
@@ -1587,7 +1643,7 @@ export default function CACScreen({ navigation }) {
           const n = idx + 1;
           const active = step === n;
           const done = step > n;
-          const icons = ['briefcase-outline', 'person-outline', 'location-outline', 'cloud-upload-outline', 'checkmark-circle-outline'];
+          const icons = ['document-text-outline', 'briefcase-outline', 'person-outline', 'location-outline', 'cloud-upload-outline', 'checkmark-circle-outline'];
           return (
             <TouchableOpacity key={label} style={ss.tabItem} onPress={() => (done || active) && setStep(n)} activeOpacity={0.7}>
               <Ionicons name={done ? 'checkmark-circle' : icons[idx]} size={22} color={active ? tc.primary : done ? '#4CAF50' : tc.subtext} />
@@ -1778,80 +1834,51 @@ const ss = StyleSheet.create({
   // "Need Help?" floating button
   helpFloat:      { position: 'absolute', right: 16, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#25D366', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 24, elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, zIndex: 999 },
   helpFloatText:  { color: '#FFF', fontSize: 13, fontWeight: '700' },
-  // ComplianceChecker — purple card theme
-  compCheckerCard:   { borderRadius: 18, marginBottom: 14, overflow: 'hidden' },
-  compCheckerHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 18 },
-  compCheckerIcon:   {
-    width: 44, height: 44, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-  },
-  compCheckerTitle:  { fontSize: 15, fontWeight: '800', color: '#FFFFFF', marginBottom: 3, letterSpacing: 0.2 },
-  compCheckerSub:    { fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 17 },
-  compCheckerChevron:{ width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  compCheckerBody:   { paddingHorizontal: 14, paddingBottom: 16 },
-  checkBtn:          {
+  // ComplianceChecker — flat label style (no background)
+  compCheckerWrap:    { marginBottom: 14 },
+  compCheckerLabelRow:{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
+  compCheckerTitle2:  { fontSize: 16, fontWeight: '800', marginBottom: 3 },
+  compCheckerSub2:    { fontSize: 12, lineHeight: 17 },
+  checkBtn2:          {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, paddingVertical: 14, borderRadius: 12, marginBottom: 12,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12, shadowRadius: 4, elevation: 3,
   },
-  checkBtnText:      { fontSize: 14, fontWeight: '800' },
-  compUnavailBox:    {
-    flexDirection: 'row', gap: 10, padding: 12, borderRadius: 12, marginBottom: 10,
-    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'flex-start',
-  },
-  compUnavailTitle:  { fontSize: 13, fontWeight: '700', color: '#FFFFFF', marginBottom: 2 },
-  compUnavailMsg:    { fontSize: 12, color: 'rgba(255,255,255,0.8)', lineHeight: 18 },
-  compUnavailNote:   { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4, fontStyle: 'italic' },
-  // ResultCard — frosted pane inside the purple card
-  compCard:          {
-    borderRadius: 12, padding: 14, marginBottom: 2,
-    backgroundColor: 'rgba(255,255,255,0.11)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
-  },
+  checkBtnText2:      { fontSize: 14, fontWeight: '700' },
+  compUnavailBox:    { flexDirection: 'row', gap: 10, padding: 12, alignItems: 'flex-start' },
+  compUnavailTitle:  { fontSize: 13, fontWeight: '700', marginBottom: 2 },
+  compUnavailMsg:    { fontSize: 12, lineHeight: 18 },
+  compUnavailNote:   { fontSize: 11, marginTop: 4, fontStyle: 'italic' },
+  // ResultCard — light card color-coded per result
+  compCard:          { borderRadius: 12, padding: 14, marginBottom: 2, borderWidth: 1 },
   compCardHeader:    { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  compCardName:      { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  compCardName:      { fontSize: 14, fontWeight: '700' },
   compBadge:         { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
   compBadgeText:     { fontSize: 11, fontWeight: '800' },
-  compStatusRow:     {
-    flexDirection: 'row', alignItems: 'center', gap: 7,
-    paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, marginBottom: 10,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    borderLeftWidth: 3,
-  },
+  compStatusRow:     { paddingLeft: 10, paddingVertical: 8, marginBottom: 10 },
   compStatusText:    { fontSize: 12, fontWeight: '700', flex: 1 },
-  scoreRow:          { gap: 10, marginBottom: 10 },
+  // Score bar items
   scoreItem:         { gap: 6 },
   scoreLabelPill:    {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     alignSelf: 'flex-start',
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.12)',
   },
-  scoreLabel:        { fontSize: 10.5, fontWeight: '700', color: 'rgba(255,255,255,0.75)', letterSpacing: 0.3 },
-  scoreBarTrack:     { height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)' },
-  scoreBar:          { height: 7, borderRadius: 4, overflow: 'hidden' },
+  scoreLabel:        { fontSize: 10.5, fontWeight: '700', letterSpacing: 0.3 },
+  scoreBarTrack:     { height: 7, borderRadius: 4, overflow: 'hidden' },
   scoreFill:         { height: 7, borderRadius: 4 },
-  scoreVal:          { fontSize: 13, fontWeight: '800' },
-  // Section label pills
-  chipSectionLabel:  {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    alignSelf: 'flex-start', marginBottom: 8,
-    paddingHorizontal: 9, paddingVertical: 4, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  chipSectionLabelText: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.2 },
-  chip:              {
-    paddingHorizontal: 11, paddingVertical: 5, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-  },
-  chipGreen:         { backgroundColor: 'rgba(74,222,128,0.15)' },
-  chipT:             { fontSize: 12, fontWeight: '600', color: '#FFFFFF' },
-  similarRow:        {
-    flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 7,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.12)',
-  },
-  similarText:       { fontSize: 13, color: 'rgba(255,255,255,0.75)', flex: 1 },
+  // Score plain-English explanation
+  scoreExplain:      { borderWidth: 1, borderRadius: 8, padding: 10, marginTop: 6 },
+  scoreExplainText:  { fontSize: 12, lineHeight: 18, fontWeight: '600' },
+  // Similarity row
+  similarRow:        { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  similarText:       { fontSize: 13, flex: 1 },
+  // Yes / No decision card
+  proceedCard:       { borderRadius: 14, borderWidth: 1, padding: 16, marginTop: 4 },
+  proceedQuestion:   { fontSize: 15, fontWeight: '800', marginBottom: 6 },
+  proceedSub:        { fontSize: 13, lineHeight: 19, marginBottom: 14 },
+  proceedBtnRow:     { flexDirection: 'row', gap: 8 },
+  proceedBtn:        { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13, borderRadius: 12 },
+  proceedBtnText:    { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  proceedBtnOutline: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13, borderRadius: 12, borderWidth: 1 },
+  proceedBtnOutlineText: { fontSize: 14, fontWeight: '600' },
 });

@@ -981,8 +981,12 @@ export default function CACScreen({ navigation }) {
         <Text style={[ss.sectionTitle, { color: tc.subheading }]}>RESIDENTIAL ADDRESS</Text>
       </View>
       <View style={ss.fieldGap}>
+        <Text style={[ss.fieldLabel, { color: tc.heading }]}>Street Number</Text>
+        <LabelInput value={form.proprietorStreetNumber} onChangeText={v => setField('proprietorStreetNumber', v)} placeholder="e.g. 12, 3B, Flat 5" tc={tc} />
+      </View>
+      <View style={ss.fieldGap}>
         <Text style={[ss.fieldLabel, { color: tc.heading }]}>Street Address</Text>
-        <LabelInput value={form.proprietorServiceAddress} onChangeText={v => setField('proprietorServiceAddress', v)} placeholder="House number, Street name, Landmark" multiline tc={tc} />
+        <LabelInput value={form.proprietorServiceAddress} onChangeText={v => setField('proprietorServiceAddress', v)} placeholder="Street name, Landmark" multiline tc={tc} />
       </View>
       <View style={ss.fieldGap}>
         <Text style={[ss.fieldLabel, { color: tc.heading }]}>City</Text>

@@ -1522,8 +1522,7 @@ export default function CACScreen({ navigation }) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   const stepsOk = [canGoNext]; // evaluated lazily
-  const btnLabel = step > 1 && step < 6 ? (step === 4 ? 'Continue to Uploads' : step === 5 ? 'Continue' : 'Save & Continue') : null;
-  const prevLabel = step === 4 ? 'Previous Step' : step === 5 ? 'Save Draft' : '< Save & Previous';
+  const btnLabel = step > 1 && step < 6 ? (step === 4 ? 'Continue' : step === 5 ? 'Continue' : 'Save & Continue') : null;
 
   const stepContent = step === 1 ? renderStep1()
     : step === 2 ? renderStep2()
@@ -1592,35 +1591,35 @@ export default function CACScreen({ navigation }) {
 
       {/* Bottom nav — hidden on step 1 (Yes/No handles navigation) and step 6 (review/submit) */}
       {step > 1 && step < 6 && (
-        <View style={[ss.nav, { backgroundColor: tc.background, borderTopColor: tc.border || '#E5E5EA', paddingBottom: insets.bottom + 8 }]}>
+        <View style={[ss.nav, { backgroundColor: tc.background, borderTopColor: tc.border || '#E5E5EA', paddingBottom: insets.bottom + 4 }]}>
 
-          <TouchableOpacity
-            style={[ss.nextBtn, { backgroundColor: tc.primary }]}
-            onPress={() => {
-              if (canGoNext()) {
-                setShowHint(false);
-                saveDraft(form); // persist progress on every successful step
-                setStep(n => n + 1);
-              } else {
-                setShowHint(true);
-              }
-            }}
-            activeOpacity={0.85}
-          >
-            <Text style={ss.nextTxt}>{btnLabel}</Text>
-            <Ionicons name="chevron-forward" size={18} color="#FFF" />
-          </TouchableOpacity>
-
-          {step > 1 && (
+          <View style={ss.navRow}>
             <TouchableOpacity
               style={[ss.prevBtn, { borderColor: tc.border || '#E5E5EA' }]}
               onPress={() => { setShowHint(false); setPreCheckDone(false); setPreCheckErrors({}); setStep(n => n - 1); }}
               activeOpacity={0.8}
             >
-              <Ionicons name="chevron-back" size={16} color={tc.subheading} />
-              <Text style={[ss.prevTxt, { color: tc.subheading }]}>{prevLabel}</Text>
+              <Ionicons name="chevron-back" size={15} color={tc.subheading} />
+              <Text style={[ss.prevTxt, { color: tc.subheading }]}>Previous</Text>
             </TouchableOpacity>
-          )}
+
+            <TouchableOpacity
+              style={[ss.nextBtn, { backgroundColor: tc.primary }]}
+              onPress={() => {
+                if (canGoNext()) {
+                  setShowHint(false);
+                  saveDraft(form);
+                  setStep(n => n + 1);
+                } else {
+                  setShowHint(true);
+                }
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={ss.nextTxt}>{btnLabel}</Text>
+              <Ionicons name="chevron-forward" size={15} color="#FFF" />
+            </TouchableOpacity>
+          </View>
 
           {/* Missing fields hint — only shown after a failed continue attempt */}
           {showHint && getMissing().length > 0 && (
@@ -1746,11 +1745,12 @@ const ss = StyleSheet.create({
   sheetHandle:  { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 12 },
   sheetTitle:   { fontSize: 16, fontWeight: '700', paddingHorizontal: 20, paddingBottom: 12 },
   sheetRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  nav:          { paddingHorizontal: 16, paddingTop: 10, borderTopWidth: 1, gap: 8 },
-  nextBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 15, borderRadius: 12 },
-  nextTxt:      { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  prevBtn:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 12, borderRadius: 12, borderWidth: 1 },
-  prevTxt:      { fontSize: 14, fontWeight: '500' },
+  nav:          { paddingHorizontal: 16, paddingTop: 8, borderTopWidth: 1 },
+  navRow:       { flexDirection: 'row', gap: 8 },
+  nextBtn:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 11, borderRadius: 11 },
+  nextTxt:      { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  prevBtn:      { flex: 0.45, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 3, paddingVertical: 11, borderRadius: 11, borderWidth: 1 },
+  prevTxt:      { fontSize: 13, fontWeight: '500' },
   // ID type selector (Step 4)
   idSection:       { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 14 },
   idSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },

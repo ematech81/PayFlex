@@ -1582,7 +1582,7 @@ export default function CACScreen({ navigation }) {
 
       {/* "Need Help?" floating button — visible on all steps, clears nav + tab bar */}
       <TouchableOpacity
-        style={[ss.helpFloat, { bottom: insets.bottom + (step < 6 ? 110 : 60) }]}
+        style={[ss.helpFloat, { bottom: insets.bottom + (step < 6 ? 90 : 40) }]}
         onPress={() => Linking.openURL('https://wa.me/2349011495230?text=Hello%2C%20I%20need%20help%20with%20my%20CAC%20Business%20Registration%20on%20PayFlex')}
         activeOpacity={0.85}
       >

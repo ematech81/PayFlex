@@ -27,7 +27,7 @@ import { StatusBarComponent } from 'component/StatusBar';
 import { useWallet } from 'context/WalletContext';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import {
-  cacCheckCompliance, cacValidatePayload, cacRegisterBusinessName,
+  cacCheckCompliance, cacValidatePayload, cacRegisterBusinessName, cacResubmitRegistration,
 } from 'AuthFunction/paymentService';
 import {
   LINE_OF_BUSINESS, PROHIBITED_WORDS, NIGERIAN_STATES,
@@ -602,11 +602,16 @@ const EMPTY_FORM = {
   proprietorProofOfAddressType: '', businessProofOfAddressType: '',
 };
 
-export default function CACScreen({ navigation }) {
+export default function CACScreen({ navigation, route }) {
   const dark   = useThem();
   const tc     = dark ? colors.dark : colors.light;
   const insets = useSafeAreaInsets();
   const { wallet } = useWallet();
+
+  const resubmitRef    = route?.params?.resubmitRef    || null;
+  const initialData    = route?.params?.initialData    || null;
+  const queriedFields  = route?.params?.queriedFields  || [];
+  const isResubmit     = !!resubmitRef;
 
   const [step,  setStep]  = useState(1);
   const [form,  setForm]  = useState({ ...EMPTY_FORM });
@@ -623,8 +628,22 @@ export default function CACScreen({ navigation }) {
   const [compliancePassed,  setCompliancePassed]  = useState(false);
   const [idDropOpen,        setIdDropOpen]        = useState(false);
 
-  // Load saved draft on mount; try to re-encode image URIs immediately
+  // Pre-fill from server data when correcting a queried application
   useEffect(() => {
+    if (!isResubmit || !initialData) return;
+    setForm(prev => ({ ...prev, ...initialData }));
+    setCompliancePassed(true); // name was already validated at initial submission
+    // Jump directly to the step containing the first queried field
+    const firstStep = queriedFields
+      .map(f => FIELD_STEP[f])
+      .filter(Boolean)
+      .sort((a, b) => a - b)[0] || 1;
+    setStep(firstStep);
+  }, []);
+
+  // Load saved draft on mount — skipped in resubmit mode to avoid overwriting server data
+  useEffect(() => {
+    if (isResubmit) return;
     (async () => {
       const draft = await loadDraft();
       if (!draft) return;
@@ -784,6 +803,26 @@ export default function CACScreen({ navigation }) {
 
   // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
+    if (isResubmit) {
+      setBusy(true);
+      try {
+        const regRes = await cacResubmitRegistration(resubmitRef, form);
+        if (!regRes?.success) {
+          Alert.alert('Resubmission Failed', regRes?.message || 'Could not resubmit. Please try again.');
+          return;
+        }
+        Alert.alert(
+          'Application Resubmitted',
+          'Your corrected application has been sent to CAC for review. You will be notified once it is processed.',
+          [{ text: 'View Status', onPress: () => navigation.navigate('CACStatus', { transactionRef: resubmitRef, businessName: form.proposedOption1 }) }]
+        );
+      } catch (e) {
+        Alert.alert('Error', e.message || 'Something went wrong.');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (!preCheckPassed) { Alert.alert('Run Pre-Check First', 'Please run the free pre-submission check before paying.'); return; }
     if (pin.length !== 4) { Alert.alert('PIN required', 'Enter your 4-digit transaction PIN.'); return; }
     if (bal < fee) { Alert.alert('Insufficient Balance', `You need ${formatCurrency(fee, 'NGN')} to proceed. Please fund your wallet.`); return; }
@@ -866,6 +905,18 @@ export default function CACScreen({ navigation }) {
         onResult={(p1, p2) => setCompliancePassed(!!(p1 && !p1.failed) && !!(p2 && !p2.failed))}
         onProceed={() => { saveDraft(form); setStep(2); }}
       />
+
+      {/* Resubmit bypass: skip compliance check if name wasn't the queried field */}
+      {isResubmit && (
+        <TouchableOpacity
+          style={[ss.skipBtn, { borderColor: tc.border || '#E5E5EA' }]}
+          onPress={() => setStep(2)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="arrow-forward" size={15} color={tc.subheading} />
+          <Text style={[ss.skipBtnText, { color: tc.subheading }]}>Skip — name is unchanged, go to Step 2</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 
@@ -1495,49 +1546,63 @@ export default function CACScreen({ navigation }) {
           ))}
         </View>
 
-        {/* Payment Summary */}
-        <View style={ss.paymentCard}>
-          <Text style={ss.paymentTitle}>Payment Summary</Text>
-          <View style={ss.payRow}><Text style={ss.payLabel}>CAC Registration Fee</Text><Text style={ss.payVal}>{formatCurrency(form.priorityService ? 35000 : 30000, 'NGN')}</Text></View>
-          <View style={ss.payRow}><Text style={ss.payLabel}>Service Charge</Text><Text style={ss.payVal}>{formatCurrency(form.priorityService ? 3000 : 5000, 'NGN')}</Text></View>
-          {form.priorityService && <View style={ss.payRow}><Text style={ss.payLabel}>Express Processing</Text><Text style={ss.payVal}>{formatCurrency(0, 'NGN')}</Text></View>}
-          <View style={[ss.payRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)' }]}>
-            <Text style={ss.payTotalLabel}>Total Amount</Text>
-            <Text style={ss.payTotalAmt}>{formatCurrency(fee, 'NGN')}</Text>
-          </View>
-          <View style={[ss.walletRow, { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', marginTop: 8, paddingTop: 12 }]}>
-            <Ionicons name="wallet-outline" size={18} color="#FFF" />
-            <Text style={ss.walletLabel}>Wallet Balance</Text>
-            <Text style={[ss.walletBal, { color: broke ? '#FFB3B3' : '#7FFFB3' }]}>{formatCurrency(bal, 'NGN')}</Text>
-          </View>
-        </View>
+        {/* Payment Summary — hidden for resubmit (no charge) */}
+        {!isResubmit && (
+          <>
+            <View style={ss.paymentCard}>
+              <Text style={ss.paymentTitle}>Payment Summary</Text>
+              <View style={ss.payRow}><Text style={ss.payLabel}>CAC Registration Fee</Text><Text style={ss.payVal}>{formatCurrency(form.priorityService ? 35000 : 30000, 'NGN')}</Text></View>
+              <View style={ss.payRow}><Text style={ss.payLabel}>Service Charge</Text><Text style={ss.payVal}>{formatCurrency(form.priorityService ? 3000 : 5000, 'NGN')}</Text></View>
+              {form.priorityService && <View style={ss.payRow}><Text style={ss.payLabel}>Express Processing</Text><Text style={ss.payVal}>{formatCurrency(0, 'NGN')}</Text></View>}
+              <View style={[ss.payRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)' }]}>
+                <Text style={ss.payTotalLabel}>Total Amount</Text>
+                <Text style={ss.payTotalAmt}>{formatCurrency(fee, 'NGN')}</Text>
+              </View>
+              <View style={[ss.walletRow, { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.2)', marginTop: 8, paddingTop: 12 }]}>
+                <Ionicons name="wallet-outline" size={18} color="#FFF" />
+                <Text style={ss.walletLabel}>Wallet Balance</Text>
+                <Text style={[ss.walletBal, { color: broke ? '#FFB3B3' : '#7FFFB3' }]}>{formatCurrency(bal, 'NGN')}</Text>
+              </View>
+            </View>
 
-        {broke && (
-          <View style={[ss.insufficientRow, { backgroundColor: '#FEE2E2' }]}>
-            <Ionicons name="warning-outline" size={16} color="#EF4444" />
-            <Text style={{ fontSize: 13, color: '#EF4444', flex: 1 }}>Insufficient balance. Please fund your wallet before proceeding.</Text>
-          </View>
+            {broke && (
+              <View style={[ss.insufficientRow, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="warning-outline" size={16} color="#EF4444" />
+                <Text style={{ fontSize: 13, color: '#EF4444', flex: 1 }}>Insufficient balance. Please fund your wallet before proceeding.</Text>
+              </View>
+            )}
+
+            {!broke && (
+              <View style={[ss.pinCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+                <Text style={[ss.fieldLabel, { color: tc.heading, marginBottom: 8 }]}>Transaction PIN</Text>
+                <TextInput
+                  style={[ss.inp, { backgroundColor: tc.background, color: tc.heading, borderColor: tc.border || '#E5E5EA', letterSpacing: 10, textAlign: 'center', fontSize: 18 }]}
+                  value={pin} onChangeText={setPin}
+                  placeholder="••••" placeholderTextColor={tc.subtext}
+                  keyboardType="number-pad" secureTextEntry maxLength={4}
+                />
+              </View>
+            )}
+          </>
         )}
 
-        {!broke && (
-          <View style={[ss.pinCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-            <Text style={[ss.fieldLabel, { color: tc.heading, marginBottom: 8 }]}>Transaction PIN</Text>
-            <TextInput
-              style={[ss.inp, { backgroundColor: tc.background, color: tc.heading, borderColor: tc.border || '#E5E5EA', letterSpacing: 10, textAlign: 'center', fontSize: 18 }]}
-              value={pin} onChangeText={setPin}
-              placeholder="••••" placeholderTextColor={tc.subtext}
-              keyboardType="number-pad" secureTextEntry maxLength={4}
-            />
+        {/* Resubmit — no charge banner */}
+        {isResubmit && (
+          <View style={[ss.resubmitNoChargeBanner, { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' }]}>
+            <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
+            <Text style={ss.resubmitNoChargeText}>No additional charge — your original payment covers this resubmission.</Text>
           </View>
         )}
 
         <TouchableOpacity
-          style={[ss.submitBtn, { backgroundColor: tc.primary, opacity: (broke || busy || pin.length !== 4) ? 0.5 : 1 }]}
-          onPress={handleSubmit} disabled={broke || busy || pin.length !== 4} activeOpacity={0.85}
+          style={[ss.submitBtn, { backgroundColor: isResubmit ? '#F97316' : tc.primary, opacity: busy || (!isResubmit && (broke || pin.length !== 4)) ? 0.5 : 1 }]}
+          onPress={handleSubmit}
+          disabled={busy || (!isResubmit && (broke || pin.length !== 4))}
+          activeOpacity={0.85}
         >
           {busy ? <ActivityIndicator color="#FFF" /> : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={ss.submitTxt}>Submit Registration</Text>
+              <Text style={ss.submitTxt}>{isResubmit ? 'Resubmit Application' : 'Submit Registration'}</Text>
               <Ionicons name="arrow-forward" size={18} color="#FFF" />
             </View>
           )}
@@ -1592,8 +1657,16 @@ export default function CACScreen({ navigation }) {
       {step === 2 && <View style={[ss.pageTitleWrap, { backgroundColor: tc.background }]}><Text style={[ss.pageTitle, { color: tc.heading }]}>Business Details</Text></View>}
       {step === 3 && <View style={[ss.pageTitleWrap, { backgroundColor: tc.background }]}><Text style={[ss.pageTitle, { color: tc.heading }]}>Proprietor Details</Text></View>}
 
+      {/* Resubmit mode banner */}
+      {isResubmit && (
+        <View style={ss.resubmitBanner}>
+          <Ionicons name="create-outline" size={15} color="#9A3412" />
+          <Text style={ss.resubmitBannerText}>Correcting queried application — no additional charge</Text>
+        </View>
+      )}
+
       {/* Draft restored banner */}
-      {draftRestored && (
+      {!isResubmit && draftRestored && (
         <TouchableOpacity
           style={ss.draftBanner}
           onPress={() => setDraftRestored(false)}
@@ -1862,6 +1935,14 @@ const ss = StyleSheet.create({
   // Draft banner
   draftBanner:    { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#E8F5E9', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#C8E6C9' },
   draftBannerText:{ flex: 1, fontSize: 12, color: '#2E7D32', fontWeight: '500' },
+  // Resubmit banners
+  resubmitBanner:       { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF7ED', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#FED7AA' },
+  resubmitBannerText:   { flex: 1, fontSize: 12, color: '#9A3412', fontWeight: '600' },
+  resubmitNoChargeBanner:{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, marginBottom: 14 },
+  resubmitNoChargeText: { flex: 1, fontSize: 13, color: '#15803D', lineHeight: 20 },
+  // Skip button (resubmit step 1)
+  skipBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, marginHorizontal: 16, marginBottom: 8, borderRadius: 8, borderWidth: 1 },
+  skipBtnText: { fontSize: 12, fontWeight: '500' },
   // "Need Help?" floating button
   helpFloat:      { position: 'absolute', right: 16, flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#25D366', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, zIndex: 999 },
   helpFloatText:  { color: '#FFF', fontSize: 11, fontWeight: '700' },

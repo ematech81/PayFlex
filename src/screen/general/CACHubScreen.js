@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
+import { cacGetHistory } from 'AuthFunction/paymentService';
 
 const CARDS = [
   {
@@ -17,7 +18,6 @@ const CARDS = [
     description: 'Register a sole-proprietorship or partnership trading name with the Corporate Affairs Commission. Ideal for individuals and small businesses operating under a trading name.',
     features:    ['Individual / Partnership', 'Approval in 24–72 hrs', 'Certificate issued by CAC'],
     color:       '#7C3AED',
-    lightColor:  'rgba(124,58,237,0.10)',
   },
   {
     key:         'llc',
@@ -28,14 +28,39 @@ const CARDS = [
     description: 'Incorporate a Limited Liability Company — Private or Public. Your personal assets are protected and the company exists as a separate legal entity in Nigeria.',
     features:    ['Separate legal entity', 'Shareholder protection', 'Private or Public company'],
     color:       '#0F766E',
-    lightColor:  'rgba(15,118,110,0.10)',
   },
 ];
+
+const STATUS_BADGE = {
+  pending:    { label: 'Pending',    color: '#9CA3AF' },
+  processing: { label: 'Processing', color: '#3B82F6' },
+  approved:   { label: 'Approved',   color: '#22C55E' },
+  queried:    { label: 'Queried',    color: '#F97316' },
+  failed:     { label: 'Failed',     color: '#EF4444' },
+};
 
 export default function CACHubScreen({ navigation }) {
   const dark   = useThem();
   const tc     = dark ? colors.dark : colors.light;
   const insets = useSafeAreaInsets();
+
+  const [registrations, setRegistrations] = useState([]);
+  const [histLoading,   setHistLoading]   = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await cacGetHistory();
+        if (res?.success && Array.isArray(res.registrations)) {
+          setRegistrations(res.registrations);
+        }
+      } catch {
+        // non-critical — just hide the section
+      } finally {
+        setHistLoading(false);
+      }
+    })();
+  }, []);
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: tc.background }]}>
@@ -67,10 +92,53 @@ export default function CACHubScreen({ navigation }) {
           </Text>
         </View>
 
+        {/* My Applications — shown when history is available */}
+        {(histLoading || registrations.length > 0) && (
+          <View style={[s.myAppsCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+            <View style={s.myAppsHeader}>
+              <Ionicons name="layers-outline" size={18} color={tc.primary} />
+              <Text style={[s.myAppsTitle, { color: tc.heading }]}>My Applications</Text>
+            </View>
+
+            {histLoading ? (
+              <View style={s.histLoader}>
+                <ActivityIndicator size="small" color={tc.primary} />
+                <Text style={[s.histLoadingText, { color: tc.subtext }]}>Loading…</Text>
+              </View>
+            ) : (
+              registrations.slice(0, 5).map((reg, idx) => {
+                const stCfg = STATUS_BADGE[reg.status] || STATUS_BADGE.pending;
+                const name  = reg.registrationData?.proposedOption1 || reg.proposedName || 'Unnamed Application';
+                const date  = reg.createdAt
+                  ? new Date(reg.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+                  : '';
+                const isLast = idx === Math.min(registrations.length, 5) - 1;
+                return (
+                  <TouchableOpacity
+                    key={reg.transactionRef || idx}
+                    style={[s.appRow, !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: tc.border || '#F0F0F0' }]}
+                    onPress={() => navigation.navigate('CACStatus', { transactionRef: reg.transactionRef, businessName: name })}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[s.statusDot, { backgroundColor: stCfg.color }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.appName, { color: tc.heading }]} numberOfLines={1}>{name}</Text>
+                      {!!date && <Text style={[s.appDate, { color: tc.subtext }]}>{date}</Text>}
+                    </View>
+                    <View style={[s.statusPill, { backgroundColor: `${stCfg.color}20` }]}>
+                      <Text style={[s.statusPillText, { color: stCfg.color }]}>{stCfg.label}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color={tc.subtext} />
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </View>
+        )}
+
         {/* Registration type cards */}
         {CARDS.map((card) => (
           <View key={card.key} style={[s.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-            {/* Card header */}
             <View style={[s.cardHeader, { backgroundColor: card.color }]}>
               <View style={s.cardHeaderInner}>
                 <View style={s.cardIconWrap}>
@@ -86,7 +154,6 @@ export default function CACHubScreen({ navigation }) {
               <View style={s.cardGlow} pointerEvents="none" />
             </View>
 
-            {/* Card body */}
             <View style={s.cardBody}>
               <Text style={[s.cardDesc, { color: tc.subheading }]}>{card.description}</Text>
 
@@ -136,6 +203,20 @@ const s = StyleSheet.create({
   introBox:       { flexDirection: 'row', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, alignItems: 'flex-start' },
   introText:      { fontSize: 13, lineHeight: 20, flex: 1 },
 
+  /* My Applications */
+  myAppsCard:     { borderRadius: 14, borderWidth: 1, padding: 16 },
+  myAppsHeader:   { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  myAppsTitle:    { fontSize: 15, fontWeight: '700' },
+  histLoader:     { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
+  histLoadingText:{ fontSize: 13 },
+  appRow:         { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 },
+  statusDot:      { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  appName:        { fontSize: 13, fontWeight: '600' },
+  appDate:        { fontSize: 11, marginTop: 1 },
+  statusPill:     { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  statusPillText: { fontSize: 10, fontWeight: '700' },
+
+  /* Registration cards */
   card:           { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   cardHeader:     { padding: 20, overflow: 'hidden' },
   cardHeaderInner:{ flexDirection: 'row', alignItems: 'center', gap: 14 },

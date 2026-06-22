@@ -740,6 +740,43 @@ export const cacRegisterBusinessName = (pin, form) =>
 export const cacGetRegistrationStatus = (transactionRef) =>
   makeGeneralGet(`/cac/registration/${transactionRef}`);
 
+/** Resubmit a queried registration — no additional wallet charge */
+export const cacResubmitRegistration = (transactionRef, form) => {
+  const rd = {
+    proposedOption1:             form.proposedOption1,
+    proposedOption2:             form.proposedOption2,
+    lineOfBusiness:              form.lineOfBusiness,
+    businessCommencementDate:    form.businessCommencementDate,
+    proprietorFirstname:         form.proprietorFirstname,
+    proprietorOthername:         form.proprietorOthername,
+    proprietorSurname:           form.proprietorSurname,
+    proprietorGender:            form.proprietorGender,
+    proprietorDob:               form.proprietorDob,
+    proprietorNationality:       form.proprietorNationality,
+    proprietorPhonenumber:       form.proprietorPhonenumber,
+    proprietorEmail:             form.proprietorEmail,
+    proprietorStreetNumber:      form.proprietorStreetNumber,
+    proprietorServiceAddress:    form.proprietorServiceAddress,
+    proprietorCity:              toTitleCase(form.proprietorCity),
+    proprietorState:             form.proprietorState,
+    proprietorLga:               toTitleCase(form.proprietorLga),
+    proprietorPostcode:          form.proprietorPostcode,
+    companyEmail:                form.companyEmail,
+    companyStreetNumber:         form.companyStreetNumber,
+    companyAddress:              form.companyAddress,
+    companyCity:                 toTitleCase(form.companyCity),
+    companyState:                form.companyState,
+    passport:                    form.passport,
+    meansOfId:                   form.meansOfId,
+    signature:                   form.signature,
+    ...(form.supportingDoc            && { supportingDoc:            form.supportingDoc }),
+    ...(form.proprietorProofOfAddress && { proprietorProofOfAddress: form.proprietorProofOfAddress }),
+    ...(form.businessProofOfAddress   && { businessProofOfAddress:   form.businessProofOfAddress }),
+  };
+  Object.keys(rd).forEach(k => { if (rd[k] === '' || rd[k] === null || rd[k] === undefined) delete rd[k]; });
+  return makeGeneralRequest(`/cac/registration/${transactionRef}/resubmit`, { registrationData: rd }, 120_000);
+};
+
 /**
  * Download CAC certificate after approval — PIN required (wallet deduction).
  * VAS returns a binary PDF blob, so we use expo-file-system to save it to
@@ -899,6 +936,15 @@ export const transferInitiate      = (pin, data)              =>
   makeGeneralRequest('/transfers/initiate', { ...data, pin });
 export const transferGetStatus     = (reference)              => makeGeneralGet(`/transfers/status/${reference}`);
 export const transferGetHistory    = ()                       => makeGeneralGet('/transfers/history');
+
+// ─── VTU Africa Bank Transfers (active; KoraPay pending doc approval) ─────────
+export const vtuTransferGetBanks       = ()                        => makeGeneralGet('/vtransfers/banks');
+export const vtuTransferResolveAccount = (bankCode, accountNumber) =>
+  makeGeneralRequest('/vtransfers/resolve', { bankCode, accountNumber });
+export const vtuTransferInitiate       = (pin, data)               =>
+  makeGeneralRequest('/vtransfers/initiate', { ...data, pin });
+export const vtuTransferGetStatus      = (reference)               => makeGeneralGet(`/vtransfers/status/${reference}`);
+export const vtuTransferGetHistory     = ()                        => makeGeneralGet('/vtransfers/history');
 
 // ─── MERPI / Syticks — General ────────────────────────────────────────────────
 export const merpiGetCategories  = ()          => makeGeneralGet('/merpi/categories');

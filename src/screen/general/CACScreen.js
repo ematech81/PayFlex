@@ -755,7 +755,8 @@ export default function CACScreen({ navigation }) {
         return;
       }
 
-      const errors = res?.data || res?.result || {};
+      const vasBody = res?.data || {};          // VAS response: { statusCode, data, success }
+      const errors  = vasBody?.data || {};      // actual field errors: { proprietorDob: [...] }
       setPreCheckErrors(errors);
       setPreCheckDone(true);
     } catch (e) {

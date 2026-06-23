@@ -808,7 +808,7 @@ export const cacDownloadCertificate = async (transactionRef) => {
     fr.onerror = reject;
     fr.readAsDataURL(reader);
   });
-  await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+  await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: 'base64' });
   return { fileUri };
 };
 
@@ -837,7 +837,7 @@ export const cacDownloadStatusReport = async (transactionRef) => {
     fr.onerror = reject;
     fr.readAsDataURL(reader);
   });
-  await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+  await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: 'base64' });
   return { fileUri };
 };
 

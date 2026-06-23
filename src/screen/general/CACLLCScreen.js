@@ -652,17 +652,25 @@ export default function CACLLCScreen({ navigation }) {
           </View>
         )}
 
-        {form.analysisResult ? (
-          <View style={{ marginTop: 12, gap: 6 }}>
-            <Text style={[s.label, { color: tc.heading }]}>Analysis Summary</Text>
-            <Text style={[{ fontSize: 12.5, lineHeight: 19 }, { color: tc.subheading }]}>
-              {JSON.stringify(form.analysisResult, null, 2).substring(0, 400)}
-              {JSON.stringify(form.analysisResult).length > 400 ? '…' : ''}
+        {/* Share capital by company type */}
+        {Array.isArray(form.analysisResult?.companyTypes) && form.analysisResult.companyTypes.length > 0 && (
+          <View style={{ marginTop: 14, gap: 6 }}>
+            <Text style={[s.label, { color: tc.heading }]}>Share Capital Requirements by Company Type</Text>
+            <Text style={[s.hint, { color: tc.subtext, marginBottom: 4 }]}>
+              If your company falls under any of these regulated categories, the corresponding minimum share capital applies.
             </Text>
+            {form.analysisResult.companyTypes.map((ct, i) => (
+              <View key={i} style={[s.compTypeRow, { borderColor: tc.border || '#E5E5EA', backgroundColor: tc.inputBg || '#F9F9F9' }]}>
+                <Text style={[s.compTypeLabel, { color: tc.heading }]} numberOfLines={2}>{ct.companyType}</Text>
+                <Text style={[s.compTypeAmount, { color: tc.primary }]}>₦{(ct.shareCapital || 0).toLocaleString()}</Text>
+              </View>
+            ))}
           </View>
-        ) : (
+        )}
+
+        {!form.analysisResult && (
           <Text style={[{ fontSize: 13, lineHeight: 19, marginTop: 10 }, { color: tc.subheading }]}>
-            Analysis could not be completed or returned no additional data. You can still proceed — this step is optional.
+            Analysis could not be completed. You can still proceed — this step is optional.
           </Text>
         )}
       </View>
@@ -1272,6 +1280,10 @@ const s = StyleSheet.create({
   secondaryBtnText:{ fontSize: 14, fontWeight: '700' },
   ghostBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed' },
   ghostBtnText:   { fontSize: 13, fontWeight: '600' },
+
+  compTypeRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderRadius: 10, borderWidth: 1, gap: 8 },
+  compTypeLabel:  { flex: 1, fontSize: 12.5, fontWeight: '500', textTransform: 'capitalize' },
+  compTypeAmount: { fontSize: 12.5, fontWeight: '700' },
 
   capitalBox:     { padding: 14, borderRadius: 12, borderWidth: 1, alignItems: 'center', gap: 4 },
   capitalLabel:   { fontSize: 12, fontWeight: '600' },

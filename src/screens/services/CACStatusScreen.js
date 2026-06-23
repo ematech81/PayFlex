@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { StatusBarComponent } from 'component/StatusBar';
-import { cacGetRegistrationStatus, cacDownloadCertificate, cacDownloadStatusReport } from 'AuthFunction/paymentService';
+import { cacGetRegistrationStatus, cacDownloadCertificate, cacDownloadStatusReport, cacDevForceApprove } from 'AuthFunction/paymentService';
 
 const POLL_INTERVAL = 30000;
 
@@ -344,6 +344,29 @@ export default function CACStatusScreen({ navigation, route }) {
           </View>
         )}
 
+        {/* ── DEV ONLY: force-approve button ───────────────────────────── */}
+        {__DEV__ && rawStatus !== 'approved' && !!transactionRef && (
+          <TouchableOpacity
+            style={s.devBtn}
+            onPress={async () => {
+              try {
+                const res = await cacDevForceApprove(transactionRef);
+                if (res?.success) {
+                  await fetchStatus(true);
+                } else {
+                  alert(res?.message || 'Force approve failed');
+                }
+              } catch (e) {
+                alert(e.message);
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="flash-outline" size={14} color="#7C3AED" />
+            <Text style={s.devBtnText}>[DEV] Force Approve</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Bottom CTAs */}
         <View style={s.ctaRow}>
           <TouchableOpacity
@@ -421,4 +444,7 @@ const s = StyleSheet.create({
   ctaRow:    { flexDirection: 'row', gap: 10, marginTop: 4 },
   ctaBtn:    { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13, borderRadius: 10, borderWidth: 1 },
   ctaBtnText:{ fontSize: 13, fontWeight: '600' },
+
+  devBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#7C3AED', backgroundColor: '#F5F3FF', marginBottom: 10 },
+  devBtnText: { fontSize: 12, fontWeight: '700', color: '#7C3AED' },
 });

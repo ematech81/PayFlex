@@ -848,6 +848,10 @@ export const cacSearchBusiness = (pin, validationType, searchParam) =>
 /** CAC registration + validation history */
 export const cacGetHistory = () => makeGeneralGet('/cac/history');
 
+/** DEV ONLY — force-approve a registration so certificate/report download can be tested in sandbox */
+export const cacDevForceApprove = (transactionRef) =>
+  makeGeneralRequest(`/cac/dev/force-approve/${transactionRef}`, {});
+
 // ─── CAC LLC (Company Registration) ──────────────────────────────────────────
 
 /** Step 1 — Reserve company name; creates a session, returns sessionId + reservationCode */

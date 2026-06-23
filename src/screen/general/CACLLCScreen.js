@@ -249,15 +249,42 @@ export default function CACLLCScreen({ navigation }) {
 
   // ── Step handlers ────────────────────────────────────────────────────────────
 
+  // Maps a session status returned by the resume path to the wizard step to jump to.
+  const STATUS_TO_STEP = {
+    name_reserved:      2,
+    memorandum_done:    3,
+    company_created:    5,
+    shares_registered:  6,
+    affiliates_complete:6,
+  };
+
   const handleStep1 = async () => {
     const err = validateStep(1);
     if (err) { Alert.alert('Required', err); return; }
     setBusy(true); setBusyMsg('Reserving company name…');
     try {
       const res = await cacLlcReserveName(form.proposedName.trim().toUpperCase(), form.companyType);
-      setField('sessionId', res.sessionId);
-      setField('reservationCode', res.reservationCode);
-      setField('reservationExpiry', res.expiryDate);
+
+      // Pre-fill reservation data regardless of new vs resumed
+      setForm(f => ({
+        ...f,
+        sessionId:        res.sessionId,
+        reservationCode:  res.reservationCode,
+        reservationExpiry:res.expiryDate,
+        proposedName:     res.proposedName || f.proposedName,
+        companyType:      res.companyType  || f.companyType,
+      }));
+
+      if (res.resumed) {
+        const resumeStep = STATUS_TO_STEP[res.currentStatus] || 2;
+        Alert.alert(
+          'Resuming Existing Registration',
+          `You have a previous registration for "${res.proposedName}". Continuing from where you left off.`,
+          [{ text: 'Continue', onPress: () => { setStep(resumeStep); scrollTop(); } }]
+        );
+        return;
+      }
+
       setStep(2); scrollTop();
     } catch (e) {
       Alert.alert('Reservation Failed', e.message);

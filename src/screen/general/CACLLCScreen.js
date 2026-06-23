@@ -296,7 +296,18 @@ export default function CACLLCScreen({ navigation }) {
     setBusy(true); setBusyMsg('Generating memorandum objects…');
     try {
       const res = await cacLlcGenerateMemo(form.sessionId, form.natureOfBusiness, form.countOfObjects);
-      setField('objectsOfMem', res.objectsOfMem || []);
+      setForm(f => ({
+        ...f,
+        objectsOfMem:        res.objectsOfMem || [],
+        // Capture minimum share capital from Step 2 so Step 3 has it ready
+        minimumShareCapital: res.shareInfo?.minimumShareCapital ?? f.minimumShareCapital,
+      }));
+      if (!res.objectsOfMem?.length) {
+        Alert.alert(
+          'No Suggestions Generated',
+          'The AI did not return suggestions for this business type. You can add memorandum objects manually using the "Add Custom Object" button.',
+        );
+      }
     } catch (e) {
       Alert.alert('Generation Failed', e.message);
     } finally { setBusy(false); }

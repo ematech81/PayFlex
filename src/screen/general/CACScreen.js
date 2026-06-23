@@ -357,13 +357,23 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
 
       {/* Not available — 403 from VAS */}
       {unavailable && (
-        <View style={[ss.compUnavailBox, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1, borderRadius: 10 }]}>
-          <Ionicons name="information-circle-outline" size={18} color="#2563EB" />
-          <View style={{ flex: 1, gap: 3 }}>
-            <Text style={[ss.compUnavailTitle, { color: '#1E40AF' }]}>Compliance Check Unavailable</Text>
-            <Text style={[ss.compUnavailMsg, { color: '#1D4ED8' }]}>{unavailMsg}</Text>
-            <Text style={[ss.compUnavailNote, { color: '#3B82F6' }]}>You can still proceed — CAC will review your name during processing.</Text>
+        <View style={{ gap: 10 }}>
+          <View style={[ss.compUnavailBox, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1, borderRadius: 10 }]}>
+            <Ionicons name="information-circle-outline" size={18} color="#2563EB" />
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={[ss.compUnavailTitle, { color: '#1E40AF' }]}>Compliance Check Unavailable</Text>
+              <Text style={[ss.compUnavailMsg, { color: '#1D4ED8' }]}>{unavailMsg}</Text>
+              <Text style={[ss.compUnavailNote, { color: '#3B82F6' }]}>You can still proceed — CAC will review your name during processing.</Text>
+            </View>
           </View>
+          <TouchableOpacity
+            style={[ss.checkBtn2, { backgroundColor: tc.primary }]}
+            onPress={onProceed}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="arrow-forward-circle-outline" size={16} color="#FFF" />
+            <Text style={ss.checkBtnText2}>Continue to Step 2</Text>
+          </TouchableOpacity>
         </View>
       )}
 

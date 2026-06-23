@@ -42,8 +42,8 @@ const fmtDate = (iso) => !iso ? '' : new Date(iso).toLocaleDateString('en-NG', {
 
 async function uriToBase64(uri) {
   try {
-    const { FileSystem } = await import('expo-file-system');
-    const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+    const FileSystem = await import('expo-file-system/legacy');
+    const b64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
     return `data:image/jpeg;base64,${b64}`;
   } catch { return null; }
 }

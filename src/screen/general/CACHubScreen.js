@@ -35,8 +35,9 @@ const STATUS_BADGE = {
   pending:    { label: 'Pending',    color: '#9CA3AF' },
   processing: { label: 'Processing', color: '#3B82F6' },
   approved:   { label: 'Approved',   color: '#22C55E' },
-  queried:    { label: 'Queried',    color: '#F97316' },
-  failed:     { label: 'Failed',     color: '#EF4444' },
+  queried:          { label: 'Queried',             color: '#F97316' },
+  query_submitted:  { label: 'Response Sent',       color: '#0EA5E9' },
+  failed:           { label: 'Failed',              color: '#EF4444' },
 };
 
 export default function CACHubScreen({ navigation }) {
@@ -107,7 +108,8 @@ export default function CACHubScreen({ navigation }) {
               </View>
             ) : (
               registrations.slice(0, 5).map((reg, idx) => {
-                const stCfg = STATUS_BADGE[reg.status] || STATUS_BADGE.pending;
+                const displayStatus = reg.status === 'queried' && reg.querySubmittedAt ? 'query_submitted' : reg.status;
+                const stCfg = STATUS_BADGE[displayStatus] || STATUS_BADGE.pending;
                 const name  = reg.registrationData?.proposedOption1 || reg.proposedName || 'Unnamed Application';
                 const date  = reg.createdAt
                   ? new Date(reg.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })

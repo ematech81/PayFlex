@@ -15,6 +15,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity,
   TextInput, ActivityIndicator, Alert, Modal, FlatList, Image, StatusBar,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -745,6 +746,7 @@ export default function CACLLCScreen({ navigation }) {
                 style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
                 value={form[key]} onChangeText={v => setField(key, v)}
                 placeholder={label} placeholderTextColor={tc.placeholder || '#AAA'}
+                onFocus={() => key === 'regStreet' && setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200)}
               />
             )}
           </View>
@@ -1205,9 +1207,15 @@ export default function CACLLCScreen({ navigation }) {
 
       {renderProgress()}
 
-      <ScrollView ref={scrollRef} contentContainerStyle={[s.scroll, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        {renderStep()}
-      </ScrollView>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <ScrollView ref={scrollRef} contentContainerStyle={[s.scroll, { paddingBottom: insets.bottom + 80 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          {renderStep()}
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Global picker modal */}
       <PickerModal

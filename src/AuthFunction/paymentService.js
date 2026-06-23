@@ -783,7 +783,7 @@ export const cacResubmitRegistration = (transactionRef, form) => {
  * the device cache directory, then return the local file URI for sharing/opening.
  */
 export const cacDownloadCertificate = async (transactionRef) => {
-  const FileSystem = await import('expo-file-system');
+  const FileSystem = await import('expo-file-system/legacy');
   const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
   if (!token) throw new Error('Authentication required. Please log in again.');
 
@@ -814,7 +814,7 @@ export const cacDownloadCertificate = async (transactionRef) => {
 
 /** Download CAC status report after approval — no PIN required */
 export const cacDownloadStatusReport = async (transactionRef) => {
-  const FileSystem = await import('expo-file-system');
+  const FileSystem = await import('expo-file-system/legacy');
   const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
   if (!token) throw new Error('Authentication required. Please log in again.');
 

@@ -187,7 +187,8 @@ export default function CACLLCScreen({ navigation }) {
   const [form, setForm]       = useState(EMPTY_FORM);
   const [busy, setBusy]       = useState(false);
   const [busyMsg, setBusyMsg] = useState('');
-  const [draftObj, setDraftObj] = useState('');
+  const [draftObj, setDraftObj]         = useState('');
+  const [objectsFromAI, setObjectsFromAI] = useState(false);
 
   // Picker modal state
   const [picker, setPicker] = useState({ visible: false, key: '', title: '', options: [] });
@@ -299,16 +300,18 @@ export default function CACLLCScreen({ navigation }) {
     setBusy(true); setBusyMsg('Generating memorandum objects…');
     try {
       const res = await cacLlcGenerateMemo(form.sessionId, form.natureOfBusiness, form.countOfObjects);
+      const generated = res.objectsOfMem || [];
       setForm(f => ({
         ...f,
-        objectsOfMem:        res.objectsOfMem || [],
-        // Capture minimum share capital from Step 2 so Step 3 has it ready
+        objectsOfMem:        [...f.objectsOfMem, ...generated],
         minimumShareCapital: res.shareInfo?.minimumShareCapital ?? f.minimumShareCapital,
       }));
-      if (!res.objectsOfMem?.length) {
+      if (generated.length) {
+        setObjectsFromAI(true);
+      } else {
         Alert.alert(
           'No Suggestions Generated',
-          'The AI did not return suggestions for this business type. You can add memorandum objects manually using the "Add Custom Object" button.',
+          'The AI did not return suggestions for this business type. Please add memorandum objects manually using the input field above.',
         );
       }
     } catch (e) {
@@ -597,6 +600,16 @@ export default function CACLLCScreen({ navigation }) {
                   </TouchableOpacity>
                 </View>
               ))}
+            </View>
+          )}
+
+          {/* ── AI helper instruction ── */}
+          {form.objectsOfMem.length > 0 && objectsFromAI && (
+            <View style={[s.aiHelperBanner, { backgroundColor: `${tc.primary}12`, borderColor: `${tc.primary}35` }]}>
+              <Ionicons name="information-circle" size={18} color={tc.primary} style={{ marginTop: 1 }} />
+              <Text style={[s.aiHelperText, { color: tc.primary }]}>
+                These objects were AI-generated based on your business type. Read through each one carefully and tap the <Text style={{ fontWeight: '800' }}>✕</Text> button to remove any object that does not apply to your specific business before proceeding.
+              </Text>
             </View>
           )}
 
@@ -1331,6 +1344,9 @@ const s = StyleSheet.create({
   secondaryBtnText:{ fontSize: 14, fontWeight: '700' },
   ghostBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed' },
   ghostBtnText:   { fontSize: 13, fontWeight: '600' },
+
+  aiHelperBanner: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', padding: 12, borderRadius: 10, borderWidth: 1, marginTop: 12 },
+  aiHelperText:   { flex: 1, fontSize: 12.5, lineHeight: 19 },
 
   memoAddRow:     { flexDirection: 'row', alignItems: 'flex-end', borderRadius: 12, borderWidth: 1, overflow: 'hidden', minHeight: 52 },
   memoAddInput:   { flex: 1, paddingHorizontal: 12, paddingVertical: 12, fontSize: 13.5, lineHeight: 19 },

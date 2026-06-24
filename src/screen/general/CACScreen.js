@@ -260,7 +260,9 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
   };
 
   const doRun = async (advance) => {
-    if (!name1?.trim() && !name2?.trim()) {
+    const n1 = name1?.trim();
+    const n2 = name2?.trim();
+    if (!n1 && !n2) {
       Alert.alert('Enter names', 'Please fill in at least one business name first.');
       return;
     }
@@ -269,17 +271,20 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
     setResult1(null); setResult2(null);
     setUnavailable(false); setUnavailMsg('');
     try {
-      const [r1, r2] = await Promise.all([
-        name1?.trim() ? cacCheckCompliance(name1.trim(), lob || '', advance) : Promise.resolve(null),
-        name2?.trim() ? cacCheckCompliance(name2.trim(), lob || '', advance) : Promise.resolve(null),
-      ]);
-      if (r1?.unavailable || r2?.unavailable) {
+      // Single request for both names — advanced check deducts ₦100 flat total
+      const r = await cacCheckCompliance([n1, n2].filter(Boolean), lob || '', advance);
+
+      if (r?.unavailable) {
         setUnavailable(true);
-        setUnavailMsg(r1?.message || r2?.message || 'Compliance check is not available for your account.');
+        setUnavailMsg(r?.message || 'Compliance check is not available for your account.');
         onResult?.(null, null);
         return;
       }
-      const p1 = parse(r1), p2 = parse(r2);
+
+      const byName = {};
+      (r?.results || []).forEach(({ name, data }) => { byName[name] = data; });
+      const p1 = n1 ? parse({ data: byName[n1] }) : null;
+      const p2 = n2 ? parse({ data: byName[n2] }) : null;
       setResult1(p1); setResult2(p2);
       onResult?.(p1, p2);
     } catch (e) {
@@ -296,13 +301,12 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
       Alert.alert('Enter names', 'Please fill in at least one business name first.');
       return;
     }
-    const count = [name1?.trim(), name2?.trim()].filter(Boolean).length;
     Alert.alert(
       'Advanced Compliance Check',
-      `This check costs ₦${100 * count} (₦100 per name) and will be deducted from your wallet.\n\nWhat you get:\n• Similarity score against existing CAC names\n• Most similar registered business name\n• CAC-suggested alternative names (if yours is too similar)\n• Recommended actions from CAC\n\nDo you want to proceed?`,
+      `This check costs ₦100 and will be deducted from your wallet. Both names are checked together in one request.\n\nWhat you get:\n• Compliance score against CAC naming rules\n• Similarity score against existing registered businesses\n• Most similar registered business name\n• CAC-suggested alternative names (if yours is too similar)\n• Recommended actions from CAC\n\nDo you want to proceed?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Proceed (₦' + (100 * count) + ')', onPress: () => doRun(true) },
+        { text: 'Proceed (₦100)', onPress: () => doRun(true) },
       ]
     );
   };
@@ -477,8 +481,8 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
             {'The '}
             <Text style={{ fontWeight: '700' }}>Free Check</Text>
             {' confirms your name follows CAC naming rules at no cost.\n\nThe '}
-            <Text style={{ fontWeight: '700' }}>Advanced Check (₦100/name)</Text>
-            {' also runs a similarity scan against all registered businesses, shows your compliance score, lists similar existing names, and suggests CAC-approved alternatives when needed.'}
+            <Text style={{ fontWeight: '700' }}>Advanced Check (₦100)</Text>
+            {' (₦100 flat for both names) also shows your compliance score, similarity score against existing businesses, similar registered names, and CAC-suggested alternatives when needed.'}
           </Text>
         </View>
       )}
@@ -500,7 +504,7 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
             <Ionicons name="shield-checkmark-outline" size={16} color="#FFF" />
             <Text style={ss.checkBtnText2}>Advanced Check</Text>
             <View style={ss.advFeeChip}>
-              <Text style={ss.advFeeText}>₦100/name</Text>
+              <Text style={ss.advFeeText}>₦100</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -533,7 +537,7 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
             <Ionicons name="shield-checkmark-outline" size={16} color="#FFF" />
             <Text style={ss.checkBtnText2}>Advanced Re-check</Text>
             <View style={ss.advFeeChip}>
-              <Text style={ss.advFeeText}>₦100/name</Text>
+              <Text style={ss.advFeeText}>₦100</Text>
             </View>
           </TouchableOpacity>
         </View>

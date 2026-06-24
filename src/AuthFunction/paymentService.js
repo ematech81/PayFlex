@@ -683,9 +683,13 @@ export const getTransactionHistory = async (filters = {}) => {
 export const cacValidateName = (proposedName) =>
   makeGeneralRequest('/cac/validate-name', { proposedName });
 
-/** BN compliance check. advanceCheck=true runs the paid advanced check (₦100, deeper similarity). */
-export const cacCheckCompliance = (proposedName, lineOfBusiness, advanceCheck = false) =>
-  makeGeneralRequest('/cac/compliance', { proposedName, lineOfBusiness, advanceCheck });
+/** BN compliance check. Sends both names in one request; advanced check (₦100 flat) charges once. */
+export const cacCheckCompliance = (names, lineOfBusiness, advanceCheck = false) =>
+  makeGeneralRequest('/cac/compliance', {
+    names: (Array.isArray(names) ? names : [names]).filter(Boolean),
+    lineOfBusiness,
+    advanceCheck,
+  });
 
 /** Validate full registration payload (images stripped server-side) before wallet deduction */
 export const cacValidatePayload = (payload) =>

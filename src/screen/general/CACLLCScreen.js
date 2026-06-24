@@ -1,5 +1,5 @@
 /**
- * CACLLCScreen — 6-step LLC (Company) Registration Wizard
+ * CACLLCScreen — 8-step LLC (Company) Registration Wizard
  *
  * Step 1: Name Reservation
  * Step 2: Memorandum Objects (generate + edit)
@@ -7,8 +7,8 @@
  * Step 4: Company Details
  * Step 5: Register Shares
  * Step 6: Register Affiliates
- *
- * Steps 7–8 (PSC, Validate/Pay/Submit) pending docs — not yet implemented.
+ * Step 7: PSC (Persons with Significant Control)
+ * Step 8: Submit Registration (pending docs)
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
@@ -25,7 +25,7 @@ import { colors } from 'constants/colors';
 import { formatCurrency } from 'CONSTANT/formatCurrency';
 import {
   cacLlcReserveName, cacLlcGenerateMemo, cacLlcAnalyseMemo,
-  cacLlcCreateCompany, cacLlcRegisterShares, cacLlcAddAffiliate,
+  cacLlcCreateCompany, cacLlcRegisterShares, cacLlcAddAffiliate, cacLlcRegisterPsc,
 } from 'AuthFunction/paymentService';
 import {
   LLC_COMPANY_TYPES, LLC_NATURE_OF_BUSINESS, LLC_AFFILIATE_TYPES, NIGERIAN_STATES,
@@ -126,7 +126,7 @@ const LlcImageUpload = React.memo(({ label, required, value, onPick, tc }) => {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 
 const EMPTY_FORM = {
   // Step 1
@@ -448,6 +448,7 @@ export default function CACLLCScreen({ navigation }) {
       // Add to local list
       const newAffiliate = {
         id:            res.affiliateId,
+        affiliateKey:  res.affiliateKey || null,
         affiliateType: affForm.affiliateType,
         affiliateMode: affForm.affiliateMode,
         name:          affForm.affiliateMode === 'individual'
@@ -462,7 +463,11 @@ export default function CACLLCScreen({ navigation }) {
       setAffForm(EMPTY_AFFILIATE);
 
       if (res.sharesBalanced) {
-        Alert.alert('All Shares Allocated', 'All shares are now allocated. Steps 7 & 8 (PSC registration and final submission) will be available once documentation is released.');
+        Alert.alert(
+          'All Shares Allocated',
+          'All shares are now allocated. Proceed to Step 7 to register Persons with Significant Control (PSC).',
+          [{ text: 'Continue to Step 7', onPress: () => { setAffModal(false); setStep(7); scrollTop(); } }]
+        );
       }
     } catch (e) {
       Alert.alert('Affiliate Registration Failed', e.message);
@@ -1237,7 +1242,7 @@ export default function CACLLCScreen({ navigation }) {
 
   // ── Step progress bar ────────────────────────────────────────────────────────
 
-  const STEP_LABELS = ['Reserve', 'Memo', 'Analyse', 'Company', 'Shares', 'Affiliates'];
+  const STEP_LABELS = ['Reserve', 'Memo', 'Analyse', 'Company', 'Shares', 'Affiliates', 'PSC'];
 
   const renderProgress = () => (
     <View style={[s.progressWrap, { backgroundColor: tc.card, borderBottomColor: tc.border || '#F0F0F0' }]}>
@@ -1260,6 +1265,134 @@ export default function CACLLCScreen({ navigation }) {
     </View>
   );
 
+  // ── Step 7: PSC ──────────────────────────────────────────────────────────────
+
+  const shareholders = (form.affiliates || []).filter(a => a.isShareholder && a.affiliateKey);
+  const totalShares  = form.ordinaryIssuedShare || 1;
+  const [pscStates, setPscStates] = React.useState({});
+  const setPscField = (affiliateKey, field, val) =>
+    setPscStates(prev => ({ ...prev, [affiliateKey]: { ...prev[affiliateKey], [field]: val } }));
+  const getPsc = (affiliateKey) => pscStates[affiliateKey] || {};
+
+  const handleStep7 = async () => {
+    const pscs = shareholders.filter(a => getPsc(a.affiliateKey).isPsc);
+    if (!pscs.length) {
+      Alert.alert('No PSC Selected', 'Mark at least one shareholder as a Person with Significant Control.');
+      return;
+    }
+    setBusy(true); setBusyMsg('Registering PSC…');
+    try {
+      for (const aff of pscs) {
+        const psc     = getPsc(aff.affiliateKey);
+        const pct     = ((aff.allottedOrdinaryShares / totalShares) * 100).toFixed(2);
+        await cacLlcRegisterPsc(form.sessionId, {
+          affiliateKey:          aff.affiliateKey,
+          ownsDirectShares:      true,
+          directShareDetails:    {
+            sharePercent: pct,
+            legalOwners: [{ affiliateKey: aff.affiliateKey, sharePercent: pct }],
+          },
+          ownsIndirectShares:            false,
+          isPep:                         !!psc.isPep,
+          isPscAffiliated:               !!psc.isPscAffiliated,
+          canChangeDirectors:            psc.canChangeDirectors !== false,
+          hasSignificantControlOfCompany: true,
+        });
+      }
+      Alert.alert('PSC Registered', 'Persons with Significant Control registered. Proceed to final submission.',
+        [{ text: 'Continue', onPress: () => { setStep(8); scrollTop(); } }]);
+    } catch (e) {
+      Alert.alert('PSC Registration Failed', e.message);
+    } finally { setBusy(false); }
+  };
+
+  const renderStep7 = () => (
+    <View style={s.stepContent}>
+      <View style={[s.stepCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+        <View style={s.stepCardHeader}>
+          <View style={[s.stepCardIcon, { backgroundColor: `${tc.primary}15` }]}>
+            <Ionicons name="shield-checkmark-outline" size={20} color={tc.primary} />
+          </View>
+          <Text style={[s.stepCardTitle, { color: tc.heading }]}>Persons with Significant Control</Text>
+        </View>
+        <Text style={[s.stepCardSub, { color: tc.subheading }]}>
+          A PSC is any shareholder who directly or indirectly controls more than 5% of the company's shares.
+          Mark each applicable shareholder below.
+        </Text>
+      </View>
+
+      {shareholders.length === 0 ? (
+        <View style={[s.stepCard, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+          <Text style={{ color: '#DC2626', fontSize: 14 }}>
+            No shareholders with valid affiliate keys found. Please go back to Step 6 and ensure all shareholders were registered successfully.
+          </Text>
+        </View>
+      ) : shareholders.map(aff => {
+        const psc    = getPsc(aff.affiliateKey);
+        const pct    = ((aff.allottedOrdinaryShares / totalShares) * 100).toFixed(1);
+        const isOver5 = parseFloat(pct) > 5;
+
+        return (
+          <View key={aff.affiliateKey} style={[s.stepCard, { backgroundColor: tc.card, borderColor: psc.isPsc ? tc.primary : tc.border || '#E5E5EA', borderWidth: psc.isPsc ? 2 : 1 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.stepCardTitle, { color: tc.heading, fontSize: 15 }]}>{aff.name}</Text>
+                <Text style={{ fontSize: 12, color: tc.subheading }}>
+                  {aff.affiliateType} · {aff.allottedOrdinaryShares?.toLocaleString()} shares ({pct}%)
+                  {isOver5 ? '  ⚠ >5% — PSC required' : ''}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[s.checkbox, { borderColor: psc.isPsc ? tc.primary : tc.border || '#CCC', backgroundColor: psc.isPsc ? tc.primary : 'transparent', width: 24, height: 24, borderRadius: 6 }]}
+                onPress={() => setPscField(aff.affiliateKey, 'isPsc', !psc.isPsc)}
+                activeOpacity={0.8}
+              >
+                {psc.isPsc && <Ionicons name="checkmark" size={14} color="#FFF" />}
+              </TouchableOpacity>
+            </View>
+
+            {psc.isPsc && (
+              <View style={{ gap: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: tc.border || '#F0F0F0' }}>
+                {[
+                  ['isPep',            'Politically Exposed Person (PEP)',     false],
+                  ['isPscAffiliated',  'PSC Affiliated',                       false],
+                  ['canChangeDirectors','Can Change Directors',                 true],
+                ].map(([field, label, defaultVal]) => (
+                  <TouchableOpacity key={field}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                    onPress={() => setPscField(aff.affiliateKey, field, !(psc[field] ?? defaultVal))}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[s.checkbox, {
+                      borderColor: (psc[field] ?? defaultVal) ? tc.primary : tc.border || '#CCC',
+                      backgroundColor: (psc[field] ?? defaultVal) ? tc.primary : 'transparent',
+                      width: 20, height: 20, borderRadius: 4,
+                    }]}>
+                      {(psc[field] ?? defaultVal) && <Ionicons name="checkmark" size={11} color="#FFF" />}
+                    </View>
+                    <Text style={{ fontSize: 13, color: tc.heading, flex: 1 }}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        );
+      })}
+
+      <TouchableOpacity
+        style={[s.primaryBtn, { backgroundColor: tc.primary, opacity: busy ? 0.7 : 1 }]}
+        onPress={handleStep7}
+        disabled={busy}
+        activeOpacity={0.85}
+      >
+        {busy
+          ? <ActivityIndicator color="#FFF" size="small" />
+          : <Text style={s.primaryBtnText}>Register PSC & Continue</Text>
+        }
+      </TouchableOpacity>
+    </View>
+  );
+
   // ── Main render ──────────────────────────────────────────────────────────────
 
   const renderStep = () => {
@@ -1270,6 +1403,7 @@ export default function CACLLCScreen({ navigation }) {
       case 4: return renderStep4();
       case 5: return renderStep5();
       case 6: return renderStep6();
+      case 7: return renderStep7();
       default: return null;
     }
   };

@@ -882,6 +882,10 @@ export const cacLlcRegisterShares = (sessionId, shareData) =>
 export const cacLlcAddAffiliate = (sessionId, affiliatePayload) =>
   makeGeneralRequest('/cac/llc/affiliate', { sessionId, ...affiliatePayload }, 120_000);
 
+/** Step 7 — Register a PSC using the affiliateKey from registerAffiliate */
+export const cacLlcRegisterPsc = (sessionId, pscData) =>
+  makeGeneralRequest('/cac/llc/psc', { sessionId, ...pscData });
+
 /** Get session + affiliates by sessionId */
 export const cacLlcGetSession = (sessionId) =>
   makeGeneralGet(`/cac/llc/registration/${sessionId}`);

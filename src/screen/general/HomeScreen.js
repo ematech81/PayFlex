@@ -148,6 +148,7 @@ export default function HomeScreen({ route }) {
 
   return (
     <SafeAreaView style={[ss.root, { backgroundColor: tc.background }]}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <LinearGradient

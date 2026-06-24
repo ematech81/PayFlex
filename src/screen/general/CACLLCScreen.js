@@ -166,8 +166,9 @@ const EMPTY_AFFILIATE = {
   allottedOrdinaryShares: '',
   allottedPreferenceShares: '0',
   // Individual
-  surname: '', firstname: '', othername: '', dob: '', gender: '',
-  email: '', phone: '',
+  surname: '', firstname: '', othername: '', occupation: '', nationality: 'Nigerian',
+  dob: '', gender: '', email: '', phone: '',
+  idType: '', idNumber: '',
   serviceState: '', serviceLga: '', serviceCity: '', serviceStreet: '',
   residentialSameAsService: true,
   resState: '', resLga: '', resCity: '', resStreet: '',
@@ -385,7 +386,9 @@ export default function CACLLCScreen({ navigation }) {
     if (affForm.affiliateMode === 'individual') {
       if (!affForm.surname || !affForm.firstname) { Alert.alert('Required', 'Enter surname and firstname.'); return; }
       if (!affForm.dob || !affForm.gender)        { Alert.alert('Required', 'Enter DOB and gender.'); return; }
+      if (!affForm.occupation)                    { Alert.alert('Required', 'Enter occupation.'); return; }
       if (!affForm.email || !affForm.phone)       { Alert.alert('Required', 'Enter email and phone.'); return; }
+      if (!affForm.idType || !affForm.idNumber)   { Alert.alert('Required', 'Select ID type and enter ID number.'); return; }
       if (!affForm.serviceState || !affForm.serviceStreet) { Alert.alert('Required', 'Enter service address.'); return; }
       if (!affForm.passport || !affForm.meansOfId || !affForm.signature) {
         Alert.alert('Required', 'Upload passport photo, means of ID, and signature.'); return;
@@ -411,12 +414,15 @@ export default function CACLLCScreen({ navigation }) {
       if (affForm.affiliateMode === 'individual') {
         affiliateData = {
           surname: affForm.surname, firstname: affForm.firstname, othername: affForm.othername,
+          occupation: affForm.occupation, nationality: affForm.nationality || 'Nigerian',
           dob: affForm.dob, gender: affForm.gender, email: affForm.email, phone: affForm.phone,
           serviceAddress: { state: affForm.serviceState, lga: affForm.serviceLga, city: affForm.serviceCity, street: affForm.serviceStreet },
           residentialAddress: affForm.residentialSameAsService
             ? { state: affForm.serviceState, lga: affForm.serviceLga, city: affForm.serviceCity, street: affForm.serviceStreet }
             : { state: affForm.resState, lga: affForm.resLga, city: affForm.resCity, street: affForm.resStreet },
-          passport: affForm.passport, meansOfId: affForm.meansOfId, signature: affForm.signature,
+          passport: affForm.passport,
+          meansOfId: { idType: affForm.idType, idNumber: affForm.idNumber, image: affForm.meansOfId },
+          signature: affForm.signature,
         };
       } else {
         affiliateData = {
@@ -1076,6 +1082,14 @@ export default function CACLLCScreen({ navigation }) {
                 </View>
               ))}
 
+              {[['occupation','Occupation *'], ['nationality','Nationality *']].map(([k, lbl]) => (
+                <View key={k}>
+                  <Text style={[s.label, { color: tc.heading }]}>{lbl}</Text>
+                  <TextInput style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+                    value={affForm[k]} onChangeText={v => setAffField(k, v)} placeholder={lbl.replace(' *', '')} placeholderTextColor={tc.placeholder || '#AAA'} />
+                </View>
+              ))}
+
               <Text style={[s.sectionLabel, { color: tc.primary }]}>Service Address *</Text>
               {[['serviceState','State',true], ['serviceLga','LGA',false], ['serviceCity','City',false], ['serviceStreet','Street',false]].map(([k, lbl, isPicker]) => (
                 <View key={k}>
@@ -1121,9 +1135,25 @@ export default function CACLLCScreen({ navigation }) {
                 </View>
               )}
 
+              <Text style={[s.sectionLabel, { color: tc.primary }]}>Means of ID *</Text>
+              <Text style={[s.label, { color: tc.heading }]}>ID Type *</Text>
+              <TouchableOpacity style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
+                onPress={() => openPicker('affIdType', 'Select ID Type', [
+                  { value: 'NIN',              label: 'NIN' },
+                  { value: 'INTERNATIONAL_PASSPORT', label: 'International Passport' },
+                  { value: 'DRIVERS_LICENSE',  label: "Driver's License" },
+                  { value: 'VOTERS_CARD',      label: "Voter's Card" },
+                ])}>
+                <Text style={[s.pickerText, { color: affForm.idType ? tc.heading : tc.placeholder || '#AAA' }]}>{affForm.idType || 'Select ID type…'}</Text>
+                <Ionicons name="chevron-down" size={16} color={tc.subtext} />
+              </TouchableOpacity>
+              <Text style={[s.label, { color: tc.heading }]}>ID Number *</Text>
+              <TextInput style={[s.input, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading }]}
+                value={affForm.idNumber} onChangeText={v => setAffField('idNumber', v)} placeholder="Enter ID number" placeholderTextColor={tc.placeholder || '#AAA'} keyboardType="default" />
+
               <Text style={[s.sectionLabel, { color: tc.primary }]}>Documents *</Text>
               <LlcImageUpload label="Passport Photo"    required value={affForm.passport}  onPick={v => setAffField('passport', v)}  tc={tc} />
-              <LlcImageUpload label="Means of ID"       required value={affForm.meansOfId} onPick={v => setAffField('meansOfId', v)} tc={tc} />
+              <LlcImageUpload label="Means of ID Image" required value={affForm.meansOfId} onPick={v => setAffField('meansOfId', v)} tc={tc} />
               <LlcImageUpload label="Signature"         required value={affForm.signature} onPick={v => setAffField('signature', v)} tc={tc} />
             </View>
           ) : (
@@ -1191,10 +1221,11 @@ export default function CACLLCScreen({ navigation }) {
           visible={picker.visible}
           title={picker.title}
           options={picker.options}
-          value={picker.key === 'affType' ? affForm.affiliateType : picker.key === 'affGender' ? affForm.gender : affForm[picker.key]}
+          value={picker.key === 'affType' ? affForm.affiliateType : picker.key === 'affGender' ? affForm.gender : picker.key === 'affIdType' ? affForm.idType : affForm[picker.key]}
           onSelect={v => {
             if (picker.key === 'affType') setAffField('affiliateType', v);
             else if (picker.key === 'affGender') setAffField('gender', v);
+            else if (picker.key === 'affIdType') setAffField('idType', v);
             else setAffField(picker.key, v);
           }}
           onClose={closePicker}

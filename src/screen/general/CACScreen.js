@@ -218,7 +218,9 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
     return isNaN(n) ? null : n;
   };
 
-  // VAS returns triple-nested data: r.data (our wrapper) → outer (VAS root) → mid (VAS data) → inner (actual fields)
+  // VAS response shape differs by check type:
+  //   Free:     outer={statusCode,message,data:{complianceScore,similarityScore,...}}      (2 levels)
+  //   Advanced: outer={statusCode,data:{message,data:{complianceScorePercentage,...}}}     (3 levels)
   const VAS_MSG = {
     'PROCEED_TO_FILING':  'Your name meets CAC requirements. Proceed to filing.',
     'NAME_NOT_AVAILABLE': 'This name is not available for registration.',
@@ -227,13 +229,16 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
 
   const parse = (r) => {
     if (!r) return null;
-    const outer  = r?.data   || r;
-    const mid    = outer?.data || {};
-    const inner  = mid?.data   || mid;
+    const outer  = r?.data   || r;              // VAS root { statusCode, message, data }
+    const mid    = outer?.data || {};            // VAS data layer 1
+    const inner  = mid?.data   || mid;           // VAS data layer 2 (advanced) or same as mid (free)
     const httpOk = outer.statusCode === 200 || outer.success === true;
-    const message = VAS_MSG[mid.message] || mid.message || (httpOk ? 'Name check completed.' : 'Name check failed.');
-    const complianceScore = parseScore(inner.complianceScorePercentage);
-    const similarityScore = parseScore(inner.similarityScorePercentage);
+    // message lives at outer for free, mid for advanced
+    const rawMsg  = mid.message || outer.message;
+    const message = VAS_MSG[rawMsg] || rawMsg || (httpOk ? 'Name check completed.' : 'Name check failed.');
+    // field names differ: free uses complianceScore/similarityScore, advanced uses *Percentage
+    const complianceScore = parseScore(inner.complianceScorePercentage ?? inner.complianceScore);
+    const similarityScore = parseScore(inner.similarityScorePercentage ?? inner.similarityScore);
     return {
       message,
       complianceScore,
@@ -241,7 +246,7 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
       mostSimilarName:    inner.mostSimilarName || null,
       suggestedNames:     Array.isArray(inner.suggestedNames)
         ? inner.suggestedNames.filter(Boolean)
-        : [],
+        : (inner.suggestedName ? [inner.suggestedName] : []),
       recommendedActions: Array.isArray(inner.recommendedActions)
         ? inner.recommendedActions.map(a => typeof a === 'string' ? a : a?.message || '').filter(Boolean)
         : [],

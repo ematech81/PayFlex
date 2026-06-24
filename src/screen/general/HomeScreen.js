@@ -669,7 +669,7 @@ export default function HomeScreen({route}) {
                         {
                           color: ['success', 'successful', 'completed', 'confirmed'].includes(tx.status)
                             ? themeColors.success
-                            : tx.status === 'pending'
+                            : ['pending', 'processing', 'initiated'].includes(tx.status)
                               ? themeColors.warning
                               : themeColors.error,
                         },
@@ -682,7 +682,7 @@ export default function HomeScreen({route}) {
                       {
                         backgroundColor: ['success', 'successful', 'completed', 'confirmed'].includes(tx.status)
                           ? `${themeColors.success}20`
-                          : tx.status === 'pending'
+                          : ['pending', 'processing', 'initiated'].includes(tx.status)
                             ? `${themeColors.warning}20`
                             : `${themeColors.error}20`,
                       }
@@ -692,7 +692,7 @@ export default function HomeScreen({route}) {
                         {
                           color: ['success', 'successful', 'completed', 'confirmed'].includes(tx.status)
                             ? themeColors.success
-                            : tx.status === 'pending'
+                            : ['pending', 'processing', 'initiated'].includes(tx.status)
                               ? themeColors.warning
                               : themeColors.error,
                         }

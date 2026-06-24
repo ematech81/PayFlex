@@ -14,6 +14,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity,
   TextInput, ActivityIndicator, Modal, FlatList, Image, Alert, Platform, Linking,
+  KeyboardAvoidingView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
@@ -658,9 +659,10 @@ const EMPTY_FORM = {
 };
 
 export default function CACScreen({ navigation, route }) {
-  const dark   = useThem();
-  const tc     = dark ? colors.dark : colors.light;
-  const insets = useSafeAreaInsets();
+  const dark      = useThem();
+  const tc        = dark ? colors.dark : colors.light;
+  const insets    = useSafeAreaInsets();
+  const step1Ref  = useRef(null);
   const { wallet } = useWallet();
 
   const resubmitRef    = route?.params?.resubmitRef    || null;
@@ -936,7 +938,7 @@ export default function CACScreen({ navigation, route }) {
   // ─────────────────────────────────────────────────────────────────────────
 
   const renderStep1 = () => (
-    <ScrollView contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <ScrollView ref={step1Ref} contentContainerStyle={ss.sc} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       {/* Proposed Business Names card */}
       <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
         <View style={ss.cardHeader}>
@@ -966,6 +968,7 @@ export default function CACScreen({ navigation, route }) {
           placeholder="e.g. fashion design"
           placeholderTextColor={tc.placeholder || '#AAA'}
           returnKeyType="done"
+          onFocus={() => setTimeout(() => step1Ref.current?.scrollToEnd({ animated: true }), 200)}
         />
       </View>
 
@@ -1753,9 +1756,9 @@ export default function CACScreen({ navigation, route }) {
       )}
 
       {/* Content — key={step} forces new ScrollView instance on each step, resetting scroll to top */}
-      <View key={step} style={{ flex: 1 }}>
+      <KeyboardAvoidingView key={step} style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {stepContent}
-      </View>
+      </KeyboardAvoidingView>
 
       {/* "Need Help?" floating button — visible on all steps, clears nav + tab bar */}
       <TouchableOpacity

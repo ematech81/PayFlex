@@ -187,6 +187,7 @@ export default function CACLLCScreen({ navigation }) {
   const [form, setForm]       = useState(EMPTY_FORM);
   const [busy, setBusy]       = useState(false);
   const [busyMsg, setBusyMsg] = useState('');
+  const [draftObj, setDraftObj] = useState('');
 
   // Picker modal state
   const [picker, setPicker] = useState({ visible: false, key: '', title: '', options: [] });
@@ -226,9 +227,9 @@ export default function CACLLCScreen({ navigation }) {
         if (!form.companyType)         return 'Select a company type.';
         return null;
       case 2:
-        if (!form.natureOfBusinessCategory) return 'Select a nature of business category.';
-        if (!form.natureOfBusiness)          return 'Select the nature of business.';
-        if (form.objectsOfMem.length < 1)   return 'Generate and review at least one memorandum object.';
+        if (form.objectsOfMem.length < 1) return 'Add at least one memorandum object before proceeding.';
+        if (!form.natureOfBusinessCategory) return 'Select a business category (required for company registration).';
+        if (!form.natureOfBusiness)         return 'Select the nature of business (required for company registration).';
         return null;
       case 4:
         if (!form.principalActivityDescription.trim()) return 'Enter principal activity description.';
@@ -293,7 +294,8 @@ export default function CACLLCScreen({ navigation }) {
   };
 
   const handleGenerateMemo = async () => {
-    if (!form.natureOfBusiness) { Alert.alert('Required', 'Select a nature of business first.'); return; }
+    if (!form.natureOfBusinessCategory) { Alert.alert('Required', 'Select a business category first.'); return; }
+    if (!form.natureOfBusiness) { Alert.alert('Required', 'Select the nature of business first.'); return; }
     setBusy(true); setBusyMsg('Generating memorandum objects…');
     try {
       const res = await cacLlcGenerateMemo(form.sessionId, form.natureOfBusiness, form.countOfObjects);
@@ -512,9 +514,16 @@ export default function CACLLCScreen({ navigation }) {
   );
 
   const renderStep2 = () => {
-    const categories   = LLC_NATURE_OF_BUSINESS.map(n => ({ value: n.category, label: n.category }));
-    const catObj       = LLC_NATURE_OF_BUSINESS.find(n => n.category === form.natureOfBusinessCategory);
-    const subItems     = catObj ? catObj.items.map(i => ({ value: i, label: i })) : [];
+    const categories = LLC_NATURE_OF_BUSINESS.map(n => ({ value: n.category, label: n.category }));
+    const catObj     = LLC_NATURE_OF_BUSINESS.find(n => n.category === form.natureOfBusinessCategory);
+    const subItems   = catObj ? catObj.items.map(i => ({ value: i, label: i })) : [];
+
+    const addDraftObj = () => {
+      const trimmed = draftObj.trim();
+      if (!trimmed) return;
+      setField('objectsOfMem', [...form.objectsOfMem, trimmed]);
+      setDraftObj('');
+    };
 
     return (
       <View style={s.stepContent}>
@@ -531,13 +540,80 @@ export default function CACLLCScreen({ navigation }) {
             <View style={[s.stepCardIcon, { backgroundColor: `${tc.primary}15` }]}>
               <Ionicons name="document-text-outline" size={20} color={tc.primary} />
             </View>
-            <Text style={[s.stepCardTitle, { color: tc.heading }]}>Memorandum Objects</Text>
+            <Text style={[s.stepCardTitle, { color: tc.heading }]}>Business Memorandum Objects</Text>
           </View>
           <Text style={[s.stepCardSub, { color: tc.subheading }]}>
-            The objects clause defines what your company is authorised to do. Generate AI suggestions then edit them before proceeding.
+            These are the activities your company is legally authorised to carry out. You must add at least one object before proceeding.
           </Text>
 
-          <Text style={[s.label, { color: tc.heading }]}>Nature of Business Category *</Text>
+          {/* ── Primary: manual entry ── */}
+          <Text style={[s.label, { color: tc.heading, marginTop: 8 }]}>Add a Memorandum Object</Text>
+          <Text style={[s.hint, { color: tc.subtext, marginBottom: 6 }]}>
+            Describe one business activity your company will carry out (e.g. "To carry on the business of software development and sale of technology products").
+          </Text>
+          <View style={[s.memoAddRow, { borderColor: tc.border || '#E5E5EA', backgroundColor: tc.inputBg || '#F9F9F9' }]}>
+            <TextInput
+              style={[s.memoAddInput, { color: tc.heading }]}
+              value={draftObj}
+              onChangeText={setDraftObj}
+              placeholder="Type a business activity…"
+              placeholderTextColor={tc.placeholder || '#AAA'}
+              multiline
+              returnKeyType="done"
+              onSubmitEditing={addDraftObj}
+            />
+            <TouchableOpacity
+              style={[s.memoAddBtn, { backgroundColor: draftObj.trim() ? tc.primary : (tc.border || '#DDD') }]}
+              onPress={addDraftObj}
+              disabled={!draftObj.trim()}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add" size={20} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Object list ── */}
+          {form.objectsOfMem.length > 0 && (
+            <View style={{ marginTop: 16, gap: 8 }}>
+              <Text style={[s.label, { color: tc.heading }]}>
+                Added Objects <Text style={{ fontWeight: '400', color: tc.subtext }}>({form.objectsOfMem.length})</Text>
+              </Text>
+              {form.objectsOfMem.map((obj, i) => (
+                <View key={i} style={[s.memoRow, { backgroundColor: tc.inputBg || '#F9F9F9', borderColor: tc.border || '#E5E5EA' }]}>
+                  <Text style={[s.memoNum, { color: tc.primary }]}>{i + 1}.</Text>
+                  <TextInput
+                    style={[s.memoInput, { color: tc.heading }]}
+                    value={obj}
+                    onChangeText={v => {
+                      const arr = [...form.objectsOfMem];
+                      arr[i] = v;
+                      setField('objectsOfMem', arr);
+                    }}
+                    multiline
+                    returnKeyType="done"
+                  />
+                  <TouchableOpacity onPress={() => setField('objectsOfMem', form.objectsOfMem.filter((_, j) => j !== i))}>
+                    <Ionicons name="close-circle" size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* ── Divider + AI generator ── */}
+          <View style={[s.memoDivider, { borderColor: tc.border || '#E5E5EA' }]}>
+            <View style={[s.memoDividerLine, { backgroundColor: tc.border || '#E5E5EA' }]} />
+            <Text style={[s.memoDividerText, { color: tc.subtext, backgroundColor: tc.card }]}>
+              Don't have memorandum objects yet?
+            </Text>
+            <View style={[s.memoDividerLine, { backgroundColor: tc.border || '#E5E5EA' }]} />
+          </View>
+
+          <Text style={[s.hint, { color: tc.subtext, marginBottom: 8 }]}>
+            Select your business category and let AI suggest memorandum objects for you.
+          </Text>
+
+          <Text style={[s.label, { color: tc.heading }]}>Business Category</Text>
           <TouchableOpacity
             style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
             onPress={() => openPicker('natureOfBusinessCategory', 'Select Category', categories)}
@@ -548,7 +624,7 @@ export default function CACLLCScreen({ navigation }) {
             <Ionicons name="chevron-down" size={16} color={tc.subtext} />
           </TouchableOpacity>
 
-          <Text style={[s.label, { color: tc.heading }]}>Nature of Business *</Text>
+          <Text style={[s.label, { color: tc.heading }]}>Nature of Business</Text>
           <TouchableOpacity
             style={[s.picker, { backgroundColor: tc.card, borderColor: !form.natureOfBusinessCategory ? '#E5E5EA' : (tc.border || '#E5E5EA'), opacity: !form.natureOfBusinessCategory ? 0.5 : 1 }]}
             onPress={() => form.natureOfBusinessCategory && openPicker('natureOfBusiness', 'Select Nature of Business', subItems)}
@@ -572,39 +648,6 @@ export default function CACLLCScreen({ navigation }) {
               {busy && busyMsg.includes('Generat') ? 'Generating…' : 'Generate Suggestions'}
             </Text>
           </TouchableOpacity>
-
-          {form.objectsOfMem.length > 0 && (
-            <View style={{ marginTop: 16, gap: 10 }}>
-              <Text style={[s.label, { color: tc.heading }]}>Objects of Memorandum</Text>
-              <Text style={[s.hint, { color: tc.subtext }]}>Tap any item to edit. Add custom objects using the button below.</Text>
-              {form.objectsOfMem.map((obj, i) => (
-                <View key={i} style={[s.memoRow, { backgroundColor: tc.inputBg || '#F9F9F9', borderColor: tc.border || '#E5E5EA' }]}>
-                  <Text style={[s.memoNum, { color: tc.primary }]}>{i + 1}.</Text>
-                  <TextInput
-                    style={[s.memoInput, { color: tc.heading }]}
-                    value={obj}
-                    onChangeText={v => {
-                      const arr = [...form.objectsOfMem];
-                      arr[i] = v;
-                      setField('objectsOfMem', arr);
-                    }}
-                    multiline
-                    returnKeyType="done"
-                  />
-                  <TouchableOpacity onPress={() => setField('objectsOfMem', form.objectsOfMem.filter((_, j) => j !== i))}>
-                    <Ionicons name="close-circle" size={18} color="#EF4444" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity
-                style={[s.ghostBtn, { borderColor: tc.border || '#E5E5EA' }]}
-                onPress={() => setField('objectsOfMem', [...form.objectsOfMem, ''])}
-              >
-                <Ionicons name="add" size={16} color={tc.primary} />
-                <Text style={[s.ghostBtnText, { color: tc.primary }]}>Add Custom Object</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
 
         <TouchableOpacity
@@ -1288,6 +1331,13 @@ const s = StyleSheet.create({
   secondaryBtnText:{ fontSize: 14, fontWeight: '700' },
   ghostBtn:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed' },
   ghostBtnText:   { fontSize: 13, fontWeight: '600' },
+
+  memoAddRow:     { flexDirection: 'row', alignItems: 'flex-end', borderRadius: 12, borderWidth: 1, overflow: 'hidden', minHeight: 52 },
+  memoAddInput:   { flex: 1, paddingHorizontal: 12, paddingVertical: 12, fontSize: 13.5, lineHeight: 19 },
+  memoAddBtn:     { width: 44, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+  memoDivider:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 18 },
+  memoDividerLine:{ flex: 1, height: 1 },
+  memoDividerText:{ fontSize: 12, fontWeight: '600', paddingHorizontal: 4 },
 
   compTypeRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderRadius: 10, borderWidth: 1, gap: 8 },
   compTypeLabel:  { flex: 1, fontSize: 12.5, fontWeight: '500', textTransform: 'capitalize' },

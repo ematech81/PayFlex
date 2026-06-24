@@ -60,6 +60,61 @@ const LabelInput = React.memo(({ value, onChangeText, placeholder, keyboardType,
   />
 ));
 
+const LINE_OF_BUSINESS_OPTIONS = [
+  // User-specified
+  'General merchandise',
+  'Trading',
+  'Fashion design/Tailoring',
+  'ICT service',
+  'Data analysis',
+  'Poultry/Livestock farming',
+  'Crop production/Agro allied service',
+  'Hair stylist/Salon',
+  'Solar panel installation',
+  'Digital marketing',
+  'Graphic design',
+  'Content creation',
+  'Web design',
+  'POS agent',
+  // Additional common Nigerian businesses
+  'Food vendor/Restaurant',
+  'Catering services',
+  'Event planning/Management',
+  'Photography/Videography',
+  'Transportation/Logistics',
+  'Real estate agency',
+  'Construction/Building',
+  'Electrical installation',
+  'Plumbing services',
+  'Auto mechanic',
+  'Laundry/Dry cleaning',
+  'Supermarket/Retail store',
+  'Pharmacy/Drug store',
+  'Printing/Publishing',
+  'Security services',
+  'Travel agency',
+  'Consulting services',
+  'Bakery/Confectionery',
+  'Cleaning services',
+  'Import/Export',
+  'Education/Tutorial centre',
+  'Software development',
+  'E-commerce',
+  'Agriculture/Farming',
+  'Legal services',
+  'Accounting/Financial services',
+  'Logistics/Courier services',
+  'Furniture making/Interior décor',
+  'Welding/Fabrication',
+  'Car wash',
+  'Petrol station/Fuel supply',
+  'Waste management/Recycling',
+  'Media/Broadcasting',
+  'Health & wellness/Fitness',
+  'Skincare/Beauty products',
+  'Jewellery/Accessories',
+].sort();
+
 const StateDropdown = React.memo(({ value, options, placeholder, onSelect, tc }) => {
   const [open, setOpen] = useState(false);
   return (
@@ -959,16 +1014,14 @@ export default function CACScreen({ navigation, route }) {
           <Text style={[ss.cardTitle, { color: tc.heading }]}>Line of Business</Text>
         </View>
         <Text style={[ss.cardSub, { color: tc.subheading }]}>
-          Briefly describe what your business does (e.g. "fashion design", "food retail", "software development"). Required for name compliance check.
+          Select what your business does. This is required for the name compliance check.
         </Text>
-        <TextInput
-          style={[ss.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading, marginTop: 8 }]}
+        <StateDropdown
           value={form.lineOfBusiness}
-          onChangeText={v => setField('lineOfBusiness', v)}
-          placeholder="e.g. fashion design"
-          placeholderTextColor={tc.placeholder || '#AAA'}
-          returnKeyType="done"
-          onFocus={() => setTimeout(() => step1Ref.current?.scrollToEnd({ animated: true }), 200)}
+          options={LINE_OF_BUSINESS_OPTIONS}
+          placeholder="Select line of business…"
+          onSelect={v => setField('lineOfBusiness', v)}
+          tc={tc}
         />
       </View>
 

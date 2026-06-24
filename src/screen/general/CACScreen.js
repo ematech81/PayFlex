@@ -696,9 +696,9 @@ export default function CACScreen({ navigation, route }) {
       const nameOk = (n) => !!n?.trim() && !isSingle(n) && !findProhibited(n);
       if (!nameOk(form.proposedOption1)) m.push('Desired Business Name (must be 2+ words, no prohibited words)');
       if (!nameOk(form.proposedOption2)) m.push('Alternative Business Name (must be 2+ words, no prohibited words)');
+      if (!form.lineOfBusiness?.trim())  m.push('Line of Business');
     }
     if (step === 2) {
-      if (!form.lineOfBusiness)           m.push('Line of Business');
       if (!form.businessCommencementDate) m.push('Commencement Date');
     }
     if (step === 3) {
@@ -903,6 +903,25 @@ export default function CACScreen({ navigation, route }) {
         <View style={ss.divider} />
         <Text style={[ss.cardSub, { color: tc.subheading, marginTop: 12 }]}>Option 2 (Alternative)</Text>
         <NameInput value={form.proposedOption2} onChange={v => setField('proposedOption2', v)} tc={tc} />
+      </View>
+
+      {/* Line of business — needed by VAS compliance check on this step */}
+      <View style={[ss.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+        <View style={ss.cardHeader}>
+          <Ionicons name="briefcase-outline" size={20} color={tc.primary} />
+          <Text style={[ss.cardTitle, { color: tc.heading }]}>Line of Business</Text>
+        </View>
+        <Text style={[ss.cardSub, { color: tc.subheading }]}>
+          Briefly describe what your business does (e.g. "fashion design", "food retail", "software development"). Required for name compliance check.
+        </Text>
+        <TextInput
+          style={[ss.input, { backgroundColor: tc.inputBg || tc.card, borderColor: tc.border || '#E5E5EA', color: tc.heading, marginTop: 8 }]}
+          value={form.lineOfBusiness}
+          onChangeText={v => setField('lineOfBusiness', v)}
+          placeholder="e.g. fashion design"
+          placeholderTextColor={tc.placeholder || '#AAA'}
+          returnKeyType="done"
+        />
       </View>
 
       {/* Compliance Checker — no background, flat label style */}

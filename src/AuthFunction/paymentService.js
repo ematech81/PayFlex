@@ -886,6 +886,10 @@ export const cacLlcAddAffiliate = (sessionId, affiliatePayload) =>
 export const cacLlcRegisterPsc = (sessionId, pscData) =>
   makeGeneralRequest('/cac/llc/psc', { sessionId, ...pscData });
 
+/** Step 8 — Submit final registration to CAC (charges wallet) */
+export const cacLlcSubmitRegistration = (sessionId) =>
+  makeGeneralRequest('/cac/llc/submit', { sessionId }, 120_000);
+
 /** Get session + affiliates by sessionId */
 export const cacLlcGetSession = (sessionId) =>
   makeGeneralGet(`/cac/llc/registration/${sessionId}`);

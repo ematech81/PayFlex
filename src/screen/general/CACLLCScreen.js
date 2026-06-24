@@ -26,6 +26,7 @@ import { formatCurrency } from 'CONSTANT/formatCurrency';
 import {
   cacLlcReserveName, cacLlcGenerateMemo, cacLlcAnalyseMemo,
   cacLlcCreateCompany, cacLlcRegisterShares, cacLlcAddAffiliate, cacLlcRegisterPsc,
+  cacLlcSubmitRegistration,
 } from 'AuthFunction/paymentService';
 import {
   LLC_COMPANY_TYPES, LLC_NATURE_OF_BUSINESS, LLC_AFFILIATE_TYPES, NIGERIAN_STATES,
@@ -126,7 +127,7 @@ const LlcImageUpload = React.memo(({ label, required, value, onPick, tc }) => {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 const EMPTY_FORM = {
   // Step 1
@@ -1242,7 +1243,7 @@ export default function CACLLCScreen({ navigation }) {
 
   // ── Step progress bar ────────────────────────────────────────────────────────
 
-  const STEP_LABELS = ['Reserve', 'Memo', 'Analyse', 'Company', 'Shares', 'Affiliates', 'PSC'];
+  const STEP_LABELS = ['Reserve', 'Memo', 'Analyse', 'Company', 'Shares', 'Affiliates', 'PSC', 'Submit'];
 
   const renderProgress = () => (
     <View style={[s.progressWrap, { backgroundColor: tc.card, borderBottomColor: tc.border || '#F0F0F0' }]}>
@@ -1393,6 +1394,100 @@ export default function CACLLCScreen({ navigation }) {
     </View>
   );
 
+  // ── Step 8: Submit ───────────────────────────────────────────────────────────
+
+  const calcLlcFee = (shareCapital) => {
+    const rate = Math.max(10_000, Math.floor(Number(shareCapital || 0) / 100));
+    return 1_000 + rate;
+  };
+  const estimatedFee = calcLlcFee(form.shareCapital || 0);
+
+  const handleStep8 = async () => {
+    setBusy(true); setBusyMsg('Submitting registration…');
+    try {
+      const res = await cacLlcSubmitRegistration(form.sessionId);
+      Alert.alert(
+        'Registration Submitted! 🎉',
+        `Company: ${res.companyName || form.proposedName1 || 'Your Company'}\n\nTransaction Ref: ${res.transactionRef}\nStatus: PENDING review by CAC\nFee charged: ₦${(res.statutoryFee || estimatedFee).toLocaleString()}`,
+        [{ text: 'Track Status', onPress: () => navigation.replace('CACHub') }]
+      );
+    } catch (e) {
+      Alert.alert('Submission Failed', e.message);
+    } finally { setBusy(false); }
+  };
+
+  const renderStep8 = () => (
+    <View style={s.stepContent}>
+      {/* Summary card */}
+      <View style={[s.stepCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+        <View style={s.stepCardHeader}>
+          <View style={[s.stepCardIcon, { backgroundColor: `${tc.primary}15` }]}>
+            <Ionicons name="checkmark-circle-outline" size={20} color={tc.primary} />
+          </View>
+          <Text style={[s.stepCardTitle, { color: tc.heading }]}>Review & Submit</Text>
+        </View>
+        <Text style={[s.stepCardSub, { color: tc.subheading }]}>
+          All steps are complete. Review the summary below and submit your application to CAC.
+        </Text>
+      </View>
+
+      {/* Registration summary */}
+      <View style={[s.stepCard, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
+        <Text style={[s.sectionLabel, { color: tc.primary }]}>REGISTRATION SUMMARY</Text>
+        {[
+          ['Company Type',      form.companyType?.replace(/_/g, ' ')],
+          ['Proposed Name',     form.proposedName1 || '—'],
+          ['Nature of Business', form.natureOfBusiness || '—'],
+          ['Share Capital',     form.shareCapital ? `₦${Number(form.shareCapital).toLocaleString()}` : '—'],
+          ['Affiliates',        `${form.affiliates?.length || 0} registered`],
+          ['PSC Registered',    form.affiliates?.some(a => a.affiliateKey) ? 'Yes' : 'Pending'],
+        ].map(([label, value]) => (
+          <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: tc.border || '#F0F0F0' }}>
+            <Text style={{ fontSize: 13, color: tc.subheading }}>{label}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: tc.heading, flex: 1, textAlign: 'right' }}>{value}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Fee card */}
+      <View style={[s.stepCard, { backgroundColor: '#F0FDF4', borderColor: '#86EFAC' }]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={{ fontSize: 13, color: '#15803D', fontWeight: '600' }}>CAC Statutory Fee</Text>
+            <Text style={{ fontSize: 11, color: '#166534', marginTop: 2 }}>Deducted from your wallet on submission</Text>
+          </View>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: '#15803D' }}>
+            ₦{estimatedFee.toLocaleString()}
+          </Text>
+        </View>
+      </View>
+
+      {/* Info box */}
+      <View style={[s.stepCard, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+        <Ionicons name="information-circle-outline" size={18} color="#1D4ED8" style={{ marginBottom: 6 }} />
+        <Text style={{ fontSize: 13, color: '#1E40AF', lineHeight: 20 }}>
+          After submission, CAC will review your application. Status will be PENDING until approved.
+          You can track progress from the CAC Hub screen.
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        style={[s.primaryBtn, { backgroundColor: tc.primary, opacity: busy ? 0.7 : 1 }]}
+        onPress={handleStep8}
+        disabled={busy}
+        activeOpacity={0.85}
+      >
+        {busy
+          ? <ActivityIndicator color="#FFF" size="small" />
+          : <>
+              <Ionicons name="send-outline" size={18} color="#FFF" />
+              <Text style={s.primaryBtnText}>Submit to CAC — ₦{estimatedFee.toLocaleString()}</Text>
+            </>
+        }
+      </TouchableOpacity>
+    </View>
+  );
+
   // ── Main render ──────────────────────────────────────────────────────────────
 
   const renderStep = () => {
@@ -1404,6 +1499,7 @@ export default function CACLLCScreen({ navigation }) {
       case 5: return renderStep5();
       case 6: return renderStep6();
       case 7: return renderStep7();
+      case 8: return renderStep8();
       default: return null;
     }
   };

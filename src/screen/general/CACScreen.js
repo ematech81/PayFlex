@@ -276,19 +276,24 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
 
       if (r?.unavailable) {
         setUnavailable(true);
-        setUnavailMsg(r?.message || 'Compliance check is not available for your account.');
         onResult?.(null, null);
         return;
       }
 
-      const byName = {};
-      (r?.results || []).forEach(({ name, data }) => { byName[name] = data; });
-      const p1 = n1 ? parse({ data: byName[n1] }) : null;
-      const p2 = n2 ? parse({ data: byName[n2] }) : null;
+      const byData  = {};
+      const byError = {};
+      (r?.results || []).forEach(({ name, data, error }) => {
+        if (data)  byData[name]  = data;
+        if (error) byError[name] = true;
+      });
+
+      const p1 = n1 ? (byData[n1]  ? parse({ data: byData[n1]  }) : (byError[n1]  ? { checkError: true } : null)) : null;
+      const p2 = n2 ? (byData[n2]  ? parse({ data: byData[n2]  }) : (byError[n2]  ? { checkError: true } : null)) : null;
       setResult1(p1); setResult2(p2);
       onResult?.(p1, p2);
     } catch (e) {
-      Alert.alert('Check failed', e.message || 'Could not run compliance check. Please try again.');
+      setUnavailable(true);
+      onResult?.(null, null);
     } finally {
       setChecking(false);
     }
@@ -352,6 +357,24 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
 
   const ResultCard = ({ name, result }) => {
     if (!result) return null;
+    if (result.checkError) {
+      return (
+        <View style={[ss.compCard, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+          <View style={ss.compCardHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={[ss.compCardName, { color: '#1E293B' }]} numberOfLines={1}>{name}</Text>
+            </View>
+            <View style={[ss.compBadge, { backgroundColor: '#DC262618', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+              <Ionicons name="close-circle" size={13} color="#DC2626" />
+              <Text style={[ss.compBadgeText, { color: '#DC2626' }]}>Unavailable</Text>
+            </View>
+          </View>
+          <Text style={{ fontSize: 13, color: '#DC2626', lineHeight: 20 }}>
+            Sorry, this service is not available for this name at the moment. You can still proceed to Step 2.
+          </Text>
+        </View>
+      );
+    }
     const statusColor = result.passed ? '#16A34A' : result.warn ? '#D97706' : '#DC2626';
     const bgColor     = result.passed ? '#F0FDF4' : result.warn ? '#FFFBEB' : '#FEF2F2';
     const borderColor = result.passed ? '#86EFAC' : result.warn ? '#FDE68A' : '#FECACA';
@@ -543,15 +566,16 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
         </View>
       )}
 
-      {/* Not available — 403 from VAS */}
+      {/* Service error */}
       {unavailable && (
         <View style={{ gap: 10 }}>
-          <View style={[ss.compUnavailBox, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1, borderRadius: 10 }]}>
-            <Ionicons name="information-circle-outline" size={18} color="#2563EB" />
+          <View style={[ss.compUnavailBox, { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1, borderRadius: 10 }]}>
+            <Ionicons name="alert-circle-outline" size={18} color="#DC2626" />
             <View style={{ flex: 1, gap: 3 }}>
-              <Text style={[ss.compUnavailTitle, { color: '#1E40AF' }]}>Compliance Check Unavailable</Text>
-              <Text style={[ss.compUnavailMsg, { color: '#1D4ED8' }]}>{unavailMsg}</Text>
-              <Text style={[ss.compUnavailNote, { color: '#3B82F6' }]}>You can still proceed — CAC will review your name during processing.</Text>
+              <Text style={[ss.compUnavailTitle, { color: '#DC2626' }]}>Compliance Check Unavailable</Text>
+              <Text style={[ss.compUnavailMsg, { color: '#DC2626' }]}>
+                Sorry, this service is not available now. Kindly click the button below to continue to Step 2.
+              </Text>
             </View>
           </View>
           <TouchableOpacity

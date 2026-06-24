@@ -210,46 +210,63 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
   const [checking,    setChecking]    = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const [unavailMsg,  setUnavailMsg]  = useState('');
+  const [isAdvance,   setIsAdvance]   = useState(false);
 
   const parseScore = (s) => {
-    if (!s) return null;
+    if (s === null || s === undefined || s === '') return null;
     const n = parseFloat(String(s).replace('%', ''));
     return isNaN(n) ? null : n;
   };
 
+  // VAS returns triple-nested data: r.data (our wrapper) → outer (VAS root) → mid (VAS data) → inner (actual fields)
+  const VAS_MSG = {
+    'PROCEED_TO_FILING':  'Your name meets CAC requirements. Proceed to filing.',
+    'NAME_NOT_AVAILABLE': 'This name is not available for registration.',
+    'NAME_SIMILAR':       'A similar name already exists in CAC records.',
+  };
+
   const parse = (r) => {
     if (!r) return null;
-    const outer = r?.data || r;
-    const inner = outer?.data || {};
-    const complianceScore = parseScore(inner.complianceScore);
-    const similarityScore = parseScore(inner.similarityScore);
+    const outer  = r?.data   || r;
+    const mid    = outer?.data || {};
+    const inner  = mid?.data   || mid;
     const httpOk = outer.statusCode === 200 || outer.success === true;
+    const message = VAS_MSG[mid.message] || mid.message || (httpOk ? 'Name check completed.' : 'Name check failed.');
+    const complianceScore = parseScore(inner.complianceScorePercentage);
+    const similarityScore = parseScore(inner.similarityScorePercentage);
     return {
-      message:            outer.message || (httpOk ? 'Name check completed.' : 'Name check failed.'),
+      message,
       complianceScore,
       similarityScore,
       mostSimilarName:    inner.mostSimilarName || null,
-      suggestedNames:     Array.isArray(inner.suggestedNames)     ? inner.suggestedNames     : [],
-      recommendedActions: Array.isArray(inner.recommendedActions) ? inner.recommendedActions : [],
-      similarNames:       Array.isArray(inner.similarNames)       ? inner.similarNames       : [],
+      suggestedNames:     Array.isArray(inner.suggestedNames)
+        ? inner.suggestedNames.filter(Boolean)
+        : [],
+      recommendedActions: Array.isArray(inner.recommendedActions)
+        ? inner.recommendedActions.map(a => typeof a === 'string' ? a : a?.message || '').filter(Boolean)
+        : [],
+      similarNames:       Array.isArray(inner.similarNames)
+        ? inner.similarNames.filter(Boolean)
+        : [],
       passed:  httpOk && (complianceScore === null || complianceScore >= 70),
       warn:    httpOk && complianceScore !== null && complianceScore >= 40 && complianceScore < 70,
       failed: !httpOk || (complianceScore !== null && complianceScore < 40),
     };
   };
 
-  const runCheck = async () => {
+  const doRun = async (advance) => {
     if (!name1?.trim() && !name2?.trim()) {
       Alert.alert('Enter names', 'Please fill in at least one business name first.');
       return;
     }
+    setIsAdvance(advance);
     setChecking(true);
     setResult1(null); setResult2(null);
     setUnavailable(false); setUnavailMsg('');
     try {
       const [r1, r2] = await Promise.all([
-        name1?.trim() ? cacCheckCompliance(name1.trim(), lob || '') : Promise.resolve(null),
-        name2?.trim() ? cacCheckCompliance(name2.trim(), lob || '') : Promise.resolve(null),
+        name1?.trim() ? cacCheckCompliance(name1.trim(), lob || '', advance) : Promise.resolve(null),
+        name2?.trim() ? cacCheckCompliance(name2.trim(), lob || '', advance) : Promise.resolve(null),
       ]);
       if (r1?.unavailable || r2?.unavailable) {
         setUnavailable(true);
@@ -265,6 +282,24 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
     } finally {
       setChecking(false);
     }
+  };
+
+  const runCheck = () => doRun(false);
+
+  const runAdvancedCheck = () => {
+    if (!name1?.trim() && !name2?.trim()) {
+      Alert.alert('Enter names', 'Please fill in at least one business name first.');
+      return;
+    }
+    const count = [name1?.trim(), name2?.trim()].filter(Boolean).length;
+    Alert.alert(
+      'Advanced Compliance Check',
+      `This check costs ₦${100 * count} (₦100 per name) and will be deducted from your wallet.\n\nWhat you get:\n• Similarity score against existing CAC names\n• Most similar registered business name\n• CAC-suggested alternative names (if yours is too similar)\n• Recommended actions from CAC\n\nDo you want to proceed?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Proceed (₦' + (100 * count) + ')', onPress: () => doRun(true) },
+      ]
+    );
   };
 
   const clearResults = () => {
@@ -429,30 +464,73 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
         </View>
       </View>
 
-      {/* Run button — always visible */}
-      {!hasResults && (
-        <TouchableOpacity
-          style={[ss.checkBtn2, { backgroundColor: tc.primary, opacity: checking ? 0.7 : 1 }]}
-          onPress={runCheck} disabled={checking} activeOpacity={0.85}
-        >
-          {checking
-            ? <><ActivityIndicator size="small" color="#FFF" /><Text style={ss.checkBtnText2}>Checking…</Text></>
-            : <><Ionicons name="search-outline" size={16} color="#FFF" /><Text style={ss.checkBtnText2}>Run Compliance Check</Text></>
-          }
-        </TouchableOpacity>
+      {/* Info box — shown before any results */}
+      {!hasResults && !checking && (
+        <View style={[ss.compInfoBox, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD', borderWidth: 1 }]}>
+          <Ionicons name="information-circle-outline" size={15} color="#0369A1" style={{ marginTop: 1 }} />
+          <Text style={[ss.compInfoText, { color: '#075985' }]}>
+            {'The '}
+            <Text style={{ fontWeight: '700' }}>Free Check</Text>
+            {' confirms your name follows CAC naming rules at no cost.\n\nThe '}
+            <Text style={{ fontWeight: '700' }}>Advanced Check (₦100/name)</Text>
+            {' also runs a similarity scan against all registered businesses, shows your compliance score, lists similar existing names, and suggests CAC-approved alternatives when needed.'}
+          </Text>
+        </View>
       )}
 
-      {/* Re-check button (shown after results) */}
-      {hasResults && !checking && (
-        <TouchableOpacity style={[ss.checkBtn2, { backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border || '#E5E5EA' }]} onPress={runCheck} activeOpacity={0.85}>
-          <Ionicons name="refresh-outline" size={16} color={tc.primary} />
-          <Text style={[ss.checkBtnText2, { color: tc.primary }]}>Re-check Names</Text>
-        </TouchableOpacity>
+      {/* Buttons — before results */}
+      {!hasResults && !checking && (
+        <View style={{ gap: 8 }}>
+          <TouchableOpacity
+            style={[ss.checkBtn2, { backgroundColor: tc.card, borderWidth: 1.5, borderColor: tc.primary }]}
+            onPress={runCheck} activeOpacity={0.85}
+          >
+            <Ionicons name="search-outline" size={16} color={tc.primary} />
+            <Text style={[ss.checkBtnText2, { color: tc.primary }]}>Free Check</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[ss.checkBtn2, { backgroundColor: tc.primary }]}
+            onPress={runAdvancedCheck} activeOpacity={0.85}
+          >
+            <Ionicons name="shield-checkmark-outline" size={16} color="#FFF" />
+            <Text style={ss.checkBtnText2}>Advanced Check</Text>
+            <View style={ss.advFeeChip}>
+              <Text style={ss.advFeeText}>₦100/name</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       )}
-      {checking && hasResults && (
-        <View style={[ss.checkBtn2, { backgroundColor: tc.card }]}>
+
+      {/* Loading state */}
+      {checking && (
+        <View style={[ss.checkBtn2, { backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border || '#E5E5EA' }]}>
           <ActivityIndicator size="small" color={tc.primary} />
-          <Text style={[ss.checkBtnText2, { color: tc.primary }]}>Checking…</Text>
+          <Text style={[ss.checkBtnText2, { color: tc.primary }]}>
+            {isAdvance ? 'Running advanced check…' : 'Checking…'}
+          </Text>
+        </View>
+      )}
+
+      {/* Re-check buttons — after results */}
+      {hasResults && !checking && (
+        <View style={{ gap: 8 }}>
+          <TouchableOpacity
+            style={[ss.checkBtn2, { backgroundColor: tc.card, borderWidth: 1.5, borderColor: tc.primary }]}
+            onPress={runCheck} activeOpacity={0.85}
+          >
+            <Ionicons name="refresh-outline" size={16} color={tc.primary} />
+            <Text style={[ss.checkBtnText2, { color: tc.primary }]}>Free Re-check</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[ss.checkBtn2, { backgroundColor: tc.primary }]}
+            onPress={runAdvancedCheck} activeOpacity={0.85}
+          >
+            <Ionicons name="shield-checkmark-outline" size={16} color="#FFF" />
+            <Text style={ss.checkBtnText2}>Advanced Re-check</Text>
+            <View style={ss.advFeeChip}>
+              <Text style={ss.advFeeText}>₦100/name</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -2086,6 +2164,10 @@ const ss = StyleSheet.create({
     gap: 8, paddingVertical: 14, borderRadius: 12, marginBottom: 12,
   },
   checkBtnText2:      { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  compInfoBox:       { flexDirection: 'row', gap: 8, padding: 12, borderRadius: 10, marginBottom: 10, alignItems: 'flex-start' },
+  compInfoText:      { fontSize: 12.5, lineHeight: 19, flex: 1 },
+  advFeeChip:        { backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  advFeeText:        { fontSize: 11, fontWeight: '800', color: '#FFF' },
   compUnavailBox:    { flexDirection: 'row', gap: 10, padding: 12, alignItems: 'flex-start' },
   compUnavailTitle:  { fontSize: 13, fontWeight: '700', marginBottom: 2 },
   compUnavailMsg:    { fontSize: 12, lineHeight: 18 },

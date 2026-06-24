@@ -169,10 +169,13 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
     const similarityScore = parseScore(inner.similarityScore);
     const httpOk = outer.statusCode === 200 || outer.success === true;
     return {
-      message:         outer.message || (httpOk ? 'Name check completed.' : 'Name check failed.'),
+      message:            outer.message || (httpOk ? 'Name check completed.' : 'Name check failed.'),
       complianceScore,
       similarityScore,
-      mostSimilarName: inner.mostSimilarName || null,
+      mostSimilarName:    inner.mostSimilarName || null,
+      suggestedNames:     Array.isArray(inner.suggestedNames)     ? inner.suggestedNames     : [],
+      recommendedActions: Array.isArray(inner.recommendedActions) ? inner.recommendedActions : [],
+      similarNames:       Array.isArray(inner.similarNames)       ? inner.similarNames       : [],
       passed:  httpOk && (complianceScore === null || complianceScore >= 70),
       warn:    httpOk && complianceScore !== null && complianceScore >= 40 && complianceScore < 70,
       failed: !httpOk || (complianceScore !== null && complianceScore < 40),
@@ -309,6 +312,48 @@ const ComplianceChecker = React.memo(({ name1, name2, lob, tc, onSupportingDocRe
               <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '600', marginBottom: 2 }}>MOST SIMILAR EXISTING NAME</Text>
               <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>{result.mostSimilarName}</Text>
             </View>
+          </View>
+        )}
+
+        {/* Similar names list (advanceCheck) */}
+        {result.similarNames?.length > 0 && (
+          <View style={{ marginTop: 10, gap: 4 }}>
+            <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '600' }}>SIMILAR EXISTING NAMES</Text>
+            {result.similarNames.map((n, i) => (
+              <View key={i} style={[ss.similarRow, { backgroundColor: '#F1F5F9', borderRadius: 6, padding: 6 }]}>
+                <Ionicons name="business-outline" size={13} color="#64748B" />
+                <Text style={{ fontSize: 12.5, color: '#1E293B', flex: 1 }}>{n}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Recommended actions (advanceCheck) */}
+        {result.recommendedActions?.length > 0 && (
+          <View style={{ marginTop: 10, gap: 4 }}>
+            <Text style={{ fontSize: 10, color: '#92400E', fontWeight: '600' }}>RECOMMENDED ACTIONS</Text>
+            {result.recommendedActions.map((a, i) => (
+              <View key={i} style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+                <Ionicons name="alert-circle-outline" size={13} color="#D97706" style={{ marginTop: 2 }} />
+                <Text style={{ fontSize: 12.5, color: '#92400E', flex: 1, lineHeight: 18 }}>{a}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* CAC suggested names (advanceCheck — shown when name fails/warns) */}
+        {(result.failed || result.warn) && result.suggestedNames?.length > 0 && (
+          <View style={{ marginTop: 10, gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Ionicons name="sparkles-outline" size={13} color={tc.primary} />
+              <Text style={{ fontSize: 10, color: tc.primary, fontWeight: '700' }}>CAC SUGGESTED ALTERNATIVES</Text>
+            </View>
+            {result.suggestedNames.map((n, i) => (
+              <View key={i} style={[ss.similarRow, { backgroundColor: `${tc.primary}10`, borderRadius: 8, padding: 8, borderWidth: 1, borderColor: `${tc.primary}25` }]}>
+                <Ionicons name="checkmark-circle-outline" size={14} color={tc.primary} />
+                <Text style={{ fontSize: 13, color: tc.primary, fontWeight: '600', flex: 1 }}>{n}</Text>
+              </View>
+            ))}
           </View>
         )}
       </View>

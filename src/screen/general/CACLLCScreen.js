@@ -529,9 +529,10 @@ export default function CACLLCScreen({ navigation }) {
   );
 
   const renderStep2 = () => {
-    const categories = LLC_NATURE_OF_BUSINESS.map(n => ({ value: n.category, label: n.category }));
-    const catObj     = LLC_NATURE_OF_BUSINESS.find(n => n.category === form.natureOfBusinessCategory);
-    const subItems   = catObj ? catObj.items.map(i => ({ value: i, label: i })) : [];
+    const categories    = LLC_NATURE_OF_BUSINESS.map(n => ({ value: n.category, label: n.label }));
+    const catObj        = LLC_NATURE_OF_BUSINESS.find(n => n.category === form.natureOfBusinessCategory);
+    const catLabel      = catObj?.label || form.natureOfBusinessCategory || '';
+    const subItems      = catObj ? catObj.items.map(i => ({ value: i, label: i })) : [];
 
     const addDraftObj = () => {
       const trimmed = draftObj.trim();
@@ -571,7 +572,7 @@ export default function CACLLCScreen({ navigation }) {
             onPress={() => openPicker('natureOfBusinessCategory', 'Select Category', categories)}
           >
             <Text style={[s.pickerText, { color: form.natureOfBusinessCategory ? tc.heading : tc.placeholder || '#AAA' }]} numberOfLines={1}>
-              {form.natureOfBusinessCategory || 'Select category…'}
+              {catLabel || 'Select category…'}
             </Text>
             <Ionicons name="chevron-down" size={16} color={tc.subtext} />
           </TouchableOpacity>

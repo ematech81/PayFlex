@@ -561,8 +561,60 @@ export default function CACLLCScreen({ navigation }) {
             These are the activities your company is legally authorised to carry out. You must add at least one object before proceeding.
           </Text>
 
-          {/* ── Primary: manual entry ── */}
-          <Text style={[s.label, { color: tc.heading, marginTop: 8 }]}>Add a Memorandum Object</Text>
+          {/* ── Business category — required for ALL paths ── */}
+          <Text style={[s.label, { color: tc.heading, marginTop: 8 }]}>Business Category *</Text>
+          <Text style={[s.hint, { color: tc.subtext, marginBottom: 6 }]}>
+            Required for company registration. Select the category that best describes your business.
+          </Text>
+          <TouchableOpacity
+            style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
+            onPress={() => openPicker('natureOfBusinessCategory', 'Select Category', categories)}
+          >
+            <Text style={[s.pickerText, { color: form.natureOfBusinessCategory ? tc.heading : tc.placeholder || '#AAA' }]} numberOfLines={1}>
+              {form.natureOfBusinessCategory || 'Select category…'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={tc.subtext} />
+          </TouchableOpacity>
+
+          <Text style={[s.label, { color: tc.heading }]}>Nature of Business *</Text>
+          <TouchableOpacity
+            style={[s.picker, { backgroundColor: tc.card, borderColor: !form.natureOfBusinessCategory ? '#E5E5EA' : (tc.border || '#E5E5EA'), opacity: !form.natureOfBusinessCategory ? 0.5 : 1 }]}
+            onPress={() => form.natureOfBusinessCategory && openPicker('natureOfBusiness', 'Select Nature of Business', subItems)}
+            disabled={!form.natureOfBusinessCategory}
+          >
+            <Text style={[s.pickerText, { color: form.natureOfBusiness ? tc.heading : tc.placeholder || '#AAA' }]} numberOfLines={1}>
+              {form.natureOfBusiness || 'Select nature of business…'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={tc.subtext} />
+          </TouchableOpacity>
+
+          {/* ── Memorandum objects ── */}
+          <View style={[s.memoDivider, { borderColor: tc.border || '#E5E5EA', marginTop: 8 }]}>
+            <View style={[s.memoDividerLine, { backgroundColor: tc.border || '#E5E5EA' }]} />
+            <Text style={[s.memoDividerText, { color: tc.subtext, backgroundColor: tc.card }]}>Memorandum Objects</Text>
+            <View style={[s.memoDividerLine, { backgroundColor: tc.border || '#E5E5EA' }]} />
+          </View>
+
+          {/* AI generate — uses the already-selected category */}
+          <Text style={[s.hint, { color: tc.subtext, marginBottom: 8 }]}>
+            Let AI suggest objects based on your category, or type them manually below.
+          </Text>
+          <TouchableOpacity
+            style={[s.secondaryBtn, { borderColor: tc.primary, opacity: (busy || !form.natureOfBusinessCategory) ? 0.5 : 1 }]}
+            onPress={handleGenerateMemo}
+            disabled={busy || !form.natureOfBusinessCategory}
+            activeOpacity={0.8}
+          >
+            {busy && busyMsg.includes('Generat')
+              ? <ActivityIndicator size="small" color={tc.primary} />
+              : <Ionicons name="sparkles-outline" size={16} color={tc.primary} />
+            }
+            <Text style={[s.secondaryBtnText, { color: tc.primary }]}>
+              {busy && busyMsg.includes('Generat') ? 'Generating…' : 'Generate with AI'}
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={[s.label, { color: tc.heading, marginTop: 12 }]}>Add a Memorandum Object</Text>
           <Text style={[s.hint, { color: tc.subtext, marginBottom: 6 }]}>
             Describe one business activity your company will carry out (e.g. "To carry on the business of software development and sale of technology products").
           </Text>
@@ -624,55 +676,6 @@ export default function CACLLCScreen({ navigation }) {
               </Text>
             </View>
           )}
-
-          {/* ── Divider + AI generator ── */}
-          <View style={[s.memoDivider, { borderColor: tc.border || '#E5E5EA' }]}>
-            <View style={[s.memoDividerLine, { backgroundColor: tc.border || '#E5E5EA' }]} />
-            <Text style={[s.memoDividerText, { color: tc.subtext, backgroundColor: tc.card }]}>
-              Don't have memorandum objects yet?
-            </Text>
-            <View style={[s.memoDividerLine, { backgroundColor: tc.border || '#E5E5EA' }]} />
-          </View>
-
-          <Text style={[s.hint, { color: tc.subtext, marginBottom: 8 }]}>
-            Select your business category and let AI suggest memorandum objects for you.
-          </Text>
-
-          <Text style={[s.label, { color: tc.heading }]}>Business Category</Text>
-          <TouchableOpacity
-            style={[s.picker, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}
-            onPress={() => openPicker('natureOfBusinessCategory', 'Select Category', categories)}
-          >
-            <Text style={[s.pickerText, { color: form.natureOfBusinessCategory ? tc.heading : tc.placeholder || '#AAA' }]} numberOfLines={1}>
-              {form.natureOfBusinessCategory || 'Select category…'}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={tc.subtext} />
-          </TouchableOpacity>
-
-          <Text style={[s.label, { color: tc.heading }]}>Nature of Business</Text>
-          <TouchableOpacity
-            style={[s.picker, { backgroundColor: tc.card, borderColor: !form.natureOfBusinessCategory ? '#E5E5EA' : (tc.border || '#E5E5EA'), opacity: !form.natureOfBusinessCategory ? 0.5 : 1 }]}
-            onPress={() => form.natureOfBusinessCategory && openPicker('natureOfBusiness', 'Select Nature of Business', subItems)}
-            disabled={!form.natureOfBusinessCategory}
-          >
-            <Text style={[s.pickerText, { color: form.natureOfBusiness ? tc.heading : tc.placeholder || '#AAA' }]} numberOfLines={1}>
-              {form.natureOfBusiness || 'Select nature of business…'}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={tc.subtext} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[s.secondaryBtn, { borderColor: tc.primary, opacity: busy ? 0.6 : 1 }]}
-            onPress={handleGenerateMemo} disabled={busy} activeOpacity={0.8}
-          >
-            {busy && busyMsg.includes('Generat')
-              ? <ActivityIndicator size="small" color={tc.primary} />
-              : <Ionicons name="sparkles-outline" size={16} color={tc.primary} />
-            }
-            <Text style={[s.secondaryBtnText, { color: tc.primary }]}>
-              {busy && busyMsg.includes('Generat') ? 'Generating…' : 'Generate Suggestions'}
-            </Text>
-          </TouchableOpacity>
         </View>
 
         <TouchableOpacity

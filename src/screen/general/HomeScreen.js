@@ -19,6 +19,7 @@ import {
   FontAwesome5,
   FontAwesome6,
   FontAwesome,
+  Entypo,
   Feather,
 } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -33,196 +34,237 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AddWalletFund from 'component/AddWalletFund';
 
 const { width } = Dimensions.get('window');
-const H_PAD    = 16;
-const ICON_BOX = 42;   // reduced from 56
-const ICON_SIZE = 17;  // reduced from 22
-const COL  = 4;
-const ITEM_W = (width - H_PAD * 2) / COL;
+const CARD_PADDING = 16;
+const ICON_SIZE = 16;
 
-const SERVICES = [
-  { id: 'airtime',   label: 'Airtime',       screen: 'Airtime',            gradient: ['#4776E6', '#8E54E9'], icon: 'call',              lib: 'Ionicons' },
-  { id: 'data',      label: 'Data',           screen: 'Data',               gradient: ['#A855F7', '#EC4899'], icon: 'wifi',              lib: 'Ionicons' },
-  { id: 'elec',      label: 'Electricity',    screen: 'ElectricityPurchase',gradient: ['#F97316', '#EAB308'], icon: 'flash',             lib: 'Ionicons' },
-  { id: 'invoice',   label: 'Invoice',        screen: 'Invoices',           gradient: ['#14B8A6', '#06B6D4'], icon: 'document-text',    lib: 'Ionicons' },
-  { id: 'betting',   label: 'Betting',        screen: 'Betting',            gradient: ['#10B981', '#059669'], icon: 'soccer-ball-o',    lib: 'FontAwesome' },
-  { id: 'jamb',      label: 'JAMB',           screen: 'EducationPurchase',  gradient: ['#F97316', '#EA580C'], icon: 'credit-card',      lib: 'FontAwesome6' },
-  { id: 'tv',        label: 'TV Subs',        screen: 'TVSubscription',     gradient: ['#EF4444', '#EC4899'], icon: 'television',       lib: 'MaterialCommunity' },
-  { id: 'atc',       label: 'Airtime Cash',   screen: 'Airtime-Cash',       gradient: ['#3B82F6', '#6366F1'], icon: 'exchange-alt',     lib: 'FontAwesome5' },
-  { id: 'cac',       label: 'CAC',            screen: 'CACHub',             gradient: ['#0D9488', '#0891B2'], icon: 'business',         lib: 'Ionicons' },
-  { id: 'nin',       label: 'NIN',            screen: 'NINScreen',          gradient: ['#8B5CF6', '#7C3AED'], icon: 'card-outline',     lib: 'Ionicons' },
-  { id: 'transport', label: 'Transport',      screen: 'Transport',          gradient: ['#059669', '#10B981'], icon: 'bus',              lib: 'Ionicons' },
-  { id: 'more',      label: 'More',           screen: 'AllServices',        gradient: ['#64748B', '#475569'], icon: 'more-horizontal',  lib: 'Feather' },
+const services = [
+  { id: 'betting',   label: 'Betting',       icon: <FontAwesome name="soccer-ball-o" size={ICON_SIZE} />,           screen: 'Betting',            gradient: ['#FF6B6B', '#FF8E53'] },
+  { id: 'jamb',      label: 'JAMB',          icon: <FontAwesome6 name="credit-card" size={ICON_SIZE} />,            screen: 'EducationPurchase',  gradient: ['#4E54C8', '#8F94FB'] },
+  { id: 'atc',       label: 'Airtime-Cash',  icon: <FontAwesome5 name="exchange-alt" size={ICON_SIZE} />,           screen: 'Airtime-Cash',       gradient: ['#11998E', '#38EF7D'] },
+  { id: 'tv',        label: 'TV Subs',       icon: <MaterialCommunityIcons name="television" size={ICON_SIZE} />,   screen: 'TVSubscription',     gradient: ['#F857A6', '#FF5858'] },
+  { id: 'cac',       label: 'CAC',           icon: <Ionicons name="business" size={ICON_SIZE} />,                   screen: 'CACHub',             gradient: ['#0d6e6e', '#14b8a6'] },
+  { id: 'nin',       label: 'NIN',           icon: <Ionicons name="card-outline" size={ICON_SIZE} />,               screen: 'NINScreen',          gradient: ['#A29BFE', '#6C5CE7'] },
+  { id: 'transport', label: 'Transport',     icon: <Ionicons name="bus-outline" size={ICON_SIZE} />,                screen: 'Transport',          gradient: ['#43E97B', '#38F9D7'] },
+  { id: 'more',      label: 'More',          icon: <Feather name="more-horizontal" size={ICON_SIZE} />,             screen: 'AllServices',        gradient: ['#5F72BD', '#9B23EA'] },
 ];
 
-const ServiceIcon = ({ lib, icon, size }) => {
-  const p = { name: icon, size, color: '#FFF' };
-  if (lib === 'FontAwesome')       return <FontAwesome    {...p} />;
-  if (lib === 'FontAwesome5')      return <FontAwesome5   {...p} />;
-  if (lib === 'FontAwesome6')      return <FontAwesome6   {...p} />;
-  if (lib === 'MaterialCommunity') return <MaterialCommunityIcons {...p} />;
-  if (lib === 'Feather')           return <Feather        {...p} />;
-  return <Ionicons {...p} />;
-};
+const quickActions = [
+  { label: 'Airtime',     icon: 'call',          gradient: ['#667EEA', '#764BA2'], screen: 'Airtime' },
+  { label: 'Data',        icon: 'wifi',          gradient: ['#F093FB', '#F5576C'], screen: 'Data' },
+  { label: 'Electricity', icon: 'flash',         gradient: ['#4FACFE', '#00F2FE'], screen: 'ElectricityPurchase' },
+  { label: 'Invoice',     icon: 'document-text', gradient: ['#43E97B', '#38F9D7'], screen: 'Invoices' },
+];
 
-const ServiceCard = React.memo(({ svc, onPress, labelColor }) => (
-  <TouchableOpacity style={ss.svcItem} onPress={onPress} activeOpacity={0.75}>
-    <LinearGradient colors={svc.gradient} style={ss.svcBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-      <ServiceIcon lib={svc.lib} icon={svc.icon} size={ICON_SIZE} />
+const ServiceCard = React.memo(({ service, onPress, themeColors }) => (
+  <TouchableOpacity
+    style={ss.serviceCard}
+    onPress={onPress}
+    activeOpacity={0.75}
+    accessibilityLabel={`${service.label} service`}
+    accessibilityRole="button"
+  >
+    <LinearGradient
+      colors={service.gradient}
+      style={ss.iconCircle}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      {React.cloneElement(service.icon, { color: '#FFFFFF' })}
     </LinearGradient>
-    <Text style={[ss.svcLabel, { color: labelColor }]} numberOfLines={2}>{svc.label}</Text>
+    <Text style={[ss.serviceLabel, { color: themeColors.heading }]} numberOfLines={2}>
+      {service.label}
+    </Text>
   </TouchableOpacity>
 ));
 
-const TX_NAMES = {
-  airtime: 'Airtime Recharge', data: 'Data Bundle', electricity: 'Electricity Payment',
-  tv: 'TV Subscription', education: 'Exam Pin', wallet_topup: 'Wallet Top-up',
-  referral_bonus: 'Referral Bonus', transport_booking: 'Bus Booking',
-  bank_transfer: 'Bank Transfer', cac_registration: 'CAC Registration',
-};
-
-const TX_ICONS = {
-  airtime:           { icon: 'call-outline',              gradient: ['#4776E6', '#8E54E9'] },
-  data:              { icon: 'wifi-outline',              gradient: ['#A855F7', '#EC4899'] },
-  electricity:       { icon: 'flash-outline',             gradient: ['#F97316', '#EAB308'] },
-  tv:                { icon: 'tv-outline',                gradient: ['#EF4444', '#EC4899'] },
-  education:         { icon: 'school-outline',            gradient: ['#F97316', '#EA580C'] },
-  wallet_topup:      { icon: 'wallet-outline',            gradient: ['#10B981', '#059669'] },
-  referral_bonus:    { icon: 'gift-outline',              gradient: ['#8B5CF6', '#7C3AED'] },
-  transport_booking: { icon: 'bus-outline',               gradient: ['#059669', '#10B981'] },
-  bank_transfer:     { icon: 'arrow-up-circle-outline',   gradient: ['#14B8A6', '#06B6D4'] },
-  cac_registration:  { icon: 'business-outline',         gradient: ['#0D9488', '#0891B2'] },
-};
-
-const isSuccess = s => ['success', 'successful', 'completed', 'confirmed'].includes(s);
-const isPending = s => ['pending', 'processing', 'initiated'].includes(s);
+const QuickActionItem = React.memo(({ action, onPress }) => (
+  <TouchableOpacity style={ss.qaItem} onPress={onPress} activeOpacity={0.75}>
+    <LinearGradient colors={action.gradient} style={ss.qaIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+      <Ionicons name={action.icon} size={17} color="#fff" />
+    </LinearGradient>
+    <Text style={ss.qaText}>{action.label}</Text>
+  </TouchableOpacity>
+));
 
 export default function HomeScreen({ route }) {
-  const navigation = useNavigation();
-  const isDarkMode = useThem();
-  const tc         = isDarkMode ? colors.dark : colors.light;
+  const navigation  = useNavigation();
+  const isDarkMode  = useThem();
+  const tc          = isDarkMode ? colors.dark : colors.light;
   const { wallet, refreshWallet, transactions, fetchTransactions } = useWallet();
   const { unreadCount } = useNotifications();
-  const [user, setUser]          = useState(null);
-  const [isRefreshing, setRefresh] = useState(false);
+  const [user, setUser]             = useState(null);
+  const [isRefreshing, setRefreshing] = useState(false);
+  const [error, setError]           = useState(null);
 
-  const { formattedBalance, isVisible: balVisible, toggleVisibility } = useWalletBalance();
+  const { formattedBalance, isVisible: balanceVisible, toggleVisibility } = useWalletBalance();
 
-  useFocusEffect(useCallback(() => {
-    StatusBar.setBarStyle('light-content');
-    if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor('transparent');
-      StatusBar.setTranslucent(true);
-    }
-    refreshWallet();
-    fetchTransactions({ limit: 5, page: 1 }).catch(() => {});
-  }, []));
+  useFocusEffect(
+    useCallback(() => {
+      StatusBar.setBarStyle('light-content');
+      if (Platform.OS === 'android') {
+        StatusBar.setBackgroundColor('transparent');
+        StatusBar.setTranslucent(true);
+      }
+      refreshWallet();
+      fetchTransactions({ limit: 5, page: 1 }).catch(() => {});
+    }, [])
+  );
 
   useEffect(() => {
-    if (route.params?.user) setUser(route.params.user);
-    else AsyncStorage.getItem('user').then(s => s && setUser(JSON.parse(s))).catch(() => {});
+    if (route.params?.user) {
+      setUser(route.params.user);
+    } else {
+      AsyncStorage.getItem('user')
+        .then(s => s && setUser(JSON.parse(s)))
+        .catch(() => {});
+    }
   }, []);
 
   const onRefresh = useCallback(async () => {
-    setRefresh(true);
-    await Promise.all([refreshWallet(), fetchTransactions({ limit: 5, page: 1 }).catch(() => {})]);
-    setRefresh(false);
+    setRefreshing(true);
+    setError(null);
+    try {
+      await Promise.all([
+        refreshWallet(),
+        fetchTransactions({ limit: 5, page: 1 }).catch(() => {}),
+      ]);
+    } catch {
+      setError('Failed to refresh. Please try again.');
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
-  const userName = user?.firstName || wallet?.user?.name?.split(' ')[0] || 'User';
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good Morning';
+    if (h < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
-  const formatTxDate = d => d
-    ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-    : '';
+  const formatTxDate = (d) => {
+    if (!d) return '';
+    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const txLabel = (type) => ({
+    airtime: 'Airtime Recharge', data: 'Data Bundle', electricity: 'Electricity',
+    tv: 'TV Subscription', education: 'Exam Pin', wallet_topup: 'Wallet Top-up',
+    referral_bonus: 'Referral Bonus', transport_booking: 'Bus Booking',
+  }[type] || type);
+
+  const txColor = (status) =>
+    ['success', 'successful', 'completed', 'confirmed'].includes(status) ? tc.success
+    : ['pending', 'processing'].includes(status) ? tc.warning
+    : tc.error;
 
   return (
     <SafeAreaView style={[ss.root, { backgroundColor: tc.background }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-
-      {/* ── HEADER ── */}
+      {/* ── Header gradient ── */}
       <LinearGradient
-        colors={['#1a1a2e', '#16213e', '#0f3460']}
+        colors={isDarkMode ? ['#1a1a2e', '#16213e'] : ['#667EEA', '#764BA2']}
         style={ss.header}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
+        {/* Top bar */}
         <View style={ss.topBar}>
           <View>
-            <Text style={ss.welcomeText}>Welcome,</Text>
-            <Text style={ss.userName}>{userName}</Text>
+            <Text style={ss.greetTxt}>{greeting()}</Text>
+            <Text style={ss.nameTxt}>{user?.firstName || wallet?.user?.firstName || 'Welcome'}</Text>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('Notifications')} activeOpacity={0.8}>
-            <View style={ss.bellWrap}>
-              <Ionicons name="notifications-outline" size={22} color="#FFF" />
-              {unreadCount > 0 && (
-                <View style={ss.bellBadge}>
-                  <Text style={ss.bellBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-                </View>
-              )}
-            </View>
+          <TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={ss.bellWrap}>
+            <Ionicons name="notifications-outline" size={24} color="#fff" />
+            {unreadCount > 0 && (
+              <View style={ss.badge}>
+                <Text style={ss.badgeTxt}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
-        {/* ── BALANCE CARD ── */}
-        <BlurView intensity={18} tint="light" style={ss.cardBlur}>
-          <LinearGradient
-            colors={['rgba(255,255,255,0.18)', 'rgba(255,255,255,0.08)']}
-            style={ss.cardGrad}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={ss.cardTopRow}>
-              <View style={ss.cardTopLeft}>
-                <Text style={ss.balLabel}>Balance</Text>
-                <TouchableOpacity onPress={toggleVisibility} style={{ padding: 4 }}>
-                  <Ionicons
-                    name={balVisible ? 'eye-outline' : 'eye-off-outline'}
-                    size={16}
-                    color="rgba(255,255,255,0.75)"
-                  />
+        {/* Wallet card */}
+        <View style={ss.cardWrap}>
+          <BlurView intensity={20} tint={isDarkMode ? 'dark' : 'light'} style={ss.blur}>
+            <LinearGradient
+              colors={isDarkMode ? ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)'] : ['rgba(255,255,255,0.9)', 'rgba(255,255,255,0.7)']}
+              style={ss.cardGrad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              {/* Balance row */}
+              <View style={ss.balRow}>
+                <View style={ss.balLeft}>
+                  <Text style={[ss.balLabel, { color: isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.55)' }]}>Wallet Balance</Text>
+                  <TouchableOpacity onPress={toggleVisibility} style={ss.eyeBtn}>
+                    <Entypo name={balanceVisible ? 'eye' : 'eye-with-line'} size={16} color={isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.55)'} />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity onPress={() => navigation.navigate('Orders')} style={ss.histBtn}>
+                  <Ionicons name="time-outline" size={14} color={isDarkMode ? 'rgba(255,255,255,0.8)' : '#667EEA'} />
+                  <Text style={[ss.histTxt, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : '#667EEA' }]}>History</Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity style={ss.historyChip} onPress={() => navigation.navigate('Orders')} activeOpacity={0.8}>
-                <Ionicons name="time-outline" size={13} color="rgba(255,255,255,0.85)" />
-                <Text style={ss.historyChipText}>History</Text>
-              </TouchableOpacity>
-            </View>
 
-            <Text style={ss.balAmount}>{formattedBalance}</Text>
+              {/* Amount */}
+              <Text style={[ss.amount, { color: isDarkMode ? '#fff' : '#1a1a2e' }]}>{formattedBalance}</Text>
 
-            <View style={ss.cardBtns}>
-              <TouchableOpacity style={ss.cardBtnPrimary} onPress={() => navigation.navigate('Wallet')} activeOpacity={0.85}>
-                <LinearGradient colors={['#667EEA', '#764BA2']} style={ss.cardBtnGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  <Ionicons name="add-circle-outline" size={18} color="#FFF" />
-                  <Text style={ss.cardBtnText}>Top Up</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              <TouchableOpacity style={ss.cardBtnSecondary} onPress={() => navigation.navigate('VtuTransferScreen')} activeOpacity={0.85}>
-                <Ionicons name="arrow-up-circle-outline" size={18} color="rgba(255,255,255,0.9)" />
-                <Text style={ss.cardBtnTextSec}>Transfer</Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </BlurView>
+              {/* Action buttons */}
+              <View style={ss.actRow}>
+                <TouchableOpacity style={ss.actBtn} onPress={() => navigation.navigate('Wallet')} activeOpacity={0.8}>
+                  <LinearGradient colors={['#667EEA', '#764BA2']} style={ss.actGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                    <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                    <Text style={ss.actTxt}>Top up</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity style={ss.actBtn} onPress={() => navigation.navigate('VtuTransferScreen')} activeOpacity={0.8}>
+                  <LinearGradient colors={['#11998E', '#38EF7D']} style={ss.actGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                    <Ionicons name="arrow-up-circle-outline" size={18} color="#fff" />
+                    <Text style={ss.actTxt}>Transfer</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </BlurView>
+        </View>
       </LinearGradient>
 
-      {/* ── BODY ── */}
+      {/* ── Body ── */}
       <View style={[ss.body, { backgroundColor: tc.background }]}>
         <ScrollView
           contentContainerStyle={ss.scroll}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={tc.primary} colors={[tc.primary]} />}
         >
-          {/* Services */}
-          <View style={ss.sectionRow}>
-            <Text style={[ss.sectionTitle, { color: tc.heading }]}>Our Services</Text>
+          {error && (
+            <View style={ss.errBanner}>
+              <Ionicons name="alert-circle" size={18} color="#EF4444" />
+              <Text style={ss.errTxt}>{error}</Text>
+              <TouchableOpacity onPress={() => setError(null)}><Ionicons name="close" size={18} color="#EF4444" /></TouchableOpacity>
+            </View>
+          )}
+
+          {/* Quick actions */}
+          <View style={ss.secHead}>
+            <Text style={[ss.secTitle, { color: tc.heading }]}>Quick Actions</Text>
+          </View>
+          <View style={[ss.qaRow, { backgroundColor: tc.card }]}>
+            {quickActions.map((a, i) => (
+              <QuickActionItem key={i} action={a} onPress={() => navigation.navigate(a.screen)} />
+            ))}
+          </View>
+
+          {/* Services grid */}
+          <View style={ss.secHead}>
+            <Text style={[ss.secTitle, { color: tc.heading }]}>Our Services</Text>
             <TouchableOpacity onPress={() => navigation.navigate('AllServices')}>
               <Text style={ss.viewAll}>View All →</Text>
             </TouchableOpacity>
           </View>
-          <View style={[ss.card, { backgroundColor: tc.card }]}>
+          <View style={[ss.gridWrap, { backgroundColor: tc.card }]}>
             <View style={ss.grid}>
-              {SERVICES.map(svc => (
-                <ServiceCard key={svc.id} svc={svc} onPress={() => svc.screen && navigation.navigate(svc.screen)} labelColor={tc.heading} />
+              {services.map(s => (
+                <ServiceCard key={s.id} service={s} onPress={() => navigation.navigate(s.screen)} themeColors={tc} />
               ))}
             </View>
           </View>
@@ -230,56 +272,49 @@ export default function HomeScreen({ route }) {
           {/* Promo */}
           <PromoCard
             title="🎉 Refer And Win"
-            subtitle="Invite your friends and earn up to ₦10,000"
+            subtitle="Invite your Friends and earn up to ₦10,000"
             buttonText="Refer Now"
             onPress={() => navigation.navigate('Referral')}
             gradientColors={['#FA8BFF', '#2BD2FF', '#2BFF88']}
           />
 
           {/* Recent transactions */}
-          <View style={ss.sectionRow}>
-            <Text style={[ss.sectionTitle, { color: tc.heading }]}>Recent Transactions</Text>
+          <View style={ss.secHead}>
+            <Text style={[ss.secTitle, { color: tc.heading }]}>Recent Transactions</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Orders')}>
               <Text style={ss.viewAll}>View All →</Text>
             </TouchableOpacity>
           </View>
-          <View style={[ss.card, { backgroundColor: tc.card }]}>
-            {transactions.length > 0 ? transactions.slice(0, 5).map((tx, i) => {
-              const txMeta     = TX_ICONS[tx.type] || { icon: 'receipt-outline', gradient: ['#64748B', '#475569'] };
-              const success    = isSuccess(tx.status);
-              const pending    = isPending(tx.status);
-              const statusColor = success ? '#16A34A' : pending ? '#D97706' : '#DC2626';
-              const statusBg    = success ? '#F0FDF4' : pending ? '#FFFBEB' : '#FEF2F2';
-              const statusLabel = success ? 'Success' : pending ? 'Pending' : 'Failed';
-              return (
-                <TouchableOpacity
-                  key={tx._id || i}
-                  style={[ss.txRow, { borderBottomColor: tc.border, borderBottomWidth: i < 4 ? 1 : 0 }]}
-                  onPress={() => navigation.navigate('TransactionDetails', { reference: tx.reference })}
-                  activeOpacity={0.75}
-                >
-                  <LinearGradient colors={txMeta.gradient} style={ss.txIconBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                    <Ionicons name={txMeta.icon} size={20} color="#FFF" />
+          <View style={[ss.txWrap, { backgroundColor: tc.card }]}>
+            {transactions.length > 0 ? transactions.slice(0, 3).map((tx, i) => (
+              <TouchableOpacity
+                key={tx._id || i}
+                style={[ss.txRow, { borderBottomColor: tc.border }]}
+                onPress={() => navigation.navigate('TransactionDetails', { reference: tx.reference })}
+              >
+                <View style={ss.txLeft}>
+                  <LinearGradient colors={[tc.gradientStart || '#667EEA', tc.gradientEnd || '#764BA2']} style={ss.txIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                    <Ionicons name="receipt-outline" size={20} color="#fff" />
                   </LinearGradient>
-                  <View style={ss.txMid}>
-                    <Text style={[ss.txName, { color: tc.heading }]} numberOfLines={1}>{TX_NAMES[tx.type] || tx.type}</Text>
+                  <View>
+                    <Text style={[ss.txTitle, { color: tc.heading }]}>{txLabel(tx.type)}</Text>
                     <Text style={[ss.txDate, { color: tc.subheading }]}>{formatTxDate(tx.createdAt)}</Text>
                   </View>
-                  <View style={ss.txRight}>
-                    <Text style={[ss.txAmount, { color: tc.heading }]}>-{formatCurrency(tx.amount, 'NGN')}</Text>
-                    <View style={[ss.statusBadge, { backgroundColor: statusBg }]}>
-                      <Text style={[ss.statusText, { color: statusColor }]}>{statusLabel}</Text>
-                    </View>
+                </View>
+                <View style={ss.txRight}>
+                  <Text style={[ss.txAmt, { color: txColor(tx.status) }]}>{formatCurrency(tx.amount, 'NGN')}</Text>
+                  <View style={[ss.statusBadge, { backgroundColor: `${txColor(tx.status)}20` }]}>
+                    <Text style={[ss.statusTxt, { color: txColor(tx.status) }]}>{tx.status}</Text>
                   </View>
-                </TouchableOpacity>
-              );
-            }) : (
-              <View style={ss.emptyWrap}>
-                <LinearGradient colors={['#F1F5F9', '#E2E8F0']} style={ss.emptyIcon}>
-                  <Ionicons name="receipt-outline" size={36} color="#94A3B8" />
+                </View>
+              </TouchableOpacity>
+            )) : (
+              <View style={ss.emptyTx}>
+                <LinearGradient colors={['#F3F4F6', '#E5E7EB']} style={ss.emptyIcon}>
+                  <Ionicons name="receipt-outline" size={36} color="#9CA3AF" />
                 </LinearGradient>
-                <Text style={[ss.emptyTitle, { color: tc.heading }]}>No transactions yet</Text>
-                <Text style={[ss.emptySub, { color: tc.subheading }]}>Your history will appear here</Text>
+                <Text style={[ss.emptyTxt, { color: tc.subheading }]}>No recent transactions</Text>
+                <Text style={[ss.emptySub, { color: tc.subtext }]}>Your transaction history will appear here</Text>
               </View>
             )}
           </View>
@@ -292,78 +327,107 @@ export default function HomeScreen({ route }) {
 }
 
 const ss = StyleSheet.create({
-  root: { flex: 1 },
-
-  // Header
+  root:     { flex: 1 },
+  // ── Header ──
   header: {
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 12 : 14,
-    paddingBottom: 28,
-    paddingHorizontal: H_PAD,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 10 : 10,
+    paddingBottom: 24,
   },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  welcomeText: { fontSize: 14, color: 'rgba(255,255,255,0.7)', fontWeight: '500', marginBottom: 2 },
-  userName: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.3 },
-  bellWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
-  bellBadge: {
-    position: 'absolute', top: 3, right: 3,
-    backgroundColor: '#F97316', minWidth: 16, height: 16, borderRadius: 8,
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
-    borderWidth: 1.5, borderColor: '#1a1a2e',
+  topBar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: CARD_PADDING, marginBottom: 20,
   },
-  bellBadgeText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
-
-  // Balance card
-  cardBlur: { borderRadius: 20, overflow: 'hidden' },
-  cardGrad: { borderRadius: 20, padding: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  cardTopLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  balLabel: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
-  historyChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  historyChipText: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
-  balAmount: { fontSize: 32, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5, textAlign: 'center', marginVertical: 10 },
-  cardBtns: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  cardBtnPrimary: { flex: 1, borderRadius: 12, overflow: 'hidden' },
-  cardBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 11, gap: 6 },
-  cardBtnText: { color: '#FFF', fontWeight: '700', fontSize: 14 },
-  cardBtnSecondary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)', paddingVertical: 11 },
-  cardBtnTextSec: { color: 'rgba(255,255,255,0.9)', fontWeight: '700', fontSize: 14 },
-
-  // Body
-  body: { flex: 1, borderTopLeftRadius: 28, borderTopRightRadius: 28, marginTop: -16, overflow: 'hidden' },
-  scroll: { paddingHorizontal: H_PAD, paddingTop: 20, paddingBottom: 110 },
-
-  // Section header
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 4 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', letterSpacing: 0.2 },
-  viewAll: { fontSize: 13, fontWeight: '600', color: '#667EEA' },
-
-  // Card shell
-  card: { borderRadius: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3 },
-
-  // Services grid — compact 4-per-row
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingVertical: 14, paddingHorizontal: 6 },
-  svcItem: { width: ITEM_W, alignItems: 'center', marginBottom: 14 },
-  svcBox: {
-    width: ICON_BOX, height: ICON_BOX, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 6,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4,
+  greetTxt: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.8)', marginBottom: 3 },
+  nameTxt:  { fontSize: 22, fontWeight: '700', color: '#fff' },
+  bellWrap: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  svcLabel: { fontSize: 10, fontWeight: '600', textAlign: 'center', lineHeight: 13 },
-
-  // Transactions
-  txRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 },
-  txIconBox: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  txMid: { flex: 1, marginRight: 10 },
-  txName: { fontSize: 14, fontWeight: '700', marginBottom: 3 },
+  badge: {
+    position: 'absolute', top: 2, right: 2,
+    backgroundColor: '#EF4444', minWidth: 16, height: 16,
+    borderRadius: 8, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#fff',
+  },
+  badgeTxt: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  // ── Wallet card ──
+  cardWrap: { marginHorizontal: CARD_PADDING },
+  blur:     { borderRadius: 22, overflow: 'hidden' },
+  cardGrad: {
+    borderRadius: 22, padding: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12, shadowRadius: 14, elevation: 8,
+  },
+  balRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  balLeft:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  balLabel: { fontSize: 12, fontWeight: '600' },
+  eyeBtn:   { padding: 4 },
+  histBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 10, borderRadius: 10 },
+  histTxt:  { fontWeight: '600', fontSize: 13 },
+  amount:   { fontSize: 26, fontWeight: '800', letterSpacing: 0.3, marginVertical: 8, textAlign: 'center' },
+  actRow:   { flexDirection: 'row', gap: 10, marginTop: 4 },
+  actBtn:   { flex: 1, borderRadius: 12, overflow: 'hidden' },
+  actGrad:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 5 },
+  actTxt:   { color: '#fff', fontWeight: '700', fontSize: 14 },
+  // ── Body ──
+  body:   { flex: 1, marginTop: -8, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
+  scroll: { paddingHorizontal: CARD_PADDING, paddingTop: 18, paddingBottom: 100 },
+  errBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    padding: 14, borderRadius: 14, marginBottom: 14, backgroundColor: '#FEE2E2',
+  },
+  errTxt: { flex: 1, fontSize: 13, fontWeight: '600', color: '#EF4444' },
+  // ── Section headers ──
+  secHead:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 2 },
+  secTitle: { fontSize: 18, fontWeight: '700' },
+  viewAll:  { fontSize: 13, fontWeight: '600', color: '#667EEA' },
+  // ── Quick actions ──
+  qaRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    borderRadius: 20, paddingVertical: 14, paddingHorizontal: 14,
+    marginBottom: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+  },
+  qaItem: { alignItems: 'center', width: '23%' },
+  qaIcon: {
+    width: 42, height: 42, borderRadius: 11,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+  },
+  qaText: { fontSize: 11, fontWeight: '600', textAlign: 'center', color: '#1e293b' },
+  // ── Services grid ──
+  gridWrap: {
+    borderRadius: 20, marginBottom: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+  },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10, paddingVertical: 14 },
+  serviceCard: {
+    width: (width - CARD_PADDING * 2 - 20) / 4,
+    alignItems: 'center', marginBottom: 12,
+  },
+  iconCircle: {
+    width: 36, height: 36, borderRadius: 9,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
+  },
+  serviceLabel: { fontSize: 10, fontWeight: '600', textAlign: 'center', lineHeight: 13 },
+  // ── Transactions ──
+  txWrap: {
+    borderRadius: 20, overflow: 'hidden', marginBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+  },
+  txRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: CARD_PADDING, borderBottomWidth: 1 },
+  txLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  txIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  txTitle:{ fontSize: 14, fontWeight: '600', marginBottom: 3 },
   txDate: { fontSize: 12 },
-  txRight: { alignItems: 'flex-end', gap: 5 },
-  txAmount: { fontSize: 15, fontWeight: '800' },
-  statusBadge: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20 },
-  statusText: { fontSize: 11, fontWeight: '700' },
-
-  // Empty state
-  emptyWrap: { alignItems: 'center', paddingVertical: 48 },
+  txRight:{ alignItems: 'flex-end' },
+  txAmt:  { fontSize: 15, fontWeight: '700', marginBottom: 5 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7 },
+  statusTxt:   { fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  emptyTx:   { alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
   emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  emptyTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
-  emptySub: { fontSize: 13 },
+  emptyTxt:  { fontSize: 15, fontWeight: '600', marginBottom: 5 },
+  emptySub:  { fontSize: 13 },
 });

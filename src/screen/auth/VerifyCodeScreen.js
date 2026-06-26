@@ -7,14 +7,16 @@ import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import AuthHeader from 'component/AuthHeader';
 import { AuthService, } from 'AuthFunction/authService';
+import { useWallet } from 'context/WalletContext';
 import { otpBox } from 'constants/Styles';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 
 
 export default function VerifyOTPScreen({ route, navigation }) {
-  const { userId, phone, fromSignup, isDeviceVerification, pin } = route.params; 
+  const { userId, phone, fromSignup, isDeviceVerification, pin } = route.params;
   const isDark = useThem();
   const theme = isDark ? colors.dark : colors.light;
+  const { login: walletLogin } = useWallet();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -68,9 +70,8 @@ export default function VerifyOTPScreen({ route, navigation }) {
         console.log("✅ Device verification response:", res);
 
         if (res.success && res.token && res.user) {
-          // Token already stored by AuthService
           console.log("✅ Device verified, navigating to Home");
-          
+          await walletLogin(res.token, res.user);
           navigation.reset({
             index: 0,
             routes: [
@@ -117,19 +118,19 @@ export default function VerifyOTPScreen({ route, navigation }) {
 
         if (res.success && res.token && res.user) {
           console.log("✅ Verified, navigating to Home");
-          
-            navigation.reset({
-          index: 0,
-          routes: [
-            {
-              name: 'MainTabs',
-              state: {
-                index: 0,
-                routes: [{ name: 'Home' }],
+          await walletLogin(res.token, res.user);
+          navigation.reset({
+            index: 0,
+            routes: [
+              {
+                name: 'MainTabs',
+                state: {
+                  index: 0,
+                  routes: [{ name: 'Home' }],
+                },
               },
-            },
-          ],
-        });
+            ],
+          });
           return;
         }
       }

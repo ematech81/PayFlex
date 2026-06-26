@@ -21,12 +21,14 @@ import { useThem } from 'constants/useTheme';
 import { colors } from 'constants/colors';
 import { btnStyle, btnText, inputStyle, otpBox } from 'constants/Styles';
 import { AuthService } from 'AuthFunction/authService';
+import { useWallet } from 'context/WalletContext';
 import AuthHeader from 'component/AuthHeader';
 import { STORAGE_KEYS } from 'utility/storageKeys';
 
 export default function LoginScreen({ navigation }) {
   const isDark = useThem();
   const theme = isDark ? colors.dark : colors.light;
+  const { login: walletLogin } = useWallet();
 
   // Main login state
   const [phone, setPhone] = useState('');
@@ -185,6 +187,11 @@ export default function LoginScreen({ navigation }) {
       // ✅ Known Device - Login Successful
       if (res.success && !res.isNewDevice && res.token) {
         console.log('✅ Known device, navigating to Home');
+
+        // Update WalletContext in-memory state so HomeScreen shows the real
+        // balance immediately. Without this, wallet.user stays null until the
+        // app is fully restarted (which re-runs loadStoredData from AsyncStorage).
+        await walletLogin(res.token, res.user);
 
         // Save phone and PIN preference
         await AsyncStorage.multiSet([

@@ -26,7 +26,7 @@ import { formatCurrency } from 'CONSTANT/formatCurrency';
 import {
   cacLlcReserveName, cacLlcGenerateMemo, cacLlcAnalyseMemo,
   cacLlcCreateCompany, cacLlcRegisterShares, cacLlcAddAffiliate, cacLlcRegisterPsc,
-  cacLlcSubmitRegistration,
+  cacLlcSubmitRegistration, cacLlcGetNatureOfBusiness,
 } from 'AuthFunction/paymentService';
 import {
   LLC_COMPANY_TYPES, LLC_NATURE_OF_BUSINESS, LLC_AFFILIATE_TYPES, NIGERIAN_STATES,
@@ -192,6 +192,10 @@ export default function CACLLCScreen({ navigation }) {
   const [draftObj, setDraftObj]         = useState('');
   const [objectsFromAI, setObjectsFromAI] = useState(false);
 
+  // Nature-of-business sub-items (fetched dynamically by category_id)
+  const [nobItems, setNobItems]       = useState([]);
+  const [loadingNob, setLoadingNob]   = useState(false);
+
   // Picker modal state
   const [picker, setPicker] = useState({ visible: false, key: '', title: '', options: [] });
 
@@ -207,6 +211,26 @@ export default function CACLLCScreen({ navigation }) {
 
   const openPicker = (key, title, options) => setPicker({ visible: true, key, title, options });
   const closePicker = () => setPicker(p => ({ ...p, visible: false }));
+
+  // Fetch VAS nature-of-business sub-items whenever the category changes
+  useEffect(() => {
+    const cat = form.natureOfBusinessCategory;
+    if (!cat) { setNobItems([]); return; }
+    const entry = LLC_NATURE_OF_BUSINESS.find(n => n.category === cat);
+    if (!entry) return;
+    setLoadingNob(true);
+    setField('natureOfBusiness', ''); // clear stale selection
+    cacLlcGetNatureOfBusiness(entry.id)
+      .then(res => {
+        const raw   = res?.data || [];
+        const items = [...new Set(raw)].filter(s => s && s !== cat);
+        setNobItems(items.map(i => ({ value: i, label: i })));
+      })
+      .catch(() => {
+        setNobItems(entry.items.map(i => ({ value: i, label: i })));
+      })
+      .finally(() => setLoadingNob(false));
+  }, [form.natureOfBusinessCategory]);
 
   // ── Computed ────────────────────────────────────────────────────────────────
 
@@ -529,10 +553,9 @@ export default function CACLLCScreen({ navigation }) {
   );
 
   const renderStep2 = () => {
-    const categories    = LLC_NATURE_OF_BUSINESS.map(n => ({ value: n.category, label: n.label }));
-    const catObj        = LLC_NATURE_OF_BUSINESS.find(n => n.category === form.natureOfBusinessCategory);
-    const catLabel      = catObj?.label || form.natureOfBusinessCategory || '';
-    const subItems      = catObj ? catObj.items.map(i => ({ value: i, label: i })) : [];
+    const categories = LLC_NATURE_OF_BUSINESS.map(n => ({ value: n.category, label: n.label }));
+    const catObj     = LLC_NATURE_OF_BUSINESS.find(n => n.category === form.natureOfBusinessCategory);
+    const catLabel   = catObj?.label || form.natureOfBusinessCategory || '';
 
     const addDraftObj = () => {
       const trimmed = draftObj.trim();
@@ -579,13 +602,16 @@ export default function CACLLCScreen({ navigation }) {
 
           <Text style={[s.label, { color: tc.heading }]}>Nature of Business *</Text>
           <TouchableOpacity
-            style={[s.picker, { backgroundColor: tc.card, borderColor: !form.natureOfBusinessCategory ? '#E5E5EA' : (tc.border || '#E5E5EA'), opacity: !form.natureOfBusinessCategory ? 0.5 : 1 }]}
-            onPress={() => form.natureOfBusinessCategory && openPicker('natureOfBusiness', 'Select Nature of Business', subItems)}
-            disabled={!form.natureOfBusinessCategory}
+            style={[s.picker, { backgroundColor: tc.card, borderColor: (!form.natureOfBusinessCategory || loadingNob) ? '#E5E5EA' : (tc.border || '#E5E5EA'), opacity: (!form.natureOfBusinessCategory || loadingNob) ? 0.5 : 1 }]}
+            onPress={() => !loadingNob && form.natureOfBusinessCategory && openPicker('natureOfBusiness', 'Select Nature of Business', nobItems)}
+            disabled={!form.natureOfBusinessCategory || loadingNob}
           >
-            <Text style={[s.pickerText, { color: form.natureOfBusiness ? tc.heading : tc.placeholder || '#AAA' }]} numberOfLines={1}>
-              {form.natureOfBusiness || 'Select nature of business…'}
-            </Text>
+            {loadingNob
+              ? <ActivityIndicator size="small" color={tc.primary} style={{ flex: 1 }} />
+              : <Text style={[s.pickerText, { color: form.natureOfBusiness ? tc.heading : tc.placeholder || '#AAA' }]} numberOfLines={1}>
+                  {form.natureOfBusiness || 'Select nature of business…'}
+                </Text>
+            }
             <Ionicons name="chevron-down" size={16} color={tc.subtext} />
           </TouchableOpacity>
 

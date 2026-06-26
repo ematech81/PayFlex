@@ -897,6 +897,9 @@ export const cacLlcGetSession = (sessionId) =>
 /** User's LLC registration history */
 export const cacLlcGetHistory = () => makeGeneralGet('/cac/llc/history');
 
+export const cacLlcGetNatureOfBusiness = (categoryId) =>
+  makeGeneralGetQuery(`/cac/llc/nob/${categoryId}`);
+
 // ─── GET helper with query params ────────────────────────────────────────────
 const makeGeneralGetQuery = async (path, params = {}) => {
   const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);

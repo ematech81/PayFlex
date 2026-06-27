@@ -897,6 +897,10 @@ export const cacLlcGetSession = (sessionId) =>
 /** User's LLC registration history */
 export const cacLlcGetHistory = () => makeGeneralGet('/cac/llc/history');
 
+/** Poll VAS for PENDING / QUERIED / APPROVED status (post-submission only) */
+export const cacLlcCheckStatus = (sessionId) =>
+  makeGeneralGet(`/cac/llc/registration/${sessionId}/status`);
+
 export const cacLlcGetNatureOfBusiness = (categoryId) =>
   makeGeneralGetQuery(`/cac/llc/nob/${categoryId}`);
 

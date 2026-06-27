@@ -26,7 +26,7 @@ import { formatCurrency } from 'CONSTANT/formatCurrency';
 import {
   cacLlcReserveName, cacLlcGenerateMemo, cacLlcAnalyseMemo,
   cacLlcCreateCompany, cacLlcRegisterShares, cacLlcAddAffiliate, cacLlcRegisterPsc,
-  cacLlcSubmitRegistration, cacLlcGetNatureOfBusiness,
+  cacLlcSubmitRegistration, cacLlcGetSession, cacLlcGetNatureOfBusiness,
 } from 'AuthFunction/paymentService';
 import {
   LLC_COMPANY_TYPES, LLC_NATURE_OF_BUSINESS, LLC_AFFILIATE_TYPES, NIGERIAN_STATES,
@@ -278,15 +278,6 @@ export default function CACLLCScreen({ navigation }) {
 
   // ── Step handlers ────────────────────────────────────────────────────────────
 
-  // Maps a session status returned by the resume path to the wizard step to jump to.
-  const STATUS_TO_STEP = {
-    name_reserved:      2,
-    memorandum_done:    3,
-    company_created:    5,
-    shares_registered:  6,
-    affiliates_complete:6,
-  };
-
   const handleStep1 = async () => {
     const err = validateStep(1);
     if (err) { Alert.alert('Required', err); return; }
@@ -305,12 +296,73 @@ export default function CACLLCScreen({ navigation }) {
       }));
 
       if (res.resumed) {
-        const resumeStep = STATUS_TO_STEP[res.currentStatus] || 2;
-        Alert.alert(
-          'Resuming Existing Registration',
-          `You have a previous registration for "${res.proposedName}". Continuing from where you left off.`,
-          [{ text: 'Continue', onPress: () => { setStep(resumeStep); scrollTop(); } }]
-        );
+        // Fetch the full session to restore ALL previously entered data
+        try {
+          const full = await cacLlcGetSession(res.sessionId);
+          const s    = full?.session || {};
+
+          // Determine correct wizard step from session state
+          const getResumeStep = () => {
+            switch (s.status) {
+              case 'name_reserved':     return 2;
+              case 'memorandum_done':   return s.objectsAnalysed ? 4 : 2;
+              case 'company_created':   return 5;
+              case 'shares_registered': return 6;
+              case 'affiliates_complete': return 7;
+              case 'psc_done':          return 8;
+              default:                  return 2;
+            }
+          };
+          const resumeStep = getResumeStep();
+
+          // Restore every field the session stores
+          setForm(f => ({
+            ...f,
+            sessionId:                   s._id,
+            reservationCode:             s.reservationCode             || f.reservationCode,
+            reservationExpiry:           s.reservationExpiry           || f.reservationExpiry,
+            proposedName:                s.proposedName                || f.proposedName,
+            companyType:                 s.companyType                 || f.companyType,
+            // Step 2
+            objectsOfMem:                s.objectsOfMem?.length ? s.objectsOfMem : f.objectsOfMem,
+            natureOfBusinessCategory:    s.natureOfBusinessCategory     || f.natureOfBusinessCategory,
+            natureOfBusiness:            s.natureOfBusiness             || f.natureOfBusiness,
+            // Step 3
+            minimumShareCapital:         s.minimumShareCapital          ?? f.minimumShareCapital,
+            analysisResult:              s.analysisResult               ?? f.analysisResult,
+            // Step 4
+            principalActivityDescription:s.principalActivityDescription || f.principalActivityDescription,
+            companyEmail:                s.companyEmail                 || f.companyEmail,
+            phoneNumber:                 s.companyPhone                 || f.phoneNumber,
+            regState:                    s.registeredAddress?.state     || f.regState,
+            regLga:                      s.registeredAddress?.lga       || f.regLga,
+            regCity:                     s.registeredAddress?.city      || f.regCity,
+            regStreet:                   s.registeredAddress?.street    || f.regStreet,
+            headOfficeSameAsReg:         s.headOfficeSameAsReg          ?? f.headOfficeSameAsReg,
+            hoState:                     s.headOfficeAddress?.state     || f.hoState,
+            hoLga:                       s.headOfficeAddress?.lga       || f.hoLga,
+            hoCity:                      s.headOfficeAddress?.city      || f.hoCity,
+            hoStreet:                    s.headOfficeAddress?.street    || f.hoStreet,
+            vasTransactionRef:           s.vasTransactionRef            || f.vasTransactionRef,
+            // Step 5
+            ordinaryIssuedShare:         s.ordinaryIssuedShare?.toString()   || f.ordinaryIssuedShare,
+            pricePerShare:               s.pricePerShare?.toString()         || f.pricePerShare,
+            preferenceIssuedShare:       s.preferenceIssuedShare?.toString() || f.preferenceIssuedShare,
+          }));
+
+          Alert.alert(
+            'Resuming Registration',
+            `You have a previous registration for "${s.proposedName || res.proposedName}". Continuing from where you left off.`,
+            [{ text: 'Continue', onPress: () => { setStep(resumeStep); scrollTop(); } }]
+          );
+        } catch {
+          // If full session fetch fails, fall back to basic resume at step 2
+          Alert.alert(
+            'Resuming Registration',
+            `You have a previous registration for "${res.proposedName}". Continuing from the beginning of Step 2.`,
+            [{ text: 'Continue', onPress: () => { setStep(2); scrollTop(); } }]
+          );
+        }
         return;
       }
 

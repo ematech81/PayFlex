@@ -216,7 +216,7 @@ export default function CACLLCScreen({ navigation }) {
   useEffect(() => {
     const cat = form.natureOfBusinessCategory;
     if (!cat) { setNobItems([]); return; }
-    const entry = LLC_NATURE_OF_BUSINESS.find(n => n.category === cat);
+    const entry = LLC_NATURE_OF_BUSINESS.find(n => n.id === cat);
     if (!entry) return;
     setLoadingNob(true);
     setField('natureOfBusiness', ''); // clear stale selection
@@ -596,9 +596,9 @@ export default function CACLLCScreen({ navigation }) {
   );
 
   const renderStep2 = () => {
-    const categories = LLC_NATURE_OF_BUSINESS.map(n => ({ value: n.category, label: n.label }));
-    const catObj     = LLC_NATURE_OF_BUSINESS.find(n => n.category === form.natureOfBusinessCategory);
-    const catLabel   = catObj?.label || form.natureOfBusinessCategory || '';
+    const categories = LLC_NATURE_OF_BUSINESS.map(n => ({ value: n.id, label: n.label }));
+    const catObj     = LLC_NATURE_OF_BUSINESS.find(n => n.id === form.natureOfBusinessCategory);
+    const catLabel   = catObj?.label || '';
 
     const addDraftObj = () => {
       const trimmed = draftObj.trim();

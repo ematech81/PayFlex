@@ -301,19 +301,10 @@ export default function CACLLCScreen({ navigation }) {
           const full = await cacLlcGetSession(res.sessionId);
           const s    = full?.session || {};
 
-          // Determine correct wizard step from session state
-          const getResumeStep = () => {
-            switch (s.status) {
-              case 'name_reserved':     return 2;
-              case 'memorandum_done':   return s.objectsAnalysed ? 4 : 2;
-              case 'company_created':   return 5;
-              case 'shares_registered': return 6;
-              case 'affiliates_complete': return 7;
-              case 'psc_done':          return 8;
-              default:                  return 2;
-            }
-          };
-          const resumeStep = getResumeStep();
+          // Always resume at step 2 so the user can re-select natureOfBusinessCategory
+          // and natureOfBusiness — those fields are only persisted after createCompany
+          // (step 4) so earlier sessions would have them blank if we jumped ahead.
+          const resumeStep = 2;
 
           // Restore every field the session stores
           setForm(f => ({

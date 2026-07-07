@@ -57,8 +57,8 @@ const FAQS = [
 ];
 
 const CONTACT = [
-  { icon: 'mail-outline', label: 'Email Support', value: 'support@payflex.app', action: () => Linking.openURL('mailto:support@payflex.app') },
-  { icon: 'logo-whatsapp', label: 'WhatsApp', value: '+234 800 000 0000', action: () => Linking.openURL('https://wa.me/2348000000000') },
+  { icon: 'mail-outline', label: 'Email Support', value: 'support@techsphereapp.com', action: () => Linking.openURL('mailto:support@techsphereapp.com') },
+  { icon: 'logo-whatsapp', label: 'WhatsApp', value: '09011495230', action: () => Linking.openURL('https://wa.me/2349011495230') },
 ];
 
 function FAQItem({ item, themeColors }) {

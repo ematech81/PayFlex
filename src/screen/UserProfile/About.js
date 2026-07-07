@@ -31,12 +31,6 @@ const LINKS = [
     url: 'https://payflex-privacy.netlify.app/privacy.html',
     iconColor: '#4CAF50',
   },
-  {
-    icon: 'megaphone-outline',
-    label: 'What\'s New',
-    url: 'https://payflex.app/changelog',
-    iconColor: '#FF9800',
-  },
 ];
 
 function LinkRow({ item, themeColors }) {

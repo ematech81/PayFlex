@@ -178,8 +178,6 @@ export default function NINScreen({ navigation, route }) {
   // EXECUTE PURCHASE FUNCTION
   // ========================================
   const executeVerificationPurchase = useCallback(async (pin, paymentData) => {
-    console.log('🔐 Executing verification purchase with PIN:', pin);
-    console.log('📦 Payment data:', paymentData);
 
     const { verificationType, searchMode } = paymentData;
 

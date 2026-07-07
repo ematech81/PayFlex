@@ -164,9 +164,6 @@ export const purchaseAirtime = async (pin, paymentData) => {
  */
 export const purchaseData = async (pin, paymentData) => {
 
-  console.log('🔐 PIN received in purchaseData:', pin);
-  console.log('📦 Payment data received:', paymentData);
-  
   return makePaymentRequest('/buy-data', {
     phoneNumber: paymentData.phoneNumber,
     network: paymentData.network,
@@ -504,9 +501,6 @@ export const verifyAirtimeToCash = async (network) => {
  * @returns {Promise<object>} Conversion result
  */
 export const convertAirtimeToCash = async (pin, conversionData) => {
-  console.log('🔐 PIN received:', pin);
-  console.log('📦 Conversion data:', conversionData);
-  
   return makePaymentRequest('/convert-airtime-to-cash', {
     network: conversionData.network,
     senderNumber: conversionData.senderNumber,

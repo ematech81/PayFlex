@@ -222,9 +222,7 @@ export function useServicePayment({
   const submitPayment = useCallback(async (enteredPin) => {
     clearPinError();
     
-    console.log(`💳 [${serviceName}] Processing payment with PIN...`);
-    console.log(`🔐 [${serviceName}] Entered PIN:`, enteredPin);
-    console.log(`📦 [${serviceName}] Current payment data:`, currentPaymentData);
+    console.log(`💳 [${serviceName}] Processing payment...`);
     
     if (!currentPaymentData) {
       console.error(`❌ [${serviceName}] No payment data available!`);
@@ -232,12 +230,10 @@ export function useServicePayment({
     }
     
     if (!enteredPin || enteredPin.length !== 4) {
-      console.error(`❌ [${serviceName}] Invalid PIN:`, enteredPin);
       return false;
     }
     
     const success = await processPayment(enteredPin, async (transactionPin) => {
-      console.log(`🔐 [${serviceName}] Executing purchase with PIN:`, transactionPin);
       return await executePurchase(transactionPin, currentPaymentData);
     });
     

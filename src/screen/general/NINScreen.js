@@ -589,7 +589,7 @@ export default function NINScreen({ navigation, route }) {
       I give my consent to verify my {selectedTab}
     </Text>
   </View>
-</View>q1 
+</View>
 
           {/* Privacy Note */}
           <View style={[styles.noteCard, { backgroundColor: themeColors.card }]}>

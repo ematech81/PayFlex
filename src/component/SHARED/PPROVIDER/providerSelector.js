@@ -27,6 +27,7 @@ export default function ProviderSelector({
   error,
   disabled = false,
   showIcon = true,
+  dropdownPosition = 'auto',
 }) {
   const isDarkMode = useThem();
   const themeColors = isDarkMode ? colors.dark : colors.light;
@@ -64,6 +65,7 @@ export default function ProviderSelector({
           placeholder={placeholder}
           placeholderStyle={{ color: themeColors.subtext, fontSize: 14 }}
           selectedTextStyle={{ color: themeColors.heading, fontSize: 14 }}
+          dropdownPosition={dropdownPosition}
           onChange={(item) => onChange(item.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}

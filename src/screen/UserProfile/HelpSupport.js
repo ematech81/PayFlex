@@ -58,7 +58,7 @@ const FAQS = [
 
 const CONTACT = [
   { icon: 'mail-outline', label: 'Email Support', value: 'support@techsphereapp.com', action: () => Linking.openURL('mailto:support@techsphereapp.com') },
-  { icon: 'logo-whatsapp', label: 'WhatsApp', value: '09011495230', action: () => Linking.openURL('https://wa.me/2349011495230') },
+  { icon: 'logo-whatsapp', label: 'WhatsApp', value: '', action: () => Linking.openURL('https://wa.me/2349011495230') },
 ];
 
 function FAQItem({ item, themeColors }) {
@@ -118,7 +118,7 @@ export default function HelpSupport({ navigation }) {
                 <Ionicons name={c.icon} size={22} color={themeColors.primary} />
               </View>
               <Text style={[styles.contactLabel, { color: themeColors.heading }]}>{c.label}</Text>
-              <Text style={[styles.contactValue, { color: themeColors.subheading }]}>{c.value}</Text>
+              {!!c.value && <Text style={[styles.contactValue, { color: themeColors.subheading }]}>{c.value}</Text>}
             </TouchableOpacity>
           ))}
         </View>

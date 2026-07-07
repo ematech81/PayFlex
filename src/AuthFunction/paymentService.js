@@ -78,10 +78,10 @@ const handleResponse = async (response) => {
  * @param {object} paymentData - Payment data to send
  * @returns {Promise<object>} API response
  */
-const makePaymentRequest = async (endpoint, paymentData) => {
+const makePaymentRequest = async (endpoint, paymentData, timeout = REQUEST_TIMEOUT) => {
   try {
     const token = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
-    
+
     if (!token) {
       throw new Error('Authentication required. Please log in again.');
     }
@@ -89,7 +89,7 @@ const makePaymentRequest = async (endpoint, paymentData) => {
     console.log('📤 Request URL:', `${BASE_URL}${endpoint}`);
     console.log('📤 Request Body:', JSON.stringify(paymentData, null, 2));
     console.log('📤 Token exists:', !!token);
-    
+
     const response = await fetchWithTimeout(`${BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: {
@@ -97,13 +97,13 @@ const makePaymentRequest = async (endpoint, paymentData) => {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(paymentData),
-    });
+    }, timeout);
 
     const result = await handleResponse(response);
     console.log('✅ Payment request successful:', result);
-    
+
     return result;
-    
+
   } catch (error) {
     console.error(`❌ Payment Error [${endpoint}]:`, error.message);
     throw error;
@@ -148,10 +148,10 @@ const makeGeneralGet = async (path) => {
 export const purchaseAirtime = async (pin, paymentData) => {
   return makePaymentRequest('/buy-airtime', {
     phoneNumber: paymentData.phoneNumber,
-    network: paymentData.network,  // ✅ CHANGED: provider → network
+    network: paymentData.network,
     amount: paymentData.amount,
     pin,
-  });
+  }, 90_000);
 };
 
 
@@ -170,11 +170,10 @@ export const purchaseData = async (pin, paymentData) => {
   return makePaymentRequest('/buy-data', {
     phoneNumber: paymentData.phoneNumber,
     network: paymentData.network,
-    variation_code: paymentData.planId, // ✅ Changed from planId to variation_code
+    variation_code: paymentData.planId,
     amount: paymentData.planAmount || paymentData.amount,
     pin,
-  });
-
+  }, 90_000);
 };
 
 

@@ -29,7 +29,6 @@ import {
 // Custom Components
 // import BeneficiaryInput from 'component/SHARED/INPUT/BeneficiaryInput';
 import PinSetupModal from 'component/PinSetUpModal';
-import VerificationSlip from 'component/VerificationSlip';
 
 // Hooks & Context
 import { useServicePayment } from 'HOOKS/UseServicePayment';
@@ -304,14 +303,14 @@ export default function NINScreen({ navigation, route }) {
   const handleCloseSlip = useCallback(() => {
     setShowSlip(false);
     setVerificationResult(null);
-    
-    // Reset form
     setNinNumber('');
     setNinPhone('');
     setBvnNumber('');
     setBvnPhone('');
     setSearchMode('number');
-  }, []);
+    refreshWallet();
+    navigation.goBack();
+  }, [refreshWallet, navigation]);
 
   // ========================================
   // TAB CHANGE HANDLER
@@ -381,25 +380,22 @@ export default function NINScreen({ navigation, route }) {
         onRightPress={() => navigation.navigate('Orders')}
       />
 
-      {/* Show Verification Slip */}
-      {showSlip && verificationResult && (
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <VerificationSlip
-            data={verificationResult}
-            verificationType={verificationResult.verificationType}
-            themeColors={themeColors}
-          />
-          
+      {/* Verification Success */}
+      {showSlip && (
+        <View style={styles.successContainer}>
+          <Ionicons name="checkmark-circle" size={88} color="#22C55E" />
+          <Text style={[styles.successTitle, { color: themeColors.heading }]}>
+            Verification Successful
+          </Text>
+          <Text style={[styles.successSub, { color: themeColors.subheading }]}>
+            Your {verificationResult?.verificationType || 'identity'} has been verified and linked to your account.
+          </Text>
           <PayButton
             title="Done"
             onPress={handleCloseSlip}
             style={styles.doneButton}
           />
-        </ScrollView>
+        </View>
       )}
 
 {/* ===================== */}
@@ -894,6 +890,26 @@ const styles = StyleSheet.create({
   },
   doneButton: {
     marginTop: 24,
+    width: '100%',
+  },
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: -0.3,
+    marginTop: 8,
+  },
+  successSub: {
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
   },
   consentCard: {
     padding: 20,

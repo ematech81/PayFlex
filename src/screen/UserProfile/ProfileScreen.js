@@ -208,22 +208,23 @@ export default function ProfileScreen({ navigation }) {
               <Text style={[styles.userEmail, { color: themeColors.subheading }]}>
                 {user?.email || 'user@email.com'}
               </Text>
-              <TouchableOpacity 
-                style={[styles.verificationBadge, { 
-                  backgroundColor: user?.isVerified ? '#4CAF5020' : `${themeColors.primary}20` 
+              <TouchableOpacity
+                style={[styles.verificationBadge, {
+                  backgroundColor: user?.isNINVerified ? '#4CAF5020' : `${themeColors.primary}20`
                 }]}
-                onPress={() => navigation.navigate('VerifyNIN')}
+                onPress={() => !user?.isNINVerified && navigation.navigate('VerifyNIN')}
+                disabled={!!user?.isNINVerified}
               >
-                <Ionicons 
-                  name={user?.isVerified ? "shield-checkmark" : "shield-outline"} 
-                  size={14} 
-                  color={user?.isVerified ? '#4CAF50' : themeColors.primary} 
+                <Ionicons
+                  name={user?.isNINVerified ? "shield-checkmark" : "shield-outline"}
+                  size={14}
+                  color={user?.isNINVerified ? '#4CAF50' : themeColors.primary}
                 />
                 <Text style={[
-                  styles.verificationText, 
-                  { color: user?.isVerified ? '#4CAF50' : themeColors.primary }
+                  styles.verificationText,
+                  { color: user?.isNINVerified ? '#4CAF50' : themeColors.primary }
                 ]}>
-                  {user?.isVerified ? 'Verified' : 'Verify NIN'}
+                  {user?.isNINVerified ? 'NIN Verified' : 'Verify NIN'}
                 </Text>
               </TouchableOpacity>
             </View>

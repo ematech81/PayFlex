@@ -35,6 +35,7 @@ import { colors } from 'constants/colors';
 import { useThem } from 'constants/useTheme';
 import { useServicePayment } from 'HOOKS/UseServicePayment';
 import { purchaseAirtime } from 'AuthFunction/paymentService';
+import { saveBeneficiary } from 'utility/beneficiaryStorage';
 
 const QUICK_AMOUNTS = [100, 200, 500, 1000, 2000];
 
@@ -87,6 +88,16 @@ export default function AirtimeScreen({ navigation, route }) {
   }, [payment.pendingPaymentData]);
 
   useEffect(() => { refreshWallet(); }, []);
+
+  // Save phone number as a beneficiary after a successful payment
+  useEffect(() => {
+    if (payment.step === 'result' && payment.result) {
+      const clean = phoneNumber.replace(/\s/g, '');
+      if (clean.length === 11 && provider) {
+        saveBeneficiary('airtime', { phoneNumber: clean, network: provider });
+      }
+    }
+  }, [payment.step, payment.result]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handlePayment = useCallback((paymentAmount) => {

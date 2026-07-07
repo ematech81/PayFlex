@@ -28,6 +28,7 @@ const CARDS = [
     description: 'Incorporate a Limited Liability Company — Private or Public. Your personal assets are protected and the company exists as a separate legal entity in Nigeria.',
     features:    ['Separate legal entity', 'Shareholder protection', 'Private or Public company'],
     color:       '#0F766E',
+    comingSoon:  true,
   },
 ];
 
@@ -141,14 +142,21 @@ export default function CACHubScreen({ navigation }) {
         {/* Registration type cards */}
         {CARDS.map((card) => (
           <View key={card.key} style={[s.card, { backgroundColor: tc.card, borderColor: tc.border || '#E5E5EA' }]}>
-            <View style={[s.cardHeader, { backgroundColor: card.color }]}>
+            <View style={[s.cardHeader, { backgroundColor: card.comingSoon ? '#6B7280' : card.color }]}>
               <View style={s.cardHeaderInner}>
                 <View style={s.cardIconWrap}>
                   <Ionicons name={card.icon} size={28} color="#FFFFFF" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <View style={s.badgeWrap}>
-                    <Text style={s.badgeText}>{card.badge}</Text>
+                  <View style={s.badgeRow}>
+                    <View style={s.badgeWrap}>
+                      <Text style={s.badgeText}>{card.badge}</Text>
+                    </View>
+                    {card.comingSoon && (
+                      <View style={s.soonBadge}>
+                        <Text style={s.soonBadgeText}>SOON</Text>
+                      </View>
+                    )}
                   </View>
                   <Text style={s.cardTitle}>{card.title}</Text>
                 </View>
@@ -159,22 +167,38 @@ export default function CACHubScreen({ navigation }) {
             <View style={s.cardBody}>
               <Text style={[s.cardDesc, { color: tc.subheading }]}>{card.description}</Text>
 
+              {card.comingSoon && (
+                <View style={[s.comingSoonNote, { backgroundColor: '#F59E0B20', borderColor: '#F59E0B40' }]}>
+                  <Ionicons name="time-outline" size={16} color="#F59E0B" />
+                  <Text style={[s.comingSoonText, { color: '#F59E0B' }]}>
+                    We are finalising LLC registration. It will be available soon.
+                  </Text>
+                </View>
+              )}
+
               <View style={s.featureList}>
                 {card.features.map((f, i) => (
                   <View key={i} style={s.featureRow}>
-                    <View style={[s.featureDot, { backgroundColor: card.color }]} />
-                    <Text style={[s.featureText, { color: tc.heading }]}>{f}</Text>
+                    <View style={[s.featureDot, { backgroundColor: card.comingSoon ? '#9CA3AF' : card.color }]} />
+                    <Text style={[s.featureText, { color: card.comingSoon ? tc.subtext : tc.heading }]}>{f}</Text>
                   </View>
                 ))}
               </View>
 
               <TouchableOpacity
-                style={[s.startBtn, { backgroundColor: card.color }]}
-                onPress={() => navigation.navigate(card.screen)}
-                activeOpacity={0.85}
+                style={[s.startBtn, { backgroundColor: card.comingSoon ? '#D1D5DB' : card.color }]}
+                onPress={() => !card.comingSoon && navigation.navigate(card.screen)}
+                activeOpacity={card.comingSoon ? 1 : 0.85}
+                disabled={!!card.comingSoon}
               >
-                <Text style={s.startBtnText}>Start Registration</Text>
-                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                <Ionicons
+                  name={card.comingSoon ? 'time-outline' : 'arrow-forward'}
+                  size={16}
+                  color={card.comingSoon ? '#9CA3AF' : '#FFFFFF'}
+                />
+                <Text style={[s.startBtnText, card.comingSoon && { color: '#9CA3AF' }]}>
+                  {card.comingSoon ? 'Coming Soon' : 'Start Registration'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -224,8 +248,13 @@ const s = StyleSheet.create({
   cardHeaderInner:{ flexDirection: 'row', alignItems: 'center', gap: 14 },
   cardGlow:       { position: 'absolute', right: -30, top: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(255,255,255,0.08)' },
   cardIconWrap:   { width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
-  badgeWrap:      { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, marginBottom: 6 },
+  badgeRow:       { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  badgeWrap:      { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   badgeText:      { fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 },
+  soonBadge:      { backgroundColor: '#F59E0B', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  soonBadgeText:  { fontSize: 10, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.5 },
+  comingSoonNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: 10, borderWidth: 1 },
+  comingSoonText: { flex: 1, fontSize: 12.5, lineHeight: 18, fontWeight: '500' },
   cardTitle:      { fontSize: 18, fontWeight: '800', color: '#FFFFFF', lineHeight: 24 },
 
   cardBody:       { padding: 18, gap: 14 },

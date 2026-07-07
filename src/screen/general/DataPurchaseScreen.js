@@ -19,8 +19,9 @@ import {
   PinModal,
   ResultModal,
   LoadingOverlay,
+  BeneficiaryInput,
 } from 'component/SHARED';
-import PhoneInput from 'component/SHARED/INPUT/phoneInput';
+import { saveBeneficiary } from 'utility/beneficiaryStorage';
 import { useServicePayment } from 'HOOKS/UseServicePayment';
 import PinSetupModal from 'component/PinSetUpModal';
 import { useWallet } from 'context/WalletContext';
@@ -140,6 +141,16 @@ export default function DataPurchaseScreen({ navigation, route }) {
   }, [provider]);
 
   useEffect(() => { refreshWallet(); }, []);
+
+  // Save phone number as a beneficiary after a successful payment
+  useEffect(() => {
+    if (payment.step === 'result' && payment.result) {
+      const clean = phoneNumber.replace(/\s/g, '');
+      if (clean.length === 11 && provider) {
+        saveBeneficiary('data', { phoneNumber: clean, network: provider });
+      }
+    }
+  }, [payment.step, payment.result]);
 
   const loadDataPlans = async () => {
     try {
@@ -282,13 +293,23 @@ export default function DataPurchaseScreen({ navigation, route }) {
         {/* RECIPIENT PHONE NUMBER */}
         <Text style={[styles.sectionLabel, { color: themeColors.subheading, marginTop: 20 }]}>RECIPIENT PHONE NUMBER</Text>
         <View style={[styles.fieldBox, { backgroundColor: themeColors.card, borderColor: validationErrors.phoneNumber ? '#EF4444' : themeColors.border || '#E5E5EA' }]}>
-          <PhoneInput
+          <BeneficiaryInput
             value={phoneNumber}
             onChangeText={setPhoneNumber}
             onNetworkDetected={setProvider}
-            placeholder="0801 234 5678"
+            onBeneficiarySelect={(b) => { if (b.network) setProvider(b.network); }}
+            serviceType="data"
+            placeholder="08XX XXX XXXX"
             label=""
             error={null}
+            keyboardType="phone-pad"
+            maxLength={11}
+            icon="call-outline"
+            identifierField="phoneNumber"
+            secondaryField="network"
+            displayField={(item) => `${item.phoneNumber} - ${item.network?.toUpperCase()}`}
+            enableNetworkDetection={true}
+            enableValidation={true}
           />
         </View>
         {validationErrors.phoneNumber && <Text style={styles.fieldError}>{validationErrors.phoneNumber}</Text>}
